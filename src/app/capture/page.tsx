@@ -35,8 +35,10 @@ export default function CapturePage() {
   const [mustHave, setMustHave] = useState<Category[]>([]);
   const [pinUrl, setPinUrl] = useState("");
   const [pinImage, setPinImage] = useState<string | null>(null);
-  const [vibe, setVibe] = useState<{ palette: string[]; tags: string[] } | null>(null);
+  const [vibe, setVibe] = useState<{ palette: string[]; tags: string[]; styleLabel?: string; searchTerms?: string[]; note?: string } | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [engine, setEngine] = useState<"gemini" | "local" | null>(null);
 
   useEffect(() => () => shots.forEach((s) => s.file && URL.revokeObjectURL(s.url)), [shots]);
 
@@ -55,12 +57,52 @@ export default function CapturePage() {
     setShots((prev) => [...prev, ...scored]);
   }
 
+  /** Demo shots are public URLs rather than uploads, so fetch them into Files. */
+  async function shotFiles(): Promise<File[]> {
+    const usable = shots.filter((s) => s.ok).length ? shots.filter((s) => s.ok) : shots;
+    const out: File[] = [];
+    for (const s of usable.slice(0, 8)) {
+      if (s.file) { out.push(s.file); continue; }
+      try {
+        const blob = await fetch(s.url).then((r) => r.blob());
+        out.push(new File([blob], `${s.id}.png`, { type: blob.type || "image/png" }));
+      } catch {
+        /* skip a shot we cannot read */
+      }
+    }
+    return out;
+  }
+
   async function analyze() {
     setAnalyzing(true);
-    const good = shots.filter((s) => s.ok && s.file).map((s) => s.file!);
-    const all = shots.filter((s) => s.file).map((s) => s.file!);
-    const d = await detectFromFiles(good.length ? good : all, roomType);
+    const files = await shotFiles();
+
+    // Gemini reads the actual geometry. If it is unavailable, fall back to the
+    // local heuristic so the flow never dead-ends.
+    if (files.length) {
+      try {
+        const form = new FormData();
+        form.append("roomType", roomType);
+        files.forEach((f) => form.append("photos", f));
+        const res = await fetch("/api/analyze-room", { method: "POST", body: form });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.detected) {
+            setDetected(json.detected);
+            setEngine("gemini");
+            setAnalyzing(false);
+            setStep("confirm");
+            return;
+          }
+        }
+      } catch {
+        /* fall through to the local heuristic */
+      }
+    }
+
+    const d = await detectFromFiles(files, roomType);
     setDetected(d);
+    setEngine("local");
     setAnalyzing(false);
     setStep("confirm");
   }
@@ -68,22 +110,41 @@ export default function CapturePage() {
   async function applyPinterest() {
     if (!pinUrl) return;
     setPinLoading(true);
+    setPinError(null);
     try {
-      const res = await fetch("/api/pinterest", { method: "POST", body: JSON.stringify({ url: pinUrl }) });
+      const res = await fetch("/api/pinterest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: pinUrl })
+      });
       const json = await res.json();
-      if (json.image) {
-        setPinImage(json.image);
-        const blob = await fetch(json.image).then((r) => r.blob());
-        const v = await extractVibeFromImage(blob);
-        setVibe(v);
+      if (!res.ok) { setPinError(json.message || "Could not read that link."); return; }
+      if (json.images?.[0]) setPinImage(json.images[0]);
+      if (json.vibe) {
+        setVibe(json.vibe);
+      } else if (json.images?.[0]) {
+        const blob = await fetch(json.images[0]).then((r) => r.blob());
+        setVibe(await extractVibeFromImage(blob));
       }
+    } catch (e) {
+      setPinError("Could not reach the pin. Try uploading a screenshot instead.");
     } finally { setPinLoading(false); }
   }
 
   async function applyInspirationFile(file: File) {
     setPinImage(URL.createObjectURL(file));
-    const v = await extractVibeFromImage(file);
-    setVibe(v);
+    setPinLoading(true);
+    setPinError(null);
+    try {
+      const form = new FormData();
+      form.append("images", file);
+      const res = await fetch("/api/pinterest", { method: "POST", body: form });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.vibe) { setVibe(json.vibe); return; }
+      setVibe(await extractVibeFromImage(file));
+    } catch {
+      setVibe(await extractVibeFromImage(file));
+    } finally { setPinLoading(false); }
   }
 
   function toGo() {
@@ -91,6 +152,7 @@ export default function CapturePage() {
       roomType, goal, budget, style, mustHave,
       widthFt: detected?.widthFt ?? 14, depthFt: detected?.depthFt ?? 12,
       vibeTags: vibe?.tags, vibePalette: vibe?.palette,
+      searchTerms: vibe?.searchTerms,
       detected
     };
     sessionStorage.setItem("sightline:brief", JSON.stringify(brief));
@@ -176,7 +238,7 @@ export default function CapturePage() {
           )}
 
           {step === "confirm" && detected && (
-            <Section key="confirm" title="Confirm the room" subtitle={`Confidence ${(detected.confidence * 100).toFixed(0)}%. Edit anything that looks off — the canvas will use these values.`}>
+            <Section key="confirm" title="Confirm the room" subtitle={`Confidence ${(detected.confidence * 100).toFixed(0)}%. ${engine === "gemini" ? "Read from your photos by Gemini vision." : "Estimated locally — no vision key set."} Edit anything that looks off.`}>
               <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
                 <div className="card p-5">
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Room</div>
@@ -282,11 +344,29 @@ export default function CapturePage() {
                         <img src={pinImage} alt="" className="max-h-64 w-full object-cover" />
                       </div>
                     )}
+                    {pinError && <div className="mt-3 rounded-md border border-red-500/40 bg-red-500/5 p-2 text-[11px] text-red-300">{pinError}</div>}
                     {vibe && (
                       <div className="mt-4">
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Extracted palette</div>
+                        {vibe.styleLabel && (
+                          <div className="mb-3">
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Reads as</div>
+                            <div className="font-display text-2xl">{vibe.styleLabel}</div>
+                            {vibe.note && <p className="mt-1 text-[12px] leading-relaxed text-ash">{vibe.note}</p>}
+                          </div>
+                        )}
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Palette</div>
                         <div className="mt-2 flex gap-1.5">{vibe.palette.map((c) => <span key={c} className="h-6 w-6 rounded-full border border-rule/40" style={{ background: c }} />)}</div>
                         <div className="mt-3 flex flex-wrap gap-1.5">{vibe.tags.map((t) => <span key={t} className="chip">{t}</span>)}</div>
+                        {vibe.searchTerms?.length ? (
+                          <div className="mt-4">
+                            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">We&apos;ll shop these</div>
+                            <ul className="mt-2 space-y-1">
+                              {vibe.searchTerms.map((t) => (
+                                <li key={t} className="border-l-2 border-brass/40 pl-2 text-[12px] text-ash">{t}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>
