@@ -12,7 +12,14 @@ import type { DetectedRoom, RoomType, Goal, Category } from "@/lib/types";
 
 type Step = "frame" | "capture" | "confirm" | "brief";
 
-interface Shot { id: string; file: File; url: string; ok: boolean; reason?: string }
+interface Shot { id: string; file?: File; url: string; ok: boolean; reason?: string; demo?: boolean }
+
+const EMPTY_ROOM_DEMO: Shot[] = Array.from({ length: 6 }, (_, index) => ({
+  id: `empty-room-demo-${index + 1}`,
+  url: `/demo-capture/empty-room-${String(index + 1).padStart(2, "0")}.png`,
+  ok: true,
+  demo: true
+}));
 
 export default function CapturePage() {
   const router = useRouter();
@@ -20,6 +27,7 @@ export default function CapturePage() {
   const [roomType, setRoomType] = useState<RoomType>("living");
   const [goal, setGoal] = useState<Goal>("refresh");
   const [shots, setShots] = useState<Shot[]>([]);
+  const [demoCaptureEnabled, setDemoCaptureEnabled] = useState(true);
   const [detected, setDetected] = useState<DetectedRoom | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [budget, setBudget] = useState(2500);
@@ -30,7 +38,11 @@ export default function CapturePage() {
   const [vibe, setVibe] = useState<{ palette: string[]; tags: string[] } | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
 
-  useEffect(() => () => shots.forEach((s) => URL.revokeObjectURL(s.url)), [shots]);
+  useEffect(() => () => shots.forEach((s) => s.file && URL.revokeObjectURL(s.url)), [shots]);
+
+  useEffect(() => {
+    if (step === "capture" && demoCaptureEnabled && shots.length === 0) setShots(EMPTY_ROOM_DEMO);
+  }, [step, demoCaptureEnabled, shots.length]);
 
   async function addFiles(fileList: FileList | null) {
     if (!fileList) return;
@@ -45,8 +57,9 @@ export default function CapturePage() {
 
   async function analyze() {
     setAnalyzing(true);
-    const good = shots.filter((s) => s.ok).map((s) => s.file);
-    const d = await detectFromFiles(good.length ? good : shots.map((s) => s.file), roomType);
+    const good = shots.filter((s) => s.ok && s.file).map((s) => s.file!);
+    const all = shots.filter((s) => s.file).map((s) => s.file!);
+    const d = await detectFromFiles(good.length ? good : all, roomType);
     setDetected(d);
     setAnalyzing(false);
     setStep("confirm");
@@ -86,6 +99,7 @@ export default function CapturePage() {
 
   const okCount = shots.filter((s) => s.ok).length;
   const canAnalyze = okCount >= 3;
+  const isDemoCapture = shots.length > 0 && shots.every((s) => s.demo);
 
   return (
     <main className="min-h-screen">
@@ -133,7 +147,10 @@ export default function CapturePage() {
                       </label>
                     )}
                   </div>
-                  <div className="mt-3 text-xs text-ash">{shots.length}/12 photos · {okCount} usable</div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ash">
+                    <span>{shots.length}/12 photos · {okCount} usable</span>
+                    {isDemoCapture && <><span className="text-brass">Empty-room demo set</span><button className="text-paper underline underline-offset-4" onClick={() => { setDemoCaptureEnabled(false); setShots([]); }}>Use my own photos</button></>}
+                  </div>
                 </div>
                 <div className="card p-4">
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Capture guide</div>
@@ -150,7 +167,7 @@ export default function CapturePage() {
               <NextBar
                 onBack={() => setStep("frame")}
                 onNext={analyze}
-                nextLabel={analyzing ? "Analyzing…" : "Analyze the room"}
+                nextLabel={analyzing ? "Analyzing…" : isDemoCapture ? "Analyze demo room" : "Analyze the room"}
                 disabled={!canAnalyze || analyzing}
                 icon={analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
               />
