@@ -20,6 +20,8 @@ export interface Product {
   depth: number;
   height: number;
   rating?: number;
+  availability?: string;
+  summary?: string;
   material?: string;
   vibe?: string[];
   /** False when dimensions were inferred from the category rather than the listing. */
