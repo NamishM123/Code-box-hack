@@ -95,7 +95,7 @@ Environment Variables for Production and Preview.
 1. In Supabase, run `supabase/migrations/20260905000000_sightline_auth.sql` in
    the SQL Editor.
 2. In Google Cloud Console, create an OAuth **Web application**. Add
-   `https://rvqwklzeqdxfzlhtvsbz.supabase.co/auth/v1/callback` as its authorized
+   `https://gffbfzbqmdoewpxsfhao.supabase.co/auth/v1/callback` as its authorized
    redirect URI.
 3. Paste that Google client ID and secret into Supabase: Authentication →
    Providers → Google. In Supabase Authentication → URL Configuration, add
