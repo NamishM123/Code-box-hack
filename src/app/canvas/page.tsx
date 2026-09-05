@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, RotateCcw, Save, Wand2 } from "lucide-react";
+import { Check, RotateCcw, Save, Sparkles, Wand2 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { TopView } from "@/components/canvas/TopView";
@@ -11,6 +11,8 @@ import { ProductRail } from "@/components/canvas/ProductRail";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
+import { RenderView } from "@/components/canvas/RenderView";
+import { SceneBoundary } from "@/components/canvas/SceneBoundary";
 import { generateLayouts } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
@@ -28,7 +30,9 @@ function feet(v: number): string {
   return `${whole}′${inches}″`;
 }
 
-type View = "top" | "3d";
+type View = "top" | "3d" | "render";
+
+const VIEW_LABEL: Record<View, string> = { top: "2D top", "3d": "3D", render: "Render" };
 
 interface Brief extends RoomSpec { detected: DetectedRoom | null; searchTerms?: string[] }
 
@@ -286,9 +290,14 @@ export default function CanvasPage() {
             </div>
           </div>
           <div className="flex rounded-full border border-rule/40 p-1 text-xs">
-            {(["top", "3d"] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-paper text-ink" : "text-ash hover:text-paper"}`}>
-                {v === "top" ? "2D top" : "3D"}
+            {(["top", "3d", "render"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 transition ${view === v ? "bg-paper text-ink" : "text-ash hover:text-paper"}`}
+              >
+                {v === "render" && <Sparkles className="h-3 w-3" />}
+                {VIEW_LABEL[v]}
               </button>
             ))}
           </div>
@@ -319,7 +328,12 @@ export default function CanvasPage() {
               <TopView room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} onChange={setPlaced} />
             )}
             {view === "3d" && (
-              <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
+              <SceneBoundary>
+                <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
+              </SceneBoundary>
+            )}
+            {view === "render" && (
+              <RenderView room={brief} detected={brief.detected} products={products} placed={placed} />
             )}
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-ghost" onClick={() => applyLayout(activeLayout)}><Wand2 className="h-3.5 w-3.5" /> Re-run principles</button>
