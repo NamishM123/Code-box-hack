@@ -1,0 +1,136 @@
+import type { DetectedRoom, PlacedItem, RoomSpec } from "./types";
+
+/**
+ * Local persistence for saved rooms. No database required.
+ *
+ * Rooms live in localStorage (per browser). Share links encode the whole
+ * room into the URL itself, so a plan can be sent to someone without a
+ * server ever seeing it. Swap for Supabase when you want cross-device sync.
+ */
+
+const KEY = "sightline:rooms";
+
+export interface SavedRoom {
+  id: string;
+  name: string;
+  savedAt: number;
+  spec: RoomSpec;
+  detected: DetectedRoom | null;
+  productIds: string[];
+  placed: PlacedItem[];
+  total: number;
+  layoutName: string;
+}
+
+export function listRooms(): SavedRoom[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return [];
+    const rooms = JSON.parse(raw) as SavedRoom[];
+    return Array.isArray(rooms) ? rooms.sort((a, b) => b.savedAt - a.savedAt) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveRoom(room: Omit<SavedRoom, "id" | "savedAt"> & { id?: string }): SavedRoom {
+  const rooms = listRooms();
+  const id = room.id || crypto.randomUUID();
+  const entry: SavedRoom = { ...room, id, savedAt: Date.now() };
+  const next = [entry, ...rooms.filter((r) => r.id !== id)].slice(0, 50);
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    // quota exceeded: drop the oldest half and retry once
+    try {
+      localStorage.setItem(KEY, JSON.stringify(next.slice(0, Math.ceil(next.length / 2))));
+    } catch {
+      /* give up silently; the UI reports failure via the return value check */
+    }
+  }
+  return entry;
+}
+
+export function getRoom(id: string): SavedRoom | null {
+  return listRooms().find((r) => r.id === id) || null;
+}
+
+export function deleteRoom(id: string): void {
+  const next = listRooms().filter((r) => r.id !== id);
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* nothing useful to do */
+  }
+}
+
+/* ---------- share links ---------- */
+
+/**
+ * Compact wire form. Product ids reference the catalog, so a full room
+ * fits comfortably inside a URL.
+ */
+interface Wire {
+  n: string;
+  s: RoomSpec;
+  d: DetectedRoom | null;
+  p: [string, number, number, number, string][];
+  t: number;
+  l: string;
+}
+
+export function encodeRoom(room: Pick<SavedRoom, "name" | "spec" | "detected" | "placed" | "total" | "layoutName">): string {
+  const wire: Wire = {
+    n: room.name,
+    s: room.spec,
+    d: room.detected,
+    p: room.placed.map((x) => [x.productId, round(x.x), round(x.y), x.rotation, x.fit]),
+    t: room.total,
+    l: room.layoutName
+  };
+  return toBase64Url(JSON.stringify(wire));
+}
+
+export function decodeRoom(token: string): Pick<SavedRoom, "name" | "spec" | "detected" | "placed" | "total" | "layoutName"> | null {
+  try {
+    const wire = JSON.parse(fromBase64Url(token)) as Wire;
+    if (!wire?.s || !Array.isArray(wire.p)) return null;
+    return {
+      name: wire.n,
+      spec: wire.s,
+      detected: wire.d,
+      total: wire.t,
+      layoutName: wire.l,
+      placed: wire.p.map(([productId, x, y, rotation, fit]) => ({
+        productId,
+        x,
+        y,
+        rotation,
+        fit: fit as PlacedItem["fit"],
+        rationale: []
+      }))
+    };
+  } catch {
+    return null;
+  }
+}
+
+function round(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+function toBase64Url(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fromBase64Url(s: string): string {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = b64.length % 4 ? "=".repeat(4 - (b64.length % 4)) : "";
+  const bin = atob(b64 + pad);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
