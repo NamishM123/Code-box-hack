@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --bg: #f6f1ea;
+  --ink: #0b0b0f;
+}
+
+html, body { background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui; }
+
+.font-display { font-family: "Instrument Serif", ui-serif, Georgia, serif; letter-spacing: -0.01em; }
+
+.grain::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .06; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.pill {
+  @apply inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 backdrop-blur px-3 py-1 text-xs font-medium;
+}
+
+.card {
+  @apply rounded-2xl border border-black/5 bg-white/70 backdrop-blur shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_10px_30px_-12px_rgba(0,0,0,0.15)];
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all;
+}
+.btn-primary { @apply bg-ink text-cream hover:bg-black; }
+.btn-ghost { @apply bg-white/60 border border-black/10 hover:bg-white; }
+
+.scroll-fade {
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
