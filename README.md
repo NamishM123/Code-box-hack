@@ -10,13 +10,14 @@ A camera-first room editor. Guided photos become an editable room. Furniture is 
 - **Furniture swap** with alternates ranked by vibe + price proximity.
 - **Pinterest vibe extraction**: paste a pin URL or upload a screenshot; we extract the palette and mood tags in-browser (no API keys).
 - **Aesthetic suggestions** that reference the tradition they come from.
-- **2D top-view planner + interactive 3D room** (React Three Fiber).
+- **Three views of the same room**: a 2D top-view planner, a 3D block view for reading volumes, and a **3D rendered view** where every listing is drawn as actual furniture — a sofa with arms and cushions, a bookshelf with books on it, a bed made up, an arched mirror — built parametrically from the listing's real width, depth and height. Daylight/evening lighting, click-to-select, and a PNG export.
 - Editorial dark UI: charcoal, warm paper, brass signal color, serif display type.
 
 ## Tech
 
 - Next.js 14 (App Router) + TypeScript, Tailwind
 - Framer Motion, React Three Fiber + drei
+- Furniture, room shell, wood/plaster/rug/art textures and the lighting environment are all generated in code — no model files, no HDR downloads, so the rendered view works offline
 - Client-side image analysis (Canvas API + palette k-means-lite)
 - Deployed on Vercel
 
@@ -53,6 +54,9 @@ vercel --prod
 ## Image generation guidance
 
 For **real product photos**: don't generate. Pull from the marketplace listing directly (SerpAPI for Amazon/Target, Apify for Facebook Marketplace).
+
+The 3D rendered view already composes the room from the real dimensions, so image
+generation is only needed for a photorealistic pass on top of it.
 
 For **room mockups** (photorealistic previews of the composed room):
 - **Google Gemini 2.5 Flash Image** (Nano Banana), free tier via AI Studio — highest quality, handles compositing products into rooms.
