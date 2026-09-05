@@ -254,8 +254,8 @@ export default function CanvasPage() {
   if (loading || !brief) return (
     <main><Nav /><div className="mx-auto max-w-3xl px-6 py-24 text-center">
       <div className="mx-auto h-14 w-14 rounded-full border-2 border-brass border-t-transparent animate-spin" />
-      <div className="mt-6 font-display text-3xl">Reading the room…</div>
-      <div className="mt-1 text-sm text-ash">Checking the live catalog against confirmed dimensions.</div>
+      <div className="mt-6 font-display text-3xl">Preparing the room…</div>
+      <div className="mt-1 text-sm text-ash">Loading the editable plan and reference pieces.</div>
     </div></main>
   );
 
@@ -275,13 +275,13 @@ export default function CanvasPage() {
               <span className="text-brass">{layouts[activeLayout]?.method}</span>
               {feed && (
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] ${feed.live ? "border-brass/40 text-brass" : "border-rule/50 text-ash"}`}>
-                  {feed.live ? `Live · ${feed.sources.join(" + ")}` : "Seed catalog"}
+                  {feed.live ? "Reference catalog" : "Seed catalog"}
                 </span>
               )}
             </div>
             <div className="mt-1 text-[11px] text-ash">
               {feed?.live
-                ? "Live listing data. Dimensions are as published; verify before purchase."
+                ? "Reference listings. Confirm retailer details and dimensions before purchasing."
                 : "Seed catalog. Dimensions are illustrative."}
             </div>
           </div>
@@ -324,7 +324,7 @@ export default function CanvasPage() {
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-ghost" onClick={() => applyLayout(activeLayout)}><Wand2 className="h-3.5 w-3.5" /> Re-run principles</button>
               <button className="btn btn-ghost" onClick={() => window.location.href = "/capture"}><RotateCcw className="h-3.5 w-3.5" /> Start over</button>
-              <Link href="/rooms" className="btn btn-ghost">Saved rooms</Link>
+              <Link href="/saved" className="btn btn-ghost">Saved rooms</Link>
               <button className="btn btn-primary ml-auto" onClick={() => setSaveOpen(true)}>
                 {justSaved ? <><Check className="h-3.5 w-3.5" /> Saved</> : <><Save className="h-3.5 w-3.5" /> Save &amp; share</>}
               </button>

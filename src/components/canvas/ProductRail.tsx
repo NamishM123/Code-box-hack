@@ -4,7 +4,7 @@ import type { PlacedItem, Product } from "@/lib/types";
 import { money } from "@/lib/utils";
 
 const SOURCE_LABEL: Record<string, string> = { amazon: "Amazon", facebook: "Facebook Marketplace", target: "Target", wayfair: "Wayfair", ikea: "IKEA", westelm: "West Elm", cb2: "CB2", article: "Article" };
-const FIT_LABEL = { fits: "Fits", tight: "Tight fit", conflict: "Conflict", unverified: "Unverified" };
+const FIT_LABEL = { fits: "Fits", tight: "Tight", conflict: "Cannot verify", unverified: "Cannot verify" };
 const FIT_STYLE = { fits: "text-brass border-brass/40", tight: "text-amber-300 border-amber-300/40", conflict: "text-red-400 border-red-400/40", unverified: "text-ash border-ash/40" };
 
 export function ProductRail({ placed, products, selectedId, onSelect, total, budget, onSwap }: {

@@ -6,22 +6,14 @@ export function Footer() {
           <div className="font-display text-3xl">Sightline</div>
           <div className="mt-2 max-w-sm text-[13px] text-ash">A camera-first room editor for people who would rather make one confident decision than scroll a thousand listings.</div>
         </div>
-        <FooterCol title="Product" items={[
-          { label: "Capture", href: "/capture" },
-          { label: "Canvas", href: "/canvas" },
-          { label: "Saved rooms", href: "/saved-rooms" }
-        ]} />
-        <FooterCol title="Library" items={[
-          { label: "Principles", href: "/principles" },
-          { label: "Feng shui", href: "/feng-shui" },
-          { label: "Ergonomics", href: "/ergonomics" }
-        ]} />
+        <FooterCol title="Product" items={[{ label: "Product", href: "/product" }, { label: "Pieces", href: "/pieces" }, { label: "Shops", href: "/shops" }]} />
+        <FooterCol title="Workspace" items={[{ label: "How it works", href: "/how-it-works" }, { label: "Explore demo rooms", href: "/rooms" }, { label: "Capture", href: "/capture" }, { label: "Canvas", href: "/canvas?demo=1" }, { label: "Saved rooms", href: "/saved" }]} />
         <div>
           <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Company</div>
           <ul className="mt-3 space-y-2 text-[13px] text-ash">
             <li><a href="/privacy" className="hover:text-paper">Privacy</a></li>
             <li><a href="/terms" className="hover:text-paper">Terms</a></li>
-            <li><a href="#" className="hover:text-paper">Contact</a></li>
+            <li><a href="/pricing" className="hover:text-paper">Pricing</a></li>
           </ul>
         </div>
       </div>

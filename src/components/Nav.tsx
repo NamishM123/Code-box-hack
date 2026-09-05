@@ -14,8 +14,9 @@ export function Nav() {
           <span className="hidden text-[10px] uppercase tracking-[0.2em] text-ash sm:inline">Vol. 01 · MMXXVI</span>
         </Link>
         <nav className="hidden items-center gap-8 text-xs uppercase tracking-[0.2em] text-ash md:flex">
-          <Link href="/#how" className="hover:text-paper">Method</Link>
-          <Link href="/#principles" className="hover:text-paper">Principles</Link>
+          <Link href="/product" className="hover:text-paper">Product</Link>
+          <Link href="/how-it-works" className="hover:text-paper">Method</Link>
+          <Link href="/rooms" className="hover:text-paper">Rooms</Link>
           <Link href="/capture" className="hover:text-paper">Capture</Link>
           <AuthButton />
         </nav>

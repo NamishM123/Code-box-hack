@@ -160,7 +160,7 @@ export default function CapturePage() {
   }
 
   const okCount = shots.filter((s) => s.ok).length;
-  const canAnalyze = okCount >= 3;
+  const canAnalyze = okCount >= 6;
   const isDemoCapture = shots.length > 0 && shots.every((s) => s.demo);
 
   return (
@@ -185,12 +185,15 @@ export default function CapturePage() {
                   { k: "refresh", l: "Refresh the look" }
                 ]} value={goal} onChange={(v) => setGoal(v as Goal)} />
               </div>
-              <NextBar onNext={() => setStep("capture")} />
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                <button className="text-sm text-brass hover:underline" onClick={() => { setDemoCaptureEnabled(true); setShots(EMPTY_ROOM_DEMO); setStep("capture"); }}>Use demo room</button>
+                <NextBar onNext={() => setStep("capture")} />
+              </div>
             </Section>
           )}
 
           {step === "capture" && (
-            <Section key="capture" title="Capture" subtitle="6-12 clear photos. Stand in each corner and take one wide shot. Then add close-ups of doors, windows, and tight areas.">
+            <Section key="capture" title="Capture" subtitle="Six clear photos to start. Confirm a dimension only if needed.">
               <div className="grid gap-6 md:grid-cols-[1fr_260px]">
                 <div>
                   <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
@@ -233,7 +236,7 @@ export default function CapturePage() {
                 disabled={!canAnalyze || analyzing}
                 icon={analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
               />
-              {!canAnalyze && <div className="mt-2 text-right text-[11px] text-ash">Add at least 3 usable photos to continue.</div>}
+              {!canAnalyze && <div className="mt-2 text-right text-[11px] text-ash">Add 6 usable photos to continue, or use the demo room.</div>}
             </Section>
           )}
 

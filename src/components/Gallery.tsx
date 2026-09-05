@@ -14,16 +14,16 @@ export function Gallery() {
       <div className="mx-auto max-w-7xl px-6 py-28">
         <div className="mb-12 flex items-end justify-between">
           <div>
-            <div className="pill">Rooms in the field</div>
-            <h2 className="font-display mt-5 text-5xl md:text-6xl">Selected work.</h2>
+            <div className="pill">Explore demo rooms</div>
+            <h2 className="font-display mt-5 text-5xl md:text-6xl">Rooms to begin with.</h2>
           </div>
-          <div className="hidden text-sm text-ash md:block">Each room is a shoppable, rearrangeable plan.</div>
+          <div className="hidden text-sm text-ash md:block">Four editable demo scenarios for trying the workspace.</div>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           {ROOMS.map((r, i) => (
             <motion.a
               key={r.title}
-              href="/capture"
+              href="/canvas?demo=1"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
