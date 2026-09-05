@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { AuthButton } from "@/components/AuthButton";
 
 export function Nav() {
   return (
@@ -16,6 +17,7 @@ export function Nav() {
           <Link href="/#how" className="hover:text-paper">Method</Link>
           <Link href="/#principles" className="hover:text-paper">Principles</Link>
           <Link href="/capture" className="hover:text-paper">Capture</Link>
+          <AuthButton />
         </nav>
         <Link href="/capture" className="btn btn-primary text-xs uppercase tracking-[0.2em]">Map a room</Link>
       </div>

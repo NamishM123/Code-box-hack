@@ -50,6 +50,26 @@ vercel
 vercel --prod
 ```
 
+## Authentication setup
+
+Sightline is prepared for Google OAuth through Supabase, while still allowing
+the demo flow to work until credentials are configured. Copy `.env.example` to
+`.env.local` for local development and put the same values in Vercel's
+Environment Variables for Production and Preview.
+
+1. In Supabase, run `supabase/migrations/20260905000000_sightline_auth.sql` in
+   the SQL Editor.
+2. In Google Cloud Console, create an OAuth **Web application**. Add
+   `https://rvqwklzeqdxfzlhtvsbz.supabase.co/auth/v1/callback` as its authorized
+   redirect URI.
+3. Paste that Google client ID and secret into Supabase: Authentication →
+   Providers → Google. In Supabase Authentication → URL Configuration, add
+   `http://localhost:3000/auth/callback` and
+   `https://code-box-hack.vercel.app/auth/callback` to Redirect URLs.
+
+The service-role key is never required in browser code and must remain a
+server-only Vercel environment variable.
+
 ## Image generation guidance
 
 For **real product photos**: don't generate. Pull from the marketplace listing directly (SerpAPI for Amazon/Target, Apify for Facebook Marketplace).
