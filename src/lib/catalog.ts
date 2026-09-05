@@ -11,7 +11,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "sofa",
     color: "#d7c9b4",
     width: 6.5, depth: 3.2, height: 2.8,
-    rating: 4.6, vibe: ["warm", "minimal"]
+    rating: 4.6, reviewCount: 18, availability: "limited", summary: "A full-size secondhand sofa that anchors a relaxed living area without the cost of buying new.", vibe: ["warm", "minimal"]
   },
   {
     id: "sofa-boucle-01",
@@ -23,7 +23,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "sofa",
     color: "#f0ead9",
     width: 7.2, depth: 3.6, height: 2.6,
-    rating: 4.8, vibe: ["cozy", "modern"]
+    rating: 4.8, reviewCount: 1240, availability: "in-stock", summary: "A deep modular sofa built for lounging; its low profile keeps a larger seating piece visually calm.", vibe: ["cozy", "modern"]
   },
   {
     id: "chair-arch-01",
@@ -35,7 +35,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "chair",
     color: "#b57a4d",
     width: 2.6, depth: 2.8, height: 2.9,
-    rating: 4.4, vibe: ["warm"]
+    rating: 4.4, reviewCount: 286, availability: "in-stock", summary: "A compact accent seat that rounds out a conversation area and adds warm contrast.", vibe: ["warm"]
   },
   {
     id: "chair-wishbone-01",
@@ -47,7 +47,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "chair",
     color: "#c9a874",
     width: 1.7, depth: 1.7, height: 3.0,
-    rating: 4.3
+    rating: 4.3, reviewCount: 512, availability: "in-stock"
   },
   {
     id: "table-oak-01",
@@ -59,7 +59,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "table",
     color: "#a67b4d",
     width: 3.2, depth: 3.2, height: 1.4,
-    rating: 4.5
+    rating: 4.5, reviewCount: 346, availability: "in-stock"
   },
   {
     id: "table-marble-01",
@@ -71,7 +71,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "table",
     color: "#e6ddc9",
     width: 1.4, depth: 1.4, height: 1.6,
-    rating: 4.7
+    rating: 4.7, reviewCount: 9, availability: "limited", summary: "A small secondhand side table for an open spot beside a chair or sofa."
   },
   {
     id: "rug-jute-01",
@@ -83,7 +83,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "rug",
     color: "#d6c39a",
     width: 8, depth: 10, height: 0.05,
-    rating: 4.5
+    rating: 4.5, reviewCount: 2410, availability: "in-stock"
   },
   {
     id: "lamp-arc-01",
@@ -95,7 +95,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "lamp",
     color: "#c5a15a",
     width: 1.5, depth: 1.5, height: 6.2,
-    rating: 4.6
+    rating: 4.6, reviewCount: 389, availability: "in-stock"
   },
   {
     id: "shelf-walnut-01",
@@ -107,7 +107,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "shelf",
     color: "#6b4a34",
     width: 3.2, depth: 1.2, height: 5.8,
-    rating: 4.4
+    rating: 4.4, reviewCount: 173, availability: "limited"
   },
   {
     id: "plant-fiddle-01",
@@ -119,7 +119,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "plant",
     color: "#3f5a2a",
     width: 2.5, depth: 2.5, height: 5.2,
-    rating: 4.2
+    rating: 4.2, reviewCount: 802, availability: "in-stock"
   },
   {
     id: "art-abstract-01",
@@ -131,7 +131,7 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "art",
     color: "#c98b6b",
     width: 2.5, depth: 0.1, height: 3.2,
-    rating: 4.7
+    rating: 4.7, reviewCount: 418, availability: "in-stock"
   },
   {
     id: "bed-oak-01",
@@ -143,6 +143,6 @@ export const SAMPLE_CATALOG: Product[] = [
     category: "bed",
     color: "#b78b5e",
     width: 6.5, depth: 8.5, height: 2.2,
-    rating: 4.6
+    rating: 4.6, reviewCount: 14, availability: "limited", summary: "A queen bed frame that establishes the sleep zone; allow clear circulation on both sides."
   }
 ];

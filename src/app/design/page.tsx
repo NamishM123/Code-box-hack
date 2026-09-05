@@ -17,6 +17,50 @@ const RoomScene = dynamic(() => import("@/components/design/RoomScene").then((m)
 
 type View = "flat" | "top" | "3d";
 
+type LiveListing = {
+  source: "IKEA";
+  category: Product["category"];
+  title: string;
+  url: string;
+  image_url?: string;
+  price: number;
+  rating?: number;
+  availability?: "in-stock" | "limited" | "preorder" | "sold" | "unknown";
+  dimensions_inches: { width: number | null; depth: number | null; height: number | null };
+  fit_status: "fits" | "tight-fit" | "does-not-fit" | "cannot-verify";
+  rationale: string;
+};
+
+const SAMPLE_FLOOR_PLAN_ROOM: RoomSpec = {
+  // Public sample apartment floor plan: a 10′1″ × 12′7″ bedroom.
+  widthFt: 10 + 1 / 12,
+  depthFt: 12 + 7 / 12,
+  budget: 250,
+  style: "modern-warm",
+  mustHave: ["shelf"]
+};
+
+function toProduct(item: LiveListing): Product | null {
+  const { width, depth, height } = item.dimensions_inches;
+  if (!item.image_url || width === null || depth === null || height === null || item.fit_status !== "fits") return null;
+  return {
+    id: `live-${item.url.split("/").filter(Boolean).at(-1)}`,
+    title: item.title,
+    price: item.price,
+    source: "ikea",
+    url: item.url,
+    image: item.image_url,
+    category: item.category,
+    color: "#f3f0e8",
+    width: width / 12,
+    depth: depth / 12,
+    height: height / 12,
+    rating: item.rating,
+    availability: item.availability ?? "unknown",
+    summary: item.rationale
+  };
+}
+
 export default function DesignPage() {
   const [spec, setSpec] = useState<RoomSpec | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,16 +68,30 @@ export default function DesignPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<View>("top");
+  const [usingLiveCatalog, setUsingLiveCatalog] = useState(false);
 
   async function generate(s: RoomSpec) {
     setLoading(true);
     try {
-      const res = await fetch("/api/search", { method: "POST", body: JSON.stringify(s) });
-      const json = await res.json();
-      setSpec(json.spec);
-      setProducts(json.products);
-      setTotal(json.total);
-      setPlaced(autoLayout(json.spec, json.products));
+      const wallSpan = Math.max(24, Math.min(48, Math.round(s.widthFt * 12 - 84)));
+      const live = await fetch(`/api/catalog?budget=${s.budget}&free_wall_span=${wallSpan}&max_depth=18`);
+      const liveJson = live.ok ? await live.json() : null;
+      const liveProducts = (liveJson?.results ?? []).map(toProduct).filter(Boolean) as Product[];
+      if (liveProducts.length) {
+        setSpec(s);
+        setProducts(liveProducts);
+        setTotal(liveProducts.reduce((sum, product) => sum + product.price, 0));
+        setPlaced(autoLayout(s, liveProducts));
+        setUsingLiveCatalog(true);
+      } else {
+        const res = await fetch("/api/search", { method: "POST", body: JSON.stringify(s) });
+        const json = await res.json();
+        setSpec(json.spec);
+        setProducts(json.products);
+        setTotal(json.total);
+        setPlaced(autoLayout(json.spec, json.products));
+        setUsingLiveCatalog(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -49,6 +107,9 @@ export default function DesignPage() {
               <div className="pill">Design a room</div>
               <h1 className="font-display mt-3 text-5xl md:text-6xl">Tell us about the space.</h1>
               <p className="mt-2 text-black/60">Takes about 30 seconds.</p>
+              <button className="mt-4 text-sm underline underline-offset-4" onClick={() => generate(SAMPLE_FLOOR_PLAN_ROOM)}>
+                Load public sample bedroom · 10&apos;1&quot; × 12&apos;7&quot;
+              </button>
             </div>
             <Wizard onGenerate={generate} />
           </div>
@@ -57,8 +118,8 @@ export default function DesignPage() {
         {loading && (
           <div className="mx-auto max-w-3xl pt-10 text-center">
             <div className="mx-auto h-16 w-16 rounded-full border-4 border-clay border-t-transparent animate-spin" />
-            <div className="mt-5 font-display text-2xl">Searching Amazon, Facebook, Target...</div>
-            <div className="mt-1 text-sm text-black/60">Matching your budget and vibe.</div>
+            <div className="mt-5 font-display text-2xl">Checking the live catalog...</div>
+            <div className="mt-1 text-sm text-black/60">Only products with complete dimensions can be placed.</div>
           </div>
         )}
 
@@ -69,6 +130,7 @@ export default function DesignPage() {
                 <div>
                   <div className="pill">Your room</div>
                   <h1 className="font-display mt-2 text-4xl">A {spec.style.replace("-", " ")} space</h1>
+                  {usingLiveCatalog && <p className="mt-1 text-xs text-black/55">Live public catalog data · verify dimensions before purchase</p>}
                 </div>
                 <div className="flex rounded-full border border-black/10 bg-white/70 p-1 text-sm">
                   {(["top", "3d"] as const).map((v) => (

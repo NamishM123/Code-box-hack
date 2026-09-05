@@ -24,6 +24,10 @@ export interface Product {
   depth: number;
   height: number;
   rating?: number;
+  reviewCount?: number;
+  availability?: "in-stock" | "limited" | "preorder" | "sold" | "unknown";
+  /** A concise explanation of the item's practical role in the room. */
+  summary?: string;
   vibe?: string[];
 }
 
