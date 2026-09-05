@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function Footer() {
   return (
     <footer className="border-t border-rule/40 py-14">
@@ -8,7 +10,14 @@ export function Footer() {
         </div>
         <FooterCol title="Product" items={["Capture", "Canvas", "Saved rooms"]} />
         <FooterCol title="Library" items={["Principles", "Feng shui", "Ergonomics"]} />
-        <FooterCol title="Company" items={["Privacy", "Terms", "Contact"]} />
+        <FooterCol
+          title="Company"
+          items={[
+            { label: "Privacy", href: "/privacy" },
+            { label: "Terms", href: "/terms" },
+            "Contact"
+          ]}
+        />
       </div>
       <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between px-6 text-[11px] uppercase tracking-[0.2em] text-ash">
         <span>© {new Date().getFullYear()} Sightline</span>
@@ -18,12 +27,27 @@ export function Footer() {
   );
 }
 
-function FooterCol({ title, items }: { title: string; items: string[] }) {
+type FooterItem = string | { label: string; href: string };
+
+function FooterCol({ title, items }: { title: string; items: FooterItem[] }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{title}</div>
       <ul className="mt-3 space-y-2 text-[13px] text-ash">
-        {items.map((i) => <li key={i}><a href="#" className="hover:text-paper">{i}</a></li>)}
+        {items.map((item) => {
+          const label = typeof item === "string" ? item : item.label;
+          const href = typeof item === "string" ? "#" : item.href;
+
+          return (
+            <li key={label}>
+              {href.startsWith("/") ? (
+                <Link href={href} className="hover:text-paper">{label}</Link>
+              ) : (
+                <a href={href} className="hover:text-paper">{label}</a>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
