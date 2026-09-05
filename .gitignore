@@ -6,7 +6,5 @@ out
 .vercel
 .DS_Store
 *.log
-__pycache__/
-*.py[cod]
 .turbo
 next-env.d.ts
