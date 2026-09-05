@@ -34,9 +34,9 @@ export async function scoreQuality(file: File): Promise<QualityReport> {
   }
   const sharpness = edge / (s * s) / 255;
   let ok = true; let reason: string | undefined;
-  if (brightness < 0.18) { ok = false; reason = "Too dark — try again with the lights on."; }
-  else if (brightness > 0.92) { ok = false; reason = "Overexposed — move away from the window."; }
-  else if (sharpness < 0.05) { ok = false; reason = "Too blurry — hold still and retake."; }
+  if (brightness < 0.18) { ok = false; reason = "Too dark. Try again with the lights on."; }
+  else if (brightness > 0.92) { ok = false; reason = "Overexposed. Move away from the window."; }
+  else if (sharpness < 0.05) { ok = false; reason = "Too blurry. Hold still and retake."; }
   return { ok, sharpness, brightness, reason };
 }
 

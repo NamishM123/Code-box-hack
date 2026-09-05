@@ -17,13 +17,13 @@ export function RoomScene({ room, detected, products, placed, selectedId }: Prop
 
   return (
     <div className="card h-[560px]">
-      <div className="flex items-center justify-between border-b border-rule/30 px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-ash">
+      <div className="flex items-center justify-between border-b border-rule px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-ash">
         <span>3D view · drag to orbit · scroll to zoom</span>
         <span>Approximate. For visualization only.</span>
       </div>
       <div className="h-[500px] w-full">
         <Canvas shadows camera={{ position: [room.widthFt * 0.9, room.widthFt * 0.85, room.depthFt * 1.4], fov: 42 }}>
-          <color attach="background" args={["#141517"]} />
+          <color attach="background" args={["#141416"]} />
           <ambientLight intensity={0.5} />
           <directionalLight position={[8, 12, 6]} intensity={1.15} castShadow />
           <Environment preset="apartment" />
@@ -31,15 +31,15 @@ export function RoomScene({ room, detected, products, placed, selectedId }: Prop
           <group position={[-room.widthFt / 2, 0, -room.depthFt / 2]}>
             <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[room.widthFt / 2, 0, room.depthFt / 2]}>
               <planeGeometry args={[room.widthFt, room.depthFt]} />
-              <meshStandardMaterial color="#2A2925" />
+              <meshStandardMaterial color="#D9D3C7" />
             </mesh>
             <mesh position={[room.widthFt / 2, 4, 0]}>
               <boxGeometry args={[room.widthFt, 8, 0.15]} />
-              <meshStandardMaterial color="#3A342C" />
+              <meshStandardMaterial color="#EFEAE0" />
             </mesh>
             <mesh position={[0, 4, room.depthFt / 2]}>
               <boxGeometry args={[0.15, 8, room.depthFt]} />
-              <meshStandardMaterial color="#3A342C" />
+              <meshStandardMaterial color="#E6E0D5" />
             </mesh>
 
             {/* existing furniture as translucent ghosts */}
@@ -59,7 +59,7 @@ export function RoomScene({ room, detected, products, placed, selectedId }: Prop
                 <group key={p.productId} position={[p.x, y, p.y]} rotation={[0, (-p.rotation * Math.PI) / 180, 0]}>
                   <mesh castShadow>
                     <boxGeometry args={[prod.width, prod.height, prod.depth]} />
-                    <meshStandardMaterial color={prod.color} roughness={0.85} emissive={selected ? "#C89F5A" : "#000"} emissiveIntensity={selected ? 0.35 : 0} />
+                    <meshStandardMaterial color={prod.color} roughness={0.85} emissive={selected ? "#F2B441" : "#000"} emissiveIntensity={selected ? 0.35 : 0} />
                   </mesh>
                 </group>
               );

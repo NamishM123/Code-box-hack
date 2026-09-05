@@ -124,13 +124,13 @@ export default function CanvasPage() {
       const next = prev.map((p) => (p.id === swap.id ? a : p));
       return next.some((p) => p.id === a.id && p !== a) ? prev.filter((p) => p.id !== swap.id).concat(a) : next;
     });
-    setPlaced((prev) => prev.map((p) => (p.productId === swap.id ? { ...p, productId: a.id, rationale: ["Swapped in — matches your palette closer."] } : p)));
+    setPlaced((prev) => prev.map((p) => (p.productId === swap.id ? { ...p, productId: a.id, rationale: ["Swapped in. Matches your palette closer."] } : p)));
     setTotal((t) => t - swap.price + a.price);
     setSwapId(null);
   }
 
   if (loading || !brief) return (
-    <main><Nav /><div className="mx-auto max-w-3xl px-6 py-24 text-center">
+    <main><Nav /><div className="mx-auto max-w-3xl px-6 pb-24 pt-40 text-center">
       <div className="mx-auto h-14 w-14 rounded-full border-2 border-brass border-t-transparent animate-spin" />
       <div className="mt-6 font-display text-3xl">Reading the room…</div>
       <div className="mt-1 text-sm text-ash">Checking the live catalog against confirmed dimensions.</div>
@@ -140,7 +140,7 @@ export default function CanvasPage() {
   return (
     <main className="min-h-screen">
       <Nav />
-      <div className="mx-auto max-w-[1400px] px-6 py-8">
+      <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-28">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="pill">Canvas · Fig. 01</div>
@@ -148,9 +148,9 @@ export default function CanvasPage() {
             <div className="mt-1 text-[13px] text-ash">{brief.widthFt}′ × {brief.depthFt}′ · Confidence {((brief.detected?.confidence ?? 0.8) * 100).toFixed(0)}% · <span className="text-brass">{layouts[activeLayout]?.method}</span></div>
             <div className="mt-1 text-[11px] text-ash">Public sample floor plan · {usingLiveCatalog ? "live catalog data; verify before purchase" : "seed catalog fallback"}</div>
           </div>
-          <div className="flex rounded-full border border-rule/40 p-1 text-xs">
+          <div className="flex rounded-full border border-rule p-1 text-xs">
             {(["top", "3d"] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-paper text-ink" : "text-ash hover:text-paper"}`}>
+              <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
                 {v === "top" ? "2D top" : "3D"}
               </button>
             ))}
@@ -214,7 +214,7 @@ export default function CanvasPage() {
             {brief.vibePalette && (
               <div className="card p-4">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Your palette</div>
-                <div className="mt-3 flex gap-1.5">{brief.vibePalette.map((c) => <span key={c} className="h-8 w-8 rounded-full border border-rule/40" style={{ background: c }} />)}</div>
+                <div className="mt-3 flex gap-1.5">{brief.vibePalette.map((c) => <span key={c} className="h-8 w-8 rounded-full border border-rule" style={{ background: c }} />)}</div>
                 {brief.vibeTags && <div className="mt-3 flex flex-wrap gap-1.5">{brief.vibeTags.map((t) => <span key={t} className="chip">{t}</span>)}</div>}
               </div>
             )}
