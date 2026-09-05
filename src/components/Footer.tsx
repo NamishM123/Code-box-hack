@@ -1,17 +1,30 @@
 export function Footer() {
   return (
-    <footer className="border-t border-black/5 py-10">
-      <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-6 md:flex-row md:items-center">
+    <footer className="border-t border-rule/40 py-14">
+      <div className="mx-auto grid max-w-7xl gap-8 px-6 md:grid-cols-[2fr_1fr_1fr_1fr]">
         <div>
-          <div className="font-display text-2xl">Roomly</div>
-          <div className="text-xs text-black/50">© {new Date().getFullYear()} Roomly. Not affiliated with any retailer.</div>
+          <div className="font-display text-3xl">Sightline</div>
+          <div className="mt-2 max-w-sm text-[13px] text-ash">A camera-first room editor for people who would rather make one confident decision than scroll a thousand listings.</div>
         </div>
-        <div className="flex gap-6 text-sm text-black/60">
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
-          <a href="#">Contact</a>
-        </div>
+        <FooterCol title="Product" items={["Capture", "Canvas", "Saved rooms"]} />
+        <FooterCol title="Library" items={["Principles", "Feng shui", "Ergonomics"]} />
+        <FooterCol title="Company" items={["Privacy", "Terms", "Contact"]} />
+      </div>
+      <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between px-6 text-[11px] uppercase tracking-[0.2em] text-ash">
+        <span>© {new Date().getFullYear()} Sightline</span>
+        <span>Not affiliated with any retailer</span>
       </div>
     </footer>
+  );
+}
+
+function FooterCol({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{title}</div>
+      <ul className="mt-3 space-y-2 text-[13px] text-ash">
+        {items.map((i) => <li key={i}><a href="#" className="hover:text-paper">{i}</a></li>)}
+      </ul>
+    </div>
   );
 }

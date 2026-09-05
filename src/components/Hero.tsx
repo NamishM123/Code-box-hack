@@ -1,106 +1,89 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Camera } from "lucide-react";
 
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-clay/25 blur-3xl" />
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-16 md:grid-cols-2 md:pt-24">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(60%_50%_at_50%_0%,rgba(200,159,90,0.14),transparent)]" />
+      <div className="mx-auto grid max-w-7xl gap-16 px-6 pb-24 pt-14 md:grid-cols-[1.15fr_1fr] md:pt-24">
         <div className="flex flex-col justify-center">
-          <motion.span
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="pill w-fit"
-          >
-            <Sparkles className="h-3.5 w-3.5" /> New — AI room designer
-          </motion.span>
+          <div className="mb-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-ash">
+            <span>Issue N° 01</span><span className="text-rule">/</span><span>Room Editor</span>
+          </div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.05 } }}
-            className="font-display mt-5 text-5xl leading-[1.02] md:text-7xl"
+            animate={{ opacity: 1, y: 0 }}
+            className="font-display text-[64px] leading-[0.98] md:text-[104px]"
           >
-            Design the room.<br />
-            <span className="italic text-clay">We&apos;ll shop it for you.</span>
+            See the room<br />
+            <span className="italic text-brass">before you buy.</span>
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}
-            className="mt-6 max-w-lg text-lg text-black/70"
-          >
-            Set your budget and style. Roomly searches Amazon, Facebook Marketplace, Target and more, then
-            builds a shoppable 2D and 3D room you can rearrange.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.15 } }}
-            className="mt-8 flex flex-wrap items-center gap-3"
-          >
-            <Link href="/design" className="btn btn-primary">
-              Design my room <ArrowRight className="h-4 w-4" />
+          <p className="mt-8 max-w-lg text-[15px] leading-relaxed text-ash">
+            A camera-first room editor. Guided photos become an editable room. Furniture is placed with fit
+            rationale drawn from architectural and feng shui principles — not from a shopping feed.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center gap-3">
+            <Link href="/capture" className="btn btn-primary">
+              <Camera className="h-4 w-4" /> Photograph a room
             </Link>
-            <Link href="#how" className="btn btn-ghost">
-              <Search className="h-4 w-4" /> See how it works
+            <Link href="/canvas?demo=1" className="btn btn-ghost">
+              Try the demo room <ArrowRight className="h-4 w-4" />
             </Link>
-          </motion.div>
-          <div className="mt-8 flex items-center gap-6 text-xs text-black/60">
-            <div className="flex -space-x-2">
-              {["#c98b6b", "#5a6b4a", "#0b0b0f"].map((c) => (
-                <span key={c} className="h-6 w-6 rounded-full border-2 border-cream" style={{ background: c }} />
-              ))}
-            </div>
-            2,300+ rooms designed this week
+          </div>
+          <div className="mt-14 grid max-w-md grid-cols-3 divide-x divide-rule/50 text-center">
+            <Stat n="6-12" l="photos to start" />
+            <Stat n="3" l="layout options" />
+            <Stat n="1 room" l="MVP focus" />
           </div>
         </div>
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
           className="relative"
         >
-          <div className="card p-4">
-            <div className="aspect-[4/5] w-full overflow-hidden rounded-xl bg-gradient-to-br from-sand via-cream to-clay/50">
-              <img
-                src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1200&q=80&auto=format&fit=crop"
-                alt=""
-                className="h-full w-full object-cover"
-              />
+          <div className="card vignette">
+            <img
+              src="https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=1200&q=85&auto=format&fit=crop"
+              alt=""
+              className="aspect-[4/5] w-full object-cover"
+            />
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4 text-[10px] uppercase tracking-[0.2em] text-paper/80">
+              <span>Bedroom · 12′ × 11′</span>
+              <span className="text-brass">Confidence 0.86</span>
             </div>
-            <div className="mt-4 flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase tracking-widest text-black/50">Modern Warm · 12&apos; x 14&apos;</div>
-                <div className="font-display text-2xl">Sunset Reading Room</div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-black/50">Total</div>
-                <div className="font-display text-2xl">$1,940</div>
-              </div>
-            </div>
+            <FloatingCard style={{ left: 16, bottom: 96 }} title="Boucle Upholstered Bed" body="Command position · faces door" price="$1,290" />
+            <FloatingCard style={{ right: 16, top: 96 }} title="Arched Floor Mirror" body="Fakes light on two sides" price="$189" />
           </div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="card absolute -left-6 bottom-8 hidden w-56 p-3 md:block animate-float"
-          >
-            <div className="text-xs text-black/50">Facebook Marketplace</div>
-            <div className="font-semibold">Belden Linen Sofa</div>
-            <div className="text-sm">$649 · 6.5 ft</div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="card absolute -right-6 top-10 hidden w-56 p-3 md:block animate-float"
-          >
-            <div className="text-xs text-black/50">Target</div>
-            <div className="font-semibold">Brass Arc Floor Lamp</div>
-            <div className="text-sm">$149 · in stock</div>
-          </motion.div>
+          <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-ash">
+            <span>Fig. 01 — Command layout</span>
+            <span>Total $2,140</span>
+          </div>
         </motion.div>
       </div>
     </section>
+  );
+}
+
+function Stat({ n, l }: { n: string; l: string }) {
+  return (
+    <div className="px-3">
+      <div className="font-display text-3xl">{n}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-ash">{l}</div>
+    </div>
+  );
+}
+
+function FloatingCard({ style, title, body, price }: { style: React.CSSProperties; title: string; body: string; price: string }) {
+  return (
+    <div className="absolute w-56 rounded-md border border-brass/40 bg-ink/85 p-3 backdrop-blur animate-drift" style={style}>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-brass">Placed</div>
+      <div className="mt-1 font-display text-lg leading-tight">{title}</div>
+      <div className="mt-1 text-[11px] text-ash">{body}</div>
+      <div className="mt-2 text-sm">{price}</div>
+    </div>
   );
 }

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Roomly — Find furniture, design your room",
+  title: "Sightline — See the room before you buy",
   description:
-    "Search Amazon, Facebook Marketplace, Target and more within your budget, then see your room come to life in 2D and 3D.",
-  openGraph: { title: "Roomly", description: "Furniture finder + AI room designer" }
+    "A camera-first room editor. Guided photos become an editable room. Furniture picks are placed with fit rationale, not guesswork.",
+  openGraph: { title: "Sightline", description: "See the room before you buy." }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

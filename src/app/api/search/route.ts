@@ -10,8 +10,12 @@ export async function POST(req: Request) {
     widthFt: body.widthFt ?? 14,
     depthFt: body.depthFt ?? 12,
     budget: body.budget ?? 2500,
-    style: body.style ?? "modern-warm",
-    mustHave: body.mustHave ?? []
+    style: body.style ?? "warm-minimal",
+    mustHave: body.mustHave ?? [],
+    roomType: body.roomType,
+    goal: body.goal,
+    vibePalette: body.vibePalette,
+    vibeTags: body.vibeTags
   };
   const products = recommend(spec);
   const total = products.reduce((s, p) => s + p.price, 0);

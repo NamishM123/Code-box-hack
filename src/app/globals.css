@@ -2,43 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap");
 
 :root {
-  --bg: #f6f1ea;
-  --ink: #0b0b0f;
+  --ink: #101113;
+  --paper: #F3F0E8;
+  --brass: #C89F5A;
+  --ash: #B8B4AA;
+  --rule: #4B4A45;
 }
 
-html, body { background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui; }
+html, body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: Inter, ui-sans-serif, system-ui;
+  font-feature-settings: "ss01", "cv11";
+}
+::selection { background: var(--brass); color: var(--ink); }
 
-.font-display { font-family: "Instrument Serif", ui-serif, Georgia, serif; letter-spacing: -0.01em; }
+.font-display { font-family: "Instrument Serif", Georgia, ui-serif, serif; letter-spacing: -0.01em; }
 
+/* editorial grain */
 .grain::before {
   content: "";
-  position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .06; mix-blend-mode: multiply;
+  position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .05; mix-blend-mode: screen;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
-.shimmer {
-  background: linear-gradient(90deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 2s linear infinite;
+/* hairline vignettes */
+.vignette::after {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background: radial-gradient(120% 80% at 50% 0%, transparent 60%, rgba(0,0,0,0.35) 100%);
 }
 
+.rule { border-color: var(--rule); }
+.hair { border-width: 1px; border-color: rgba(184,180,170,0.14); }
+
 .pill {
-  @apply inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 backdrop-blur px-3 py-1 text-xs font-medium;
+  @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em];
+  border-color: rgba(200,159,90,0.35); color: var(--brass); background: rgba(200,159,90,0.06);
+}
+
+.chip {
+  @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs;
+  border-color: rgba(184,180,170,0.2); color: var(--ash); background: rgba(255,255,255,0.02);
 }
 
 .card {
-  @apply rounded-2xl border border-black/5 bg-white/70 backdrop-blur shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_10px_30px_-12px_rgba(0,0,0,0.15)];
+  @apply rounded-xl relative overflow-hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));
+  border: 1px solid rgba(184,180,170,0.12);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 30px 60px -30px rgba(0,0,0,0.8);
 }
+.card-lift { transition: transform .35s ease, border-color .35s ease; }
+.card-lift:hover { transform: translateY(-2px); border-color: rgba(200,159,90,0.35); }
 
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all;
-}
-.btn-primary { @apply bg-ink text-cream hover:bg-black; }
-.btn-ghost { @apply bg-white/60 border border-black/10 hover:bg-white; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-medium transition-all; }
+.btn-primary { background: var(--paper); color: var(--ink); }
+.btn-primary:hover { background: var(--brass); color: var(--ink); }
+.btn-ghost { background: transparent; color: var(--paper); border: 1px solid rgba(184,180,170,0.25); }
+.btn-ghost:hover { border-color: var(--brass); color: var(--brass); }
+.btn-brass { background: var(--brass); color: var(--ink); }
 
 .scroll-fade {
   mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
 }
+
+.divider {
+  height: 1px; background: linear-gradient(90deg, transparent, rgba(184,180,170,0.25), transparent);
+}
+
+.hatch {
+  background-image: repeating-linear-gradient(45deg, rgba(200,159,90,0.18) 0 2px, transparent 2px 8px);
+}
+
+.serif-quote::before { content: "“"; font-family: "Instrument Serif", serif; font-size: 2em; line-height: 0; color: var(--brass); margin-right: .1em; vertical-align: -0.15em; }
+
+/* file input reset */
+input[type="file"]::file-selector-button { display: none; }
