@@ -30,6 +30,23 @@ npm run dev
 
 Open http://localhost:3000
 
+## Dynamic catalog demo
+
+`scripts/live_catalog.py` fetches a deliberately small, curated list of public
+retailer product pages and returns normalized JSON for the Sightline demo. It
+does not log in, evade access controls, or contact marketplace sellers. Items
+without width, depth, and height are ineligible for a spatial placement.
+
+```bash
+python3 scripts/live_catalog.py --query shelf --budget 250 --free-wall-span 36 --max-depth 18
+```
+
+The script is a live-data proof of concept, not a broad retailer crawler. Add
+new sources only through permitted APIs, feeds, or publicly accessible pages.
+
+Served at `/api/catalog`. The canvas runs it alongside `/api/search` and
+prefers its results, because its dimensions are confirmed rather than parsed.
+
 ## API keys
 
 Every key is optional. With none set the app runs on the seed catalog and a

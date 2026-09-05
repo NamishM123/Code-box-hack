@@ -8,7 +8,14 @@ export function Footer() {
         </div>
         <FooterCol title="Product" items={["Capture", "Canvas", "Saved rooms"]} />
         <FooterCol title="Library" items={["Principles", "Feng shui", "Ergonomics"]} />
-        <FooterCol title="Company" items={["Privacy", "Terms", "Contact"]} />
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Company</div>
+          <ul className="mt-3 space-y-2 text-[13px] text-ash">
+            <li><a href="/privacy" className="hover:text-paper">Privacy</a></li>
+            <li><a href="/terms" className="hover:text-paper">Terms</a></li>
+            <li><a href="#" className="hover:text-paper">Contact</a></li>
+          </ul>
+        </div>
       </div>
       <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between px-6 text-[11px] uppercase tracking-[0.2em] text-ash">
         <span>© {new Date().getFullYear()} Sightline</span>
@@ -23,7 +30,7 @@ function FooterCol({ title, items }: { title: string; items: string[] }) {
     <div>
       <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{title}</div>
       <ul className="mt-3 space-y-2 text-[13px] text-ash">
-        {items.map((i) => <li key={i}><a href="#" className="hover:text-paper">{i}</a></li>)}
+        {items.map((item) => <li key={item}><a href="#" className="hover:text-paper">{item}</a></li>)}
       </ul>
     </div>
   );

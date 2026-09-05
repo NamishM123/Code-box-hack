@@ -19,17 +19,58 @@ import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "
 
 const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 
+/** 10.0833 -> 10′1″ */
+function feet(v: number): string {
+  const whole = Math.floor(v);
+  const inches = Math.round((v - whole) * 12);
+  if (inches === 0) return `${whole}′`;
+  if (inches === 12) return `${whole + 1}′`;
+  return `${whole}′${inches}″`;
+}
+
 type View = "top" | "3d";
 
 interface Brief extends RoomSpec { detected: DetectedRoom | null; searchTerms?: string[] }
 
+type LiveListing = {
+  category: Product["category"];
+  title: string;
+  url: string;
+  image_url?: string;
+  price: number;
+  dimensions_inches: { width: number | null; depth: number | null; height: number | null };
+  fit_status: "fits" | "tight-fit" | "does-not-fit" | "cannot-verify";
+  rationale: string;
+};
+
+function liveProduct(item: LiveListing): Product | null {
+  const { width, depth, height } = item.dimensions_inches;
+  if (!item.image_url || width === null || depth === null || height === null || item.fit_status !== "fits") return null;
+  return {
+    id: `live-${item.url.split("/").filter(Boolean).slice(-1)[0]}`,
+    title: item.title,
+    price: item.price,
+    source: "ikea",
+    url: item.url,
+    image: item.image_url,
+    category: item.category,
+    color: "#F3F0E8",
+    width: width / 12,
+    depth: depth / 12,
+    height: height / 12,
+    material: "Live public listing",
+    vibe: ["warm", "editorial"]
+  };
+}
+
 const DEMO_BRIEF: Brief = {
-  widthFt: 14, depthFt: 12, budget: 2500, style: "warm-minimal", mustHave: [],
-  roomType: "living", goal: "refresh",
+  // Public sample apartment floor plan: bedroom 10′1″ × 12′7″.
+  widthFt: 10 + 1 / 12, depthFt: 12 + 7 / 12, budget: 250, style: "warm-minimal", mustHave: ["shelf"],
+  roomType: "bedroom", goal: "storage",
   vibeTags: ["warm", "editorial"], vibePalette: ["#E9E0D2", "#C89F5A", "#3A342C"],
   detected: {
-    widthFt: 14, depthFt: 12, confidence: 0.82,
-    openings: [{ wall: "S", positionFt: 2.5, widthFt: 3.0, kind: "door", swingFt: 3.2 }, { wall: "N", positionFt: 5.5, widthFt: 4.0, kind: "window" }],
+    widthFt: 10 + 1 / 12, depthFt: 12 + 7 / 12, confidence: 0.62,
+    openings: [],
     existing: [], palette: ["#E9E0D2", "#C89F5A", "#3A342C"],
     lightingNote: "One window on the north wall. A mirror on the west wall will double the light."
   }
@@ -50,7 +91,7 @@ export default function CanvasPage() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
-  const [feed, setFeed] = useState<{ live: boolean; poolSize?: number; notes?: string[] } | null>(null);
+  const [feed, setFeed] = useState<{ live: boolean; poolSize?: number; sources: string[]; notes?: string[] } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -99,16 +140,50 @@ export default function CanvasPage() {
     const b: Brief = params.get("demo") ? DEMO_BRIEF : stored ? JSON.parse(stored) : DEMO_BRIEF;
     setBrief(b);
     (async () => {
-      const res = await fetch("/api/search", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(b)
+      // Two feeds, run together. The Python catalog returns a small set of
+      // publicly-listed items with confirmed dimensions; /api/search fans out
+      // across SerpAPI and Apify. Verified dimensions win, so the catalog's
+      // picks take precedence per category and the rest fills in around them.
+      const wallSpan = Math.max(24, Math.min(48, Math.round(b.widthFt * 12 - 84)));
+      const [catalogRes, searchRes] = await Promise.allSettled([
+        fetch(`/api/catalog?budget=${b.budget}&free_wall_span=${wallSpan}&max_depth=18`),
+        fetch("/api/search", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(b)
+        })
+      ]);
+
+      let confirmed: Product[] = [];
+      if (catalogRes.status === "fulfilled" && catalogRes.value.ok) {
+        const json = await catalogRes.value.json().catch(() => null);
+        confirmed = ((json?.results ?? []) as LiveListing[]).map(liveProduct).filter(Boolean) as Product[];
+      }
+
+      let searched: Product[] = [];
+      let searchMeta: { live?: boolean; poolSize?: number; notes?: string[] } = {};
+      if (searchRes.status === "fulfilled" && searchRes.value.ok) {
+        const json = await searchRes.value.json().catch(() => null);
+        searched = (json?.products ?? []) as Product[];
+        searchMeta = { live: json?.live, poolSize: json?.poolSize, notes: json?.notes };
+      }
+
+      const confirmedCats = new Set(confirmed.map((p) => p.category));
+      const productsForRoom = [...confirmed, ...searched.filter((p) => !confirmedCats.has(p.category))];
+
+      const sources: string[] = [];
+      if (confirmed.length) sources.push(`${confirmed.length} confirmed`);
+      if (searchMeta.live) sources.push(`${searchMeta.poolSize} listings`);
+
+      setProducts(productsForRoom);
+      setTotal(productsForRoom.reduce((sum, product) => sum + product.price, 0));
+      setFeed({
+        live: confirmed.length > 0 || Boolean(searchMeta.live),
+        poolSize: searchMeta.poolSize,
+        sources,
+        notes: searchMeta.notes
       });
-      const json = await res.json();
-      setProducts(json.products);
-      setTotal(json.total);
-      setFeed({ live: json.live, poolSize: json.poolSize, notes: json.notes });
-      const ls = generateLayouts(b, json.products, b.detected || undefined);
+      const ls = generateLayouts(b, productsForRoom, b.detected || undefined);
       setLayouts(ls);
       setPlaced(ls[0].placed);
       setLoading(false);
@@ -180,7 +255,7 @@ export default function CanvasPage() {
     <main><Nav /><div className="mx-auto max-w-3xl px-6 py-24 text-center">
       <div className="mx-auto h-14 w-14 rounded-full border-2 border-brass border-t-transparent animate-spin" />
       <div className="mt-6 font-display text-3xl">Reading the room…</div>
-      <div className="mt-1 text-sm text-ash">Cross-checking Amazon, Facebook, Target, Wayfair and IKEA against your palette.</div>
+      <div className="mt-1 text-sm text-ash">Checking the live catalog against confirmed dimensions.</div>
     </div></main>
   );
 
@@ -193,16 +268,21 @@ export default function CanvasPage() {
             <div className="pill">Canvas · Fig. 01</div>
             <h1 className="font-display mt-3 text-4xl md:text-5xl">A {brief.style.replace("-", " ")} {brief.roomType || "room"}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ash">
-              <span>{brief.widthFt}′ × {brief.depthFt}′</span>
+              <span>{feet(brief.widthFt)} × {feet(brief.depthFt)}</span>
               <span className="text-rule">/</span>
               <span>Confidence {Math.round((brief.detected?.confidence ?? 0.8) * 100)}%</span>
               <span className="text-rule">/</span>
               <span className="text-brass">{layouts[activeLayout]?.method}</span>
               {feed && (
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] ${feed.live ? "border-brass/40 text-brass" : "border-rule/50 text-ash"}`}>
-                  {feed.live ? `Live · ${feed.poolSize} listings` : "Seed catalog"}
+                  {feed.live ? `Live · ${feed.sources.join(" + ")}` : "Seed catalog"}
                 </span>
               )}
+            </div>
+            <div className="mt-1 text-[11px] text-ash">
+              {feed?.live
+                ? "Live listing data. Dimensions are as published; verify before purchase."
+                : "Seed catalog. Dimensions are illustrative."}
             </div>
           </div>
           <div className="flex rounded-full border border-rule/40 p-1 text-xs">
