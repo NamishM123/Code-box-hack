@@ -1,11 +1,10 @@
 import { CLEARANCES } from "./principles";
-import type { DetectedRoom, LayoutOption, Opening, PlacedItem, Product, RoomSpec, FitVerdict } from "./types";
+import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec, FitVerdict } from "./types";
 
 interface Ctx {
   W: number;
   D: number;
   existing: { x: number; y: number; w: number; d: number }[];
-  openings: Opening[];
   door?: { x: number; y: number; w: number; wall: string };
   window?: { x: number; y: number; w: number; wall: string };
 }
@@ -24,46 +23,24 @@ function makeCtx(room: RoomSpec, detected?: DetectedRoom): Ctx {
     if (o.wall === "W") return { x: 0, y: p, w: o.widthFt, wall: "W" };
     return { x: W, y: p, w: o.widthFt, wall: "E" };
   };
-  return { W, D, existing, openings: detected?.openings || [], door: pos(door), window: pos(window) };
+  return { W, D, existing, door: pos(door), window: pos(window) };
 }
 
-/**
- * Axis-aligned bounds of a footprint rotated by `deg`. Without this a piece
- * turned to sit along a side wall is tested against its unrotated width and
- * reads as poking through the wall.
- */
-function rotatedExtent(w: number, d: number, deg: number): { w: number; d: number } {
-  const r = (deg * Math.PI) / 180;
-  const c = Math.abs(Math.cos(r));
-  const s = Math.abs(Math.sin(r));
-  return { w: w * c + d * s, d: w * s + d * c };
-}
-
-function collides(x: number, y: number, w: number, d: number, ctx: Ctx, rotation = 0): FitVerdict {
-  const ext = rotatedExtent(w, d, rotation);
-  const EPS = 0.05; // tolerance so a piece flush to the wall is not a conflict
-
-  if (
-    x - ext.w / 2 < -EPS || y - ext.d / 2 < -EPS ||
-    x + ext.w / 2 > ctx.W + EPS || y + ext.d / 2 > ctx.D + EPS
-  ) return "conflict";
-
+function collides(x: number, y: number, w: number, d: number, ctx: Ctx): FitVerdict {
+  if (x - w / 2 < 0 || y - d / 2 < 0 || x + w / 2 > ctx.W || y + d / 2 > ctx.D) return "conflict";
   for (const e of ctx.existing) {
     const dx = Math.abs(x - e.x); const dy = Math.abs(y - e.y);
-    if (dx < (ext.w + e.w) / 2 - EPS && dy < (ext.d + e.d) / 2 - EPS) return "conflict";
+    if (dx < (w + e.w) / 2 && dy < (d + e.d) / 2) return "conflict";
   }
-  // A rug spans the floor and is walked over, so the door swing does not apply.
-  const isFloorCovering = Math.min(w, d) > 3 && ext.w * ext.d > 20;
-
-  if (ctx.door && !isFloorCovering) {
+  if (ctx.door) {
     const swing = 3.2;
     const dx = x - ctx.door.x, dy = y - ctx.door.y;
     if (Math.hypot(dx, dy) < swing) return "conflict";
   }
-
+  // tight walkway check
   let tight = false;
   for (const e of ctx.existing) {
-    const gap = Math.hypot(x - e.x, y - e.y) - (Math.max(ext.w, ext.d) + Math.max(e.w, e.d)) / 2;
+    const gap = Math.hypot(x - e.x, y - e.y) - (Math.max(w, d) + Math.max(e.w, e.d)) / 2;
     if (gap > 0 && gap < CLEARANCES.walkwayFt - 0.6) tight = true;
   }
   return tight ? "tight" : "fits";
@@ -71,48 +48,10 @@ function collides(x: number, y: number, w: number, d: number, ctx: Ctx, rotation
 
 interface PlaceOpts { rotation?: number; note: string }
 
-/**
- * Where on a wall a picture or mirror can actually hang: centered on the
- * widest run of wall that no door or window interrupts. Hanging art over a
- * window is the kind of mistake that makes a layout tool untrustworthy.
- */
-function clearWallSpan(ctx: Ctx, wall: "N" | "S", pieceWidth: number): number | null {
-  const span = ctx.W;
-  const blocked = ctx.openings
-    .filter((o) => o.wall === wall)
-    .map((o) => ({ from: o.positionFt, to: o.positionFt + o.widthFt }))
-    .sort((a, b) => a.from - b.from);
-
-  const gaps: { from: number; to: number }[] = [];
-  let cursor = 0;
-  for (const b of blocked) {
-    if (b.from > cursor) gaps.push({ from: cursor, to: b.from });
-    cursor = Math.max(cursor, b.to);
-  }
-  if (cursor < span) gaps.push({ from: cursor, to: span });
-
-  const widest = gaps.sort((a, b) => (b.to - b.from) - (a.to - a.from))[0];
-  if (!widest || widest.to - widest.from < pieceWidth + 0.4) return null;
-  return widest.from + (widest.to - widest.from) / 2;
-}
-
 function place(items: PlacedItem[], ctx: Ctx, product: Product, x: number, y: number, opts: PlaceOpts): void {
-  const rotation = opts.rotation ?? 0;
-  const ext = rotatedExtent(product.width, product.depth, rotation);
-
-  // Nudge back inside the room rather than reporting a conflict we created.
-  const cx = Math.min(Math.max(x, ext.w / 2), Math.max(ext.w / 2, ctx.W - ext.w / 2));
-  const cy = Math.min(Math.max(y, ext.d / 2), Math.max(ext.d / 2, ctx.D - ext.d / 2));
-
-  const fit = collides(cx, cy, product.width, product.depth, ctx, rotation);
-  items.push({ productId: product.id, x: cx, y: cy, rotation, fit, rationale: [opts.note] });
-
-  // A rug is walked over and art hangs above head height, so neither should
-  // block a piece placed after it.
-  const OCCUPIES_FLOOR = !["rug", "art", "mirror"].includes(product.category);
-  if (OCCUPIES_FLOOR) {
-    ctx.existing.push({ x: cx, y: cy, w: ext.w, d: ext.d });
-  }
+  const fit = collides(x, y, product.width, product.depth, ctx);
+  items.push({ productId: product.id, x, y, rotation: opts.rotation ?? 0, fit, rationale: [opts.note] });
+  ctx.existing.push({ x, y, w: product.width, d: product.depth });
 }
 
 /**
@@ -164,10 +103,7 @@ function variantCommand(room: RoomSpec, products: Product[], detected?: Detected
   if (shelf) place(placed, ctx, shelf, 0.7, ctx.D / 2, { rotation: 90, note: "Long wall keeps storage out of the walkway." });
 
   const art = products.find((p) => p.category === "art");
-  if (art) {
-    const at = clearWallSpan(ctx, "N", art.width);
-    if (at !== null) place(placed, ctx, art, at, 0.15, { note: "Centered on the clear run of the focal wall, above the primary piece." });
-  }
+  if (art) place(placed, ctx, art, ctx.W / 2, 0.15, { note: "Centered above the primary piece for symmetry." });
 
   return { id: "command", name: "Command", method: "Feng shui command + bagua accents", placed, score: 0.92, notes };
 }
@@ -201,10 +137,7 @@ function variantSalon(room: RoomSpec, products: Product[], detected?: DetectedRo
   if (plant) place(placed, ctx, plant, 0.9, 0.9, { note: "Softens the entry corner." });
 
   const art = products.find((p) => p.category === "art");
-  if (art) {
-    const at = clearWallSpan(ctx, "N", art.width);
-    if (at !== null) place(placed, ctx, art, at, 0.15, { note: "Focal wall behind the primary seat, clear of the openings." });
-  }
+  if (art) place(placed, ctx, art, ctx.W / 2, 0.15, { note: "Focal wall behind the primary seat." });
 
   return { id: "salon", name: "Salon", method: "Conversation ring + intimacy gradient", placed, score: 0.88, notes: [] };
 }
@@ -242,10 +175,7 @@ function variantAiry(room: RoomSpec, products: Product[], detected?: DetectedRoo
   if (lamp) place(placed, ctx, lamp, 1.0, ctx.D - 1.2, { note: "Warm secondary light for evenings." });
 
   const art = products.find((p) => p.category === "art");
-  if (art) {
-    const at = clearWallSpan(ctx, "N", art.width);
-    if (at !== null) place(placed, ctx, art, at, 0.15, { note: "One quiet focal piece on the unbroken wall; the room does the rest." });
-  }
+  if (art) place(placed, ctx, art, ctx.W / 2, 0.15, { note: "One quiet focal piece; the room does the rest." });
 
   return { id: "airy", name: "Airy", method: "Light on two sides + open center", placed, score: 0.86, notes: [] };
 }
