@@ -123,9 +123,18 @@ export function LookLightbox({
     if (loading) return;
     setLoading(true);
     setNote(null);
+    setGroups(null);
     try {
       const look = await stealLook(pin.srcLarge || pin.src);
       setVibe(look.vibe);
+
+      // Stop here when the picture wasn't read. There is no inventory to shop,
+      // and the alternative -- searching a generic list for the room type --
+      // put a sofa in a bedroom and called it one of the pieces in the picture.
+      if (look.source === "local") {
+        setNote(`This picture couldn't be read, so there is nothing to match. ${look.reason || ""}`.trim());
+        return;
+      }
 
       const res = await fetch("/api/look", {
         method: "POST",
@@ -138,32 +147,20 @@ export function LookLightbox({
       });
       const data = await res.json().catch(() => null);
 
-      if (!res.ok || !data) {
-        setNote("Could not reach the shops just now. Try again in a moment.");
-        setGroups([]);
+      if (!res.ok || !data?.groups?.length) {
+        setNote(data?.notes?.[0] || "Could not reach the shops just now. Try again in a moment.");
         return;
       }
 
-      const gs: LookGroup[] = data.groups || [];
+      const gs: LookGroup[] = data.groups;
       setGroups(gs);
       setPicked(Object.fromEntries(gs.map((g) => [key(g), g.options[0]?.id]).filter(([, v]) => v)));
 
-      // The picture not being read is the single biggest reason matches look
-      // nothing like it — the shop falls back to generic per-room queries like
-      // "table lamp". Say so at the top, with the reason, instead of quietly
-      // presenting a guess as a match.
-      if (look.source === "local") {
-        setNote(
-          `These are generic matches, not this picture. ${look.reason || "The picture could not be read."}`
-        );
-      } else if (!gs.length) {
-        setNote(data.notes?.[0] || "Nothing came back for this look.");
-      } else if (data.live === false) {
+      if (data.live === false) {
         setNote("Showing the seed catalog — SERPAPI_KEY isn't reaching the server.");
       }
     } catch {
       setNote("Could not read this image. Try another pin.");
-      setGroups([]);
     } finally {
       setLoading(false);
     }
@@ -338,12 +335,14 @@ export function LookLightbox({
               {!groups && (
                 <button onClick={shopThisLook} disabled={loading} className="btn btn-primary px-6 py-2.5 disabled:opacity-70">
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {loading ? "Reading the picture…" : "Steal this Look"}
+                  {loading ? "Reading the picture…" : note ? "Try again" : "Steal this Look"}
                 </button>
               )}
             </div>
 
-            {!groups && (
+            {!groups && note && <p className="eyebrow mt-3 text-[10px] text-brass">{note}</p>}
+
+            {!groups && !note && (
               <p className="eyebrow mt-3 text-[10px]">
                 {loading
                   ? "Finding two options for every piece in this picture."

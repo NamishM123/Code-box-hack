@@ -26,39 +26,6 @@ const PER_ITEM = 2;
 /** A photo with more than this in it stops being a room worth copying. */
 const MAX_ITEMS = 8;
 
-/**
- * Only used when the vision pass could not read the image — no key, or a
- * fetch that failed. Small on purpose: a wrong guess of three pieces is far
- * less wrong than a right guess of twenty.
- */
-const FALLBACK_ITEMS: Record<string, { category: Category; label: string; searchTerm: string; want: string[] }[]> = {
-  bedroom: [
-    { category: "bed", label: "The bed", searchTerm: "platform bed queen", want: [] },
-    { category: "nightstand", label: "The nightstand", searchTerm: "wood nightstand", want: [] },
-    { category: "lamp", label: "The lamp", searchTerm: "table lamp", want: [] }
-  ],
-  bathroom: [
-    { category: "mirror", label: "The mirror", searchTerm: "arched bathroom mirror", want: [] },
-    { category: "shelf", label: "The shelving", searchTerm: "bathroom shelf unit", want: [] },
-    { category: "plant", label: "The plant", searchTerm: "potted plant indoor", want: [] }
-  ],
-  office: [
-    { category: "desk", label: "The desk", searchTerm: "wood writing desk", want: [] },
-    { category: "chair", label: "The chair", searchTerm: "office chair", want: [] },
-    { category: "shelf", label: "The shelving", searchTerm: "bookshelf", want: [] }
-  ],
-  "living-room": [
-    { category: "sofa", label: "The sofa", searchTerm: "fabric 3 seater sofa", want: [] },
-    { category: "table", label: "The coffee table", searchTerm: "wood coffee table", want: [] },
-    { category: "rug", label: "The rug", searchTerm: "area rug 8x10", want: [] }
-  ],
-  any: [
-    { category: "sofa", label: "The seating", searchTerm: "fabric sofa", want: [] },
-    { category: "table", label: "The table", searchTerm: "wood coffee table", want: [] },
-    { category: "lamp", label: "The lamp", searchTerm: "floor lamp", want: [] }
-  ]
-};
-
 interface LookItemIn {
   category?: string;
   label?: string;
@@ -102,11 +69,24 @@ const KNOWN: Category[] = [
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as LookBody;
 
-  const room = body.room && FALLBACK_ITEMS[body.room] ? body.room : "any";
   const budget = clampNum(body.budget, 2500, 100, 100000);
+  const items = normalizeItems(body.items);
 
-  const detected = normalizeItems(body.items);
-  const items: ReturnType<typeof normalizeItems> = detected.length ? detected : FALLBACK_ITEMS[room];
+  // Nothing read, nothing shopped. This used to fall back to a hardcoded three
+  // pieces per room type and label them "the pieces in this picture", which put
+  // a sofa in a photograph of a bedroom and priced it. A picture that could not
+  // be read has no inventory, and saying so is the only honest answer.
+  if (!items.length) {
+    return NextResponse.json(
+      {
+        groups: [],
+        live: false,
+        error: "unread_picture",
+        notes: ["The picture wasn't read, so there is nothing to match against. Nothing is guessed here."]
+      },
+      { status: 422 }
+    );
+  }
 
   // Two or three words of overall style, folded into each per-piece query so a
   // "platform bed" comes back in the picture's material and colour. Kept short

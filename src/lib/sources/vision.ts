@@ -25,28 +25,66 @@ const TIMEOUT_MS = 45_000;
 
 export type VisionProvider = "openai" | "gemini";
 
-/** VISION_PROVIDER pins one; otherwise OpenAI wins when both keys are present. */
-export function visionProvider(): VisionProvider | null {
+/**
+ * Every reader that is configured, in the order they should be tried.
+ * VISION_PROVIDER pins one; otherwise OpenAI leads and Google backs it up.
+ *
+ * A list rather than a single choice, because a key that exists is not a key
+ * that works. An OpenAI account out of credits answers 429 to every request,
+ * and picking OpenAI once and giving up left a perfectly good Google key
+ * unused while the picture went unread.
+ */
+export function visionProviders(): VisionProvider[] {
   const pinned = process.env.VISION_PROVIDER?.toLowerCase();
-  if (pinned === "openai") return process.env.OPENAI_API_KEY ? "openai" : null;
-  if (pinned === "gemini") return hasGemini() ? "gemini" : null;
-  if (process.env.OPENAI_API_KEY) return "openai";
-  if (hasGemini()) return "gemini";
-  return null;
+  if (pinned === "openai") return process.env.OPENAI_API_KEY ? ["openai"] : [];
+  if (pinned === "gemini") return hasGemini() ? ["gemini"] : [];
+
+  const out: VisionProvider[] = [];
+  if (process.env.OPENAI_API_KEY) out.push("openai");
+  if (hasGemini()) out.push("gemini");
+  return out;
+}
+
+/** The reader that gets first go. */
+export function visionProvider(): VisionProvider | null {
+  return visionProviders()[0] ?? null;
 }
 
 export function hasVision() {
-  return visionProvider() !== null;
+  return visionProviders().length > 0;
 }
 
 /** Names the keys that were looked for, so a failure can say what's missing. */
 export const VISION_KEYS = ["OPENAI_API_KEY", "GOOGLE_AI_API_KEY"];
 
-export async function readLook(images: InlineImage[]): Promise<GeminiLook> {
-  const provider = visionProvider();
-  if (provider === "openai") return readLookOpenAI(images);
-  if (provider === "gemini") return readLookGemini(images);
-  throw new Error(`No vision key found. Looked for ${VISION_KEYS.join(" and ")}.`);
+export interface LookRead {
+  look: GeminiLook;
+  /** Which reader actually answered, as opposed to which one went first. */
+  provider: VisionProvider;
+}
+
+/**
+ * Reads the picture through whichever configured model answers first.
+ *
+ * When they all fail, every failure goes into the message. The first one is
+ * usually the one that matters -- "no credits remaining" is a billing problem,
+ * and nothing in this file can code around it. What matters is that the caller
+ * finds out, because the alternative is shopping for furniture nobody saw.
+ */
+export async function readLook(images: InlineImage[]): Promise<LookRead> {
+  const providers = visionProviders();
+  if (!providers.length) throw new Error(`No vision key found. Looked for ${VISION_KEYS.join(" and ")}.`);
+
+  const failures: string[] = [];
+  for (const provider of providers) {
+    try {
+      const look = provider === "openai" ? await readLookOpenAI(images) : await readLookGemini(images);
+      return { look, provider };
+    } catch (e) {
+      failures.push(`${provider}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  throw new Error(failures.join(" | "));
 }
 
 /**
