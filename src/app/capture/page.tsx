@@ -39,6 +39,15 @@ export default function CapturePage() {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [engine, setEngine] = useState<"gemini" | "local" | null>(null);
+  const [designNotes, setDesignNotes] = useState<string[]>([]);
+  const [designDraft, setDesignDraft] = useState("");
+
+  function addDesignNote() {
+    const text = designDraft.trim();
+    if (!text) return;
+    setDesignNotes((prev) => [...prev, text]);
+    setDesignDraft("");
+  }
 
   useEffect(() => () => shots.forEach((s) => s.file && URL.revokeObjectURL(s.url)), [shots]);
 
@@ -152,7 +161,9 @@ export default function CapturePage() {
       roomType, goal, budget, style, mustHave,
       widthFt: detected?.widthFt ?? 14, depthFt: detected?.depthFt ?? 12,
       vibeTags: vibe?.tags, vibePalette: vibe?.palette,
-      searchTerms: vibe?.searchTerms,
+      // Free-text design notes fold in alongside the Pinterest-derived terms,
+      // so they shape the very first live search rather than only later swaps.
+      searchTerms: [...(vibe?.searchTerms || []), ...designNotes],
       // Keep the reference views with the spatial brief. Demo shots are public
       // assets, and user shots remain available for the immediate canvas view.
       capturePhotoUrls: shots.filter((s) => s.ok).map((s) => s.url),
@@ -281,6 +292,15 @@ export default function CapturePage() {
                   <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Sightline shows estimates. Your edits are the source of truth.</div>
                 </div>
               </div>
+              <div className="mt-6">
+                <DesignChat
+                  notes={designNotes}
+                  draft={designDraft}
+                  onDraftChange={setDesignDraft}
+                  onAdd={addDesignNote}
+                  onRemove={(i) => setDesignNotes((prev) => prev.filter((_, j) => j !== i))}
+                />
+              </div>
               <NextBar onBack={() => setStep("capture")} onNext={() => setStep("brief")} />
             </Section>
           )}
@@ -378,6 +398,15 @@ export default function CapturePage() {
                   </div>
                 </div>
               </div>
+              <div className="mt-6">
+                <DesignChat
+                  notes={designNotes}
+                  draft={designDraft}
+                  onDraftChange={setDesignDraft}
+                  onAdd={addDesignNote}
+                  onRemove={(i) => setDesignNotes((prev) => prev.filter((_, j) => j !== i))}
+                />
+              </div>
               <NextBar onBack={() => setStep("confirm")} onNext={toGo} nextLabel="See the layouts" icon={<ArrowRight className="h-4 w-4" />} />
             </Section>
           )}
@@ -435,6 +464,45 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
       <div className="text-[10px] uppercase tracking-[0.2em] text-ash">{label}</div>
       <input type="number" value={value} onChange={(e) => onChange(+e.target.value)} className="mt-1 w-full rounded-md border border-rule bg-transparent px-3 py-2 text-lg outline-none focus:border-brass" />
     </label>
+  );
+}
+
+/**
+ * Free-text design notes, shared across Confirm and Brief so the same running
+ * list carries forward. Feeds into the very first live search (see toGo),
+ * not just later swaps in the canvas.
+ */
+function DesignChat({ notes, draft, onDraftChange, onAdd, onRemove }: {
+  notes: string[]; draft: string; onDraftChange: (v: string) => void; onAdd: () => void; onRemove: (i: number) => void;
+}) {
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-brass" />
+        <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Anything else for the design?</div>
+      </div>
+      <p className="mt-2 text-[12px] text-ash">Tell us anything the structured fields don&apos;t cover — this shapes the first search, not just later swaps.</p>
+      {notes.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {notes.map((n, i) => (
+            <li key={i} className="chip flex items-center gap-1.5">
+              {n}
+              <button onClick={() => onRemove(i)} className="text-ash hover:text-brass"><X className="h-2.5 w-2.5" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onAdd()}
+          placeholder="pet-friendly fabrics, no glass tables, keep the reading nook"
+          className="flex-1 rounded-md border border-rule bg-transparent px-3 py-2 text-sm outline-none placeholder:text-ash/60 focus:border-brass"
+        />
+        <button onClick={onAdd} disabled={!draft.trim()} className="btn btn-brass shrink-0 text-xs">Add</button>
+      </div>
+    </div>
   );
 }
 
