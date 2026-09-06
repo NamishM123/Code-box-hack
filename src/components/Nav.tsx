@@ -33,6 +33,12 @@ export function Nav() {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Link href="/pinterest" className="hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ash transition-colors hover:text-ink sm:block">
+            Pinterest
+          </Link>
+          <Link href="/rooms" className="hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ash transition-colors hover:text-ink sm:block">
+            Your Rooms
+          </Link>
           <ThemeToggle />
           <AuthButton />
           <Link href="/canvas?demo=1" className="hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ash transition-colors hover:text-ink sm:block">
