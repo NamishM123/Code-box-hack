@@ -398,21 +398,47 @@ export default function CanvasPage() {
 
         {/* Layout options */}
         <div className="mb-6 grid gap-3 md:grid-cols-3">
-          {layouts.map((l, i) => (
-            <motion.button
-              key={l.id}
-              onClick={() => applyLayout(i)}
-              whileHover={{ y: -2 }}
-              className={`card card-lift p-4 text-left ${i === activeLayout ? "border-brass" : ""}`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Option {String(i + 1).padStart(2, "0")}</div>
-                <div className="font-mono text-[10px] text-ash">{(l.score * 100).toFixed(0)} score</div>
-              </div>
-              <div className="mt-2 font-display text-2xl">{l.name}</div>
-              <div className="text-[11px] text-ash">{l.method}</div>
-            </motion.button>
-          ))}
+          {layouts.map((l, i) => {
+            const PX_MINI = 8;
+            const mW = brief.widthFt * PX_MINI;
+            const mD = brief.depthFt * PX_MINI;
+            return (
+              <motion.button
+                key={l.id}
+                onClick={() => applyLayout(i)}
+                whileHover={{ y: -2 }}
+                className={`card card-lift overflow-hidden text-left ${i === activeLayout ? "border-brass" : ""}`}
+              >
+                <div className="flex items-center justify-between px-4 pt-3">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Option {String(i + 1).padStart(2, "0")}</div>
+                </div>
+                <div className="flex items-center justify-center px-4 py-4">
+                  <svg width={mW} height={mD} viewBox={`0 0 ${mW} ${mD}`} className="rounded border border-rule/40 bg-white">
+                    {l.placed.map((p) => {
+                      const prod = products.find((pr) => pr.id === p.productId);
+                      if (!prod) return null;
+                      const pw = prod.width * PX_MINI;
+                      const ph = prod.depth * PX_MINI;
+                      return (
+                        <rect
+                          key={p.productId}
+                          x={p.x * PX_MINI - pw / 2}
+                          y={p.y * PX_MINI - ph / 2}
+                          width={pw}
+                          height={ph}
+                          rx={2}
+                          fill={prod.color || "rgba(168,87,26,0.4)"}
+                          stroke="rgba(12,12,13,0.25)"
+                          strokeWidth={0.5}
+                          transform={`rotate(${p.rotation} ${p.x * PX_MINI} ${p.y * PX_MINI})`}
+                        />
+                      );
+                    })}
+                  </svg>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
