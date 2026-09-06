@@ -364,7 +364,7 @@ export default function PinterestPage() {
   const roomLabel = ROOMS.find((r) => r.key === room)?.label ?? "Any room";
 
   return (
-    <main className="min-h-screen bg-paper">
+    <main className="flex min-h-screen flex-col bg-paper">
       <Nav />
 
       {/* hero */}
@@ -388,7 +388,7 @@ export default function PinterestPage() {
             onChange={(e) => setInput(e.target.value)}
             maxLength={60}
             aria-label="Search a vibe"
-            placeholder="Search a vibe — japandi, warm minimal, dark academia…"
+            placeholder="Search a vibe: japandi, warm minimal, dark academia"
             className="wordmark min-w-0 flex-1 bg-transparent py-4 text-[15px] text-ink outline-none placeholder:text-ash/70"
           />
           {input && (

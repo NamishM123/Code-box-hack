@@ -51,9 +51,9 @@ export default function RoomsPage() {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <Nav />
-      <div className="mx-auto max-w-7xl px-6 py-12">
+      <div className="mx-auto max-w-7xl px-6 pb-20 pt-32">
         <div className="mb-10">
           <div>
             <div className="pill">Your Rooms</div>
@@ -62,13 +62,16 @@ export default function RoomsPage() {
           </div>
         </div>
 
-        {ready && <div className="grid gap-4 md:grid-cols-3">
+        {/* With nothing saved yet, a three-column grid holding one card leaves
+            two thirds of the row empty and reads as a page that failed to
+            load. The grid only appears once there is something to grid. */}
+        {ready && <div className={`grid gap-4 ${rooms.length ? "md:grid-cols-3" : "max-w-xl"}`}>
           <Link
             href="/capture"
             className="card card-lift group grid min-h-56 place-items-center border-dashed p-6 text-center hover:border-brass"
           >
             <span>
-              <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-rule bg-white transition group-hover:border-brass group-hover:text-brass">
+              <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-rule bg-surface transition group-hover:border-brass group-hover:text-brass">
                 <Plus className="h-6 w-6" />
               </span>
               <span className="mt-4 block font-display text-2xl">Create a new room</span>
@@ -85,7 +88,7 @@ export default function RoomsPage() {
               className="card card-lift p-5"
             >
               <div className="flex items-start justify-between">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{r.layoutName}</div>
+                <div className="eyebrow text-brass">{r.layoutName}</div>
                 <button onClick={() => remove(r.id)} className="text-ash transition hover:text-red-400" title="Delete">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -106,7 +109,7 @@ export default function RoomsPage() {
               <div className="divider my-4" />
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Total</div>
+                  <div className="eyebrow">Total</div>
                   <div className="font-display text-xl">{money(r.total)}</div>
                 </div>
                 <Link href={`/canvas?room=${r.id}`} className="btn btn-ghost text-xs">Open</Link>
@@ -125,7 +128,7 @@ export default function RoomsPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <Heart className="h-4 w-4 text-red-400" fill="#f87171" stroke="#f87171" />
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-brass">Liked Inspiration</span>
+                  <span className="eyebrow text-brass">Liked Inspiration</span>
                 </div>
                 <h2 className="font-display mt-2 text-3xl">Pinterest saves</h2>
                 <p className="mt-1 text-[13px] text-ash">

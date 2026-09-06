@@ -16,19 +16,11 @@ import { generateLayouts, previewFit, reseat, type ReferencePlan } from "@/lib/l
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
+import { feet } from "@/lib/utils";
 import type { Category, DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "@/lib/types";
 
 const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 const RenderScene = dynamic(() => import("@/components/canvas/RenderScene").then((m) => m.RenderScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
-
-/** 10.0833 -> 10′1″ */
-function feet(v: number): string {
-  const whole = Math.floor(v);
-  const inches = Math.round((v - whole) * 12);
-  if (inches === 0) return `${whole}′`;
-  if (inches === 12) return `${whole + 1}′`;
-  return `${whole}′${inches}″`;
-}
 
 type View = "top" | "3d" | "render" | "realistic";
 
@@ -359,7 +351,7 @@ export default function CanvasPage() {
   );
 
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <Nav />
       <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-28">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -406,7 +398,7 @@ export default function CanvasPage() {
               className={`card card-lift p-4 text-left ${i === activeLayout ? "border-brass" : ""}`}
             >
               <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Option {String(i + 1).padStart(2, "0")}</div>
+                <div className="eyebrow text-brass">Option {String(i + 1).padStart(2, "0")}</div>
                 <div className="font-mono text-[10px] text-ash">{(l.score * 100).toFixed(0)} score</div>
               </div>
               <div className="mt-2 font-display text-2xl">{l.name}</div>
@@ -433,7 +425,7 @@ export default function CanvasPage() {
               <section className="card p-4" aria-label="Captured room reference views">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Captured room views</div>
+                    <div className="eyebrow text-brass">Captured room views</div>
                     <p className="mt-1 text-[12px] text-ash">{brief.capturePhotoUrls.length} reference photos inform this {feet(brief.widthFt)} × {feet(brief.depthFt)} layout.</p>
                   </div>
                   <span className="text-[10px] uppercase tracking-[0.15em] text-ash">Reference only</span>
@@ -459,7 +451,7 @@ export default function CanvasPage() {
                 <div className="flex items-start gap-4">
                   <img src={selected.image} alt="" className="h-32 w-32 rounded-md object-cover" />
                   <div className="flex-1">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Selected</div>
+                    <div className="eyebrow text-brass">Selected</div>
                     <div className="font-display text-2xl leading-tight">{selected.title}</div>
                     <div className="mt-1 text-[13px] text-ash">{selected.width}′ × {selected.depth}′ × {selected.height}′ · {selected.material}</div>
                     {placed.find((p) => p.productId === selected.id)?.rationale.map((r, i) => (
@@ -480,7 +472,7 @@ export default function CanvasPage() {
             <SuggestionsPanel suggestions={suggestions} />
             {brief.vibePalette && (
               <div className="card p-4">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Your palette</div>
+                <div className="eyebrow text-brass">Your palette</div>
                 <div className="mt-3 flex gap-1.5">{brief.vibePalette.map((c) => <span key={c} className="h-8 w-8 rounded-full border border-rule" style={{ background: c }} />)}</div>
                 {brief.vibeTags && <div className="mt-3 flex flex-wrap gap-1.5">{brief.vibeTags.map((t) => <span key={t} className="chip">{t}</span>)}</div>}
               </div>

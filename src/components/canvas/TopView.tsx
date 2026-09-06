@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
+import { feet } from "@/lib/utils";
 
 interface Props {
   room: RoomSpec;
@@ -41,11 +42,14 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
 
   return (
     <div className="card">
-      <div className="flex items-center justify-between border-b border-rule px-4 py-3">
-        <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-ash">
-          <span>Top view</span><span>·</span><span>Drag to move · click to select · double-click to rotate</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule px-4 py-3">
+        <div className="eyebrow">
+          Top view
+          <span className="ml-3 normal-case tracking-normal text-ash/70">
+            Drag to move, click to select, double-click to rotate
+          </span>
         </div>
-        <div className="text-[10px] uppercase tracking-[0.2em] text-ash">{room.widthFt}′ × {room.depthFt}′</div>
+        <div className="eyebrow shrink-0">{feet(room.widthFt)} × {feet(room.depthFt)}</div>
       </div>
       <div className="overflow-auto p-4">
         <div
@@ -54,8 +58,16 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
           onMouseUp={() => setDragging(null)}
           onMouseLeave={() => setDragging(null)}
           onClick={(e) => e.target === wrap.current && onSelect(null)}
-          className="relative mx-auto rounded-xl border border-rule bg-[repeating-linear-gradient(0deg,rgba(12,12,13,0.07)_0_1px,transparent_1px_30px),repeating-linear-gradient(90deg,rgba(12,12,13,0.07)_0_1px,transparent_1px_30px)]"
-          style={{ width: W, height: D, background: "#FFFFFF" }}
+          className="relative mx-auto rounded-xl border border-rule-strong"
+          style={{
+            width: W,
+            height: D,
+            background: [
+              "repeating-linear-gradient(0deg,rgba(255,255,255,0.055) 0 1px,transparent 1px 30px)",
+              "repeating-linear-gradient(90deg,rgba(255,255,255,0.055) 0 1px,transparent 1px 30px)",
+              "rgb(var(--panel))"
+            ].join(", ")
+          }}
         >
           {/* door swing */}
           {doorPos && (
@@ -85,7 +97,7 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
             if (!prod) return null;
             const w = prod.width * PX, h = prod.depth * PX;
             const selected = selectedId === p.productId;
-            const border = p.fit === "conflict" ? "#ef4444" : p.fit === "tight" ? "#f59e0b" : selected ? "#0C0C0D" : "rgba(12,12,13,0.28)";
+            const border = p.fit === "conflict" ? "#ef4444" : p.fit === "tight" ? "#f59e0b" : selected ? "rgb(var(--butter))" : "rgba(12,12,13,0.35)";
             return (
               <div
                 key={p.productId}
@@ -99,7 +111,10 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
                 }}
                 title={`${prod.title} · ${p.fit}`}
               >
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-medium text-black/70">
+                <div
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-medium"
+                  style={{ color: labelOn(prod.color) }}
+                >
                   {prod.category}
                 </div>
               </div>
@@ -111,6 +126,22 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
       </div>
     </div>
   );
+}
+
+/**
+ * Catalog fills range from near-black to bone, so a single label colour cannot
+ * work on all of them. Picks black or white by the fill's relative luminance,
+ * the same test used for a contrast ratio.
+ */
+function labelOn(hex: string): string {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return "rgba(0,0,0,0.72)";
+  const ch = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const L = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  return L > 0.4 ? "rgba(0,0,0,0.78)" : "rgba(255,255,255,0.9)";
 }
 
 function wallPos(wall: string, positionFt: number, widthFt: number, room: RoomSpec) {

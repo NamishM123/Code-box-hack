@@ -18,7 +18,7 @@ export function RoomScene({ room, detected, products, placed, selectedId }: Prop
 
   return (
     <div className="card h-[560px]">
-      <div className="flex items-center justify-between border-b border-rule px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-ash">
+      <div className="flex items-center justify-between border-b border-rule px-4 py-3 eyebrow">
         <span>3D view · drag to orbit · scroll to zoom</span>
         <span>Approximate. For visualization only.</span>
       </div>

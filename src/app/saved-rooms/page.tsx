@@ -4,10 +4,10 @@ import { Nav } from "@/components/Nav";
 
 export default function SavedRoomsPage() {
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <Nav />
-      <section className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-brass">Your projects</p>
+      <section className="mx-auto max-w-5xl px-6 pb-20 pt-32 md:pb-28 md:pt-36">
+        <p className="eyebrow text-brass">Your projects</p>
         <h1 className="mt-4 font-display text-5xl md:text-6xl">Saved rooms</h1>
         <div className="card mt-12 max-w-2xl p-8 md:p-10">
           <h2 className="font-display text-3xl">Start your first room</h2>

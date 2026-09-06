@@ -11,6 +11,13 @@ import { MarketplaceCarousel } from "./MarketplaceCarousel";
  *
  * The clip at /public/hero/hero.mp4 already has its title card trimmed off and
  * its corner logo painted out, so nothing here needs to mask it.
+ *
+ * Two things changed here. The sentence under the wordmark used to be set in
+ * tracked uppercase serif, which is a label doing a sentence's job and is
+ * measurably slower to read; it is now sentence case in the text face, at a
+ * size someone can actually read. And the footage now carries a scrim down
+ * its left edge, so white type always has a dark ground under it no matter
+ * which frame of the clip is showing.
  */
 
 const PAGES = [
@@ -39,7 +46,11 @@ export function Hero() {
         <source src="/hero/hero.mp4" type="video/mp4" />
       </video>
 
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,9,8,0.5)_0%,rgba(10,9,8,0.06)_24%,rgba(10,9,8,0.22)_62%,rgba(10,9,8,0.8)_100%)]" />
+      {/* Top and bottom scrim, for the link row and the marketplace strip. */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(8,6,5,0.58)_0%,rgba(8,6,5,0.10)_22%,rgba(8,6,5,0.24)_58%,rgba(8,6,5,0.86)_100%)]" />
+      {/* Left scrim, so the wordmark and its sentence keep their contrast
+          against whichever frame of the footage happens to be behind them. */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(8,6,5,0.72)_0%,rgba(8,6,5,0.42)_34%,transparent_68%)]" />
 
       {/* ───────────────────── page links, top ───────────────────── */}
       <header className="relative z-20 px-5 pt-7 md:pt-9">
@@ -50,12 +61,15 @@ export function Hero() {
             <AuthButton light />
           </div>
 
-          <nav className="fade-in flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 md:gap-x-10">
+          <nav
+            aria-label="Main"
+            className="fade-in flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 md:gap-x-10"
+          >
             {PAGES.map((p) => (
               <Link
                 key={p.label}
                 href={p.href}
-                className="wordmark text-[13px] uppercase tracking-[0.2em] text-white transition-opacity duration-500 hover:opacity-60"
+                className="wordmark rounded-sm text-[13px] uppercase tracking-[0.2em] text-white transition-opacity duration-500 hover:opacity-60"
               >
                 {p.label}
               </Link>
@@ -72,18 +86,18 @@ export function Hero() {
         </div>
       </header>
 
-      {/* ──────────── wordmark, caption and action — left, centred ──────────── */}
+      {/* ──────────── wordmark, sentence and action, left, centred ──────────── */}
       <div className="relative z-20 flex flex-1 items-center px-6 md:px-14 lg:px-20">
         <div className="max-w-2xl">
           <h1
-            className="rise wordmark select-none text-[clamp(46px,9vw,132px)] uppercase leading-[0.95] tracking-[0.03em] text-white"
+            className="rise wordmark select-none text-[clamp(46px,9vw,132px)] uppercase leading-[0.95] tracking-[0.03em] text-white [text-shadow:0_2px_28px_rgba(0,0,0,0.42)]"
             style={{ ["--delay" as string]: "0.05s" }}
           >
             Sightline
           </h1>
 
           <p
-            className="rise wordmark mt-5 max-w-md text-[14px] uppercase leading-[1.8] tracking-[0.14em] text-white md:mt-6 md:text-[15px]"
+            className="rise mt-6 max-w-[30rem] text-[17px] leading-[1.62] text-white/90 md:text-[19px]"
             style={{ ["--delay" as string]: "0.2s" }}
           >
             Photograph a room. Place furniture measured to fit it. Buy each piece
@@ -91,10 +105,10 @@ export function Hero() {
           </p>
 
           <div
-            className="rise mt-8 flex flex-wrap items-center gap-3 md:mt-9"
+            className="rise mt-9 flex flex-wrap items-center gap-3"
             style={{ ["--delay" as string]: "0.35s" }}
           >
-            <Link href="/capture" className="btn btn-glass px-8 py-3">
+            <Link href="/capture" className="btn btn-glass px-8 py-3.5">
               Map your room
             </Link>
           </div>

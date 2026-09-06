@@ -26,10 +26,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <Nav />
-      <section className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 py-16">
-        <div className="w-full border border-white/10 bg-card/60 p-8 sm:p-10">
+      <section className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 pb-20 pt-28">
+        <div className="card w-full p-8 sm:p-10">
           <Link href="/" className="mb-10 inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-ash hover:text-ink"><ArrowLeft size={14} /> Back to Sightline</Link>
           <p className="text-xs uppercase tracking-[0.22em] text-brass">Your saved spaces</p>
           <h1 className="mt-4 font-display text-5xl leading-none text-ink">Sign in to Sightline.</h1>

@@ -203,7 +203,7 @@ export default function CapturePage() {
   const isDemoCapture = shots.length > 0 && shots.every((s) => s.demo);
 
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <Nav />
       <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <Stepper step={step} />
@@ -257,7 +257,7 @@ export default function CapturePage() {
                   </div>
                 </div>
                 <div className="card p-4">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Capture guide</div>
+                  <div className="eyebrow text-brass">Capture guide</div>
                   <ul className="mt-3 space-y-3 text-[13px] text-ash">
                     <li className="flex gap-2"><Camera className="mt-0.5 h-3.5 w-3.5 text-brass" /> Stand in each corner. One wide photo per corner.</li>
                     <li className="flex gap-2"><Sun className="mt-0.5 h-3.5 w-3.5 text-brass" /> Turn on the lights. Avoid direct backlight from windows.</li>
@@ -265,7 +265,7 @@ export default function CapturePage() {
                     <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 text-brass" /> Capture doors, windows, and any tall furniture head-on.</li>
                   </ul>
                   <div className="divider my-4" />
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Your capture stays private. Delete anytime.</div>
+                  <div className="eyebrow">Your capture stays private. Delete anytime.</div>
                 </div>
               </div>
               <NextBar
@@ -280,16 +280,16 @@ export default function CapturePage() {
           )}
 
           {step === "confirm" && detected && (
-            <Section key="confirm" title="Confirm the room" subtitle={`Confidence ${(detected.confidence * 100).toFixed(0)}%. ${engine === "gemini" ? "Read from your photos by Gemini vision." : "Estimated locally — no vision key set."} Edit anything that looks off.`}>
+            <Section key="confirm" title="Confirm the room" subtitle={`Confidence ${(detected.confidence * 100).toFixed(0)}%. ${engine === "gemini" ? "Read from your photos by Gemini vision." : "Estimated locally, no vision key set."} Edit anything that looks off.`}>
               <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
                 <div className="card p-5">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Room</div>
+                  <div className="eyebrow text-brass">Room</div>
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <NumberField label="Width (ft)" value={detected.widthFt} onChange={(v) => setDetected({ ...detected, widthFt: v })} />
                     <NumberField label="Depth (ft)" value={detected.depthFt} onChange={(v) => setDetected({ ...detected, depthFt: v })} />
                   </div>
                   <div className="divider my-5" />
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Openings</div>
+                  <div className="eyebrow text-brass">Openings</div>
                   <ul className="mt-3 space-y-2 text-[13px]">
                     {detected.openings.map((o, i) => (
                       <li key={i} className="flex items-center justify-between rounded-md border border-rule px-3 py-2">
@@ -299,7 +299,7 @@ export default function CapturePage() {
                     ))}
                   </ul>
                   <div className="divider my-5" />
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Existing to keep</div>
+                  <div className="eyebrow text-brass">Existing to keep</div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {detected.existing.map((e, i) => (
                       <span key={i} className="chip">{e.label} · {e.widthFt}×{e.depthFt}</span>
@@ -308,13 +308,13 @@ export default function CapturePage() {
                   </div>
                 </div>
                 <div className="card p-5">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Light + palette</div>
+                  <div className="eyebrow text-brass">Light + palette</div>
                   <div className="mt-3 text-[13px] text-ash">{detected.lightingNote}</div>
                   <div className="mt-4 flex gap-2">
                     {detected.palette.map((c) => <span key={c} className="h-8 w-8 rounded-full border border-rule/50" style={{ background: c }} />)}
                   </div>
                   <div className="divider my-5" />
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Sightline shows estimates. Your edits are the source of truth.</div>
+                  <div className="eyebrow">Sightline shows estimates. Your edits are the source of truth.</div>
                 </div>
               </div>
               <div className="mt-6">
@@ -335,7 +335,7 @@ export default function CapturePage() {
               <div className="grid gap-6 md:grid-cols-[1.15fr_1fr]">
                 <div className="space-y-5">
                   <div className="card p-5">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Budget</div>
+                    <div className="eyebrow text-brass">Budget</div>
                     <div className="mt-3 flex items-baseline gap-2">
                       <span className="font-display text-5xl">${budget.toLocaleString()}</span>
                       <span className="text-xs text-ash">total across all sources</span>
@@ -344,7 +344,7 @@ export default function CapturePage() {
                   </div>
 
                   <div className="card p-5">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Must-haves</div>
+                    <div className="eyebrow text-brass">Must-haves</div>
                     <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-4">
                       {(["sofa", "chair", "table", "rug", "lamp", "shelf", "plant", "art", "bed", "desk", "dresser", "mirror"] as Category[]).map((c) => {
                         const on = mustHave.includes(c);
@@ -359,14 +359,14 @@ export default function CapturePage() {
                 <div className="space-y-5">
                   <div className="card p-5">
                     <div className="flex items-center justify-between">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Inspiration</div>
+                      <div className="eyebrow text-brass">Inspiration</div>
                       <Sparkles className="h-4 w-4 text-brass" />
                     </div>
                     <p className="mt-2 text-[12px] text-ash">Pick from your liked Pinterest saves, search Unsplash, or upload a screenshot.</p>
 
                     {likedPins.length > 0 && (
                       <div className="mt-4">
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Your saves</div>
+                        <div className="eyebrow">Your saves</div>
                         <div className="mt-2 grid grid-cols-3 gap-2">
                           {likedPins.slice(0, 6).map((pin) => (
                             <button key={pin.id} onClick={() => { setSelectedPinId(pin.id); applyImageUrl(pin.src); }} className={`group relative aspect-square overflow-hidden rounded-md border transition ${selectedPinId === pin.id ? "border-brass ring-1 ring-brass" : "border-rule hover:border-ash"}`}>
@@ -379,7 +379,7 @@ export default function CapturePage() {
                     )}
 
                     <div className="mt-4">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Search Unsplash</div>
+                      <div className="eyebrow">Search Unsplash</div>
                       <div className="mt-2 flex gap-2">
                         <div className="flex flex-1 items-center rounded-md border border-rule px-3">
                           <Search className="h-3.5 w-3.5 text-ash" />
@@ -418,17 +418,17 @@ export default function CapturePage() {
                       <div className="mt-4">
                         {vibe.styleLabel && (
                           <div className="mb-3">
-                            <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Reads as</div>
+                            <div className="eyebrow">Reads as</div>
                             <div className="font-display text-2xl">{vibe.styleLabel}</div>
                             {vibe.note && <p className="mt-1 text-[12px] leading-relaxed text-ash">{vibe.note}</p>}
                           </div>
                         )}
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Palette</div>
+                        <div className="eyebrow">Palette</div>
                         <div className="mt-2 flex gap-1.5">{vibe.palette.map((c) => <span key={c} className="h-6 w-6 rounded-full border border-rule" style={{ background: c }} />)}</div>
                         <div className="mt-3 flex flex-wrap gap-1.5">{vibe.tags.map((t) => <span key={t} className="chip">{t}</span>)}</div>
                         {vibe.searchTerms?.length ? (
                           <div className="mt-4">
-                            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">We&apos;ll shop these</div>
+                            <div className="eyebrow text-brass">We&apos;ll shop these</div>
                             <ul className="mt-2 space-y-1">
                               {vibe.searchTerms.map((t) => (
                                 <li key={t} className="border-l-2 border-brass/40 pl-2 text-[12px] text-ash">{t}</li>
@@ -489,7 +489,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle: strin
 function PanelGroup<T extends string>({ label, items, value, onChange }: { label: string; items: { k: T; l: string }[]; value: T; onChange: (v: T) => void }) {
   return (
     <div className="card p-5">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{label}</div>
+      <div className="eyebrow text-brass">{label}</div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {items.map((it) => (
           <button key={it.k} onClick={() => onChange(it.k)} className={`rounded-md border px-3 py-3 text-left text-sm transition ${value === it.k ? "border-brass bg-brass/5" : "border-rule hover:border-ash/40"}`}>
@@ -509,7 +509,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
 
   return (
     <label className="block">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-ash">{label}</div>
+      <div className="eyebrow">{label}</div>
       <input
         type="number"
         value={text}
@@ -518,7 +518,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
           if (e.target.value !== "" && !Number.isNaN(+e.target.value)) onChange(+e.target.value);
         }}
         onBlur={() => { if (text === "" || Number.isNaN(+text)) { setText("0"); onChange(0); } }}
-        className="mt-1 w-full rounded-md border border-rule bg-transparent px-3 py-2 text-lg outline-none focus:border-brass"
+        className="field mt-1 text-lg"
       />
     </label>
   );
@@ -536,9 +536,9 @@ function DesignChat({ notes, draft, onDraftChange, onAdd, onRemove }: {
     <div className="card p-5">
       <div className="flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-brass" />
-        <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Anything else for the design?</div>
+        <div className="eyebrow text-brass">Anything else for the design?</div>
       </div>
-      <p className="mt-2 text-[12px] text-ash">Tell us anything the structured fields don&apos;t cover — this shapes the first search, not just later swaps.</p>
+      <p className="mt-2 text-[12px] text-ash">Tell us anything the structured fields don&apos;t cover. This shapes the first search, not just later swaps.</p>
       {notes.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {notes.map((n, i) => (
@@ -555,7 +555,7 @@ function DesignChat({ notes, draft, onDraftChange, onAdd, onRemove }: {
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onAdd()}
           placeholder="pet-friendly fabrics, no glass tables, keep the reading nook"
-          className="flex-1 rounded-md border border-rule bg-transparent px-3 py-2 text-sm outline-none placeholder:text-ash/60 focus:border-brass"
+          className="field flex-1 text-sm"
         />
         <button onClick={onAdd} disabled={!draft.trim()} className="btn btn-brass shrink-0 text-xs">Add</button>
       </div>

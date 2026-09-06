@@ -27,29 +27,29 @@ export function SaveDialog({ defaultName, shareUrl, onSave, onClose }: {
       <div className="relative w-full max-w-lg rounded-xl border border-rule/40 bg-ink p-6">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Save room</div>
+            <div className="eyebrow text-brass">Save room</div>
             <div className="font-display text-3xl">Name this plan</div>
           </div>
           <button onClick={onClose} className="rounded-full border border-rule/40 p-2 hover:border-brass"><X className="h-4 w-4" /></button>
         </div>
 
         <label className="block">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Room name</div>
+          <div className="eyebrow">Room name</div>
           <input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && name.trim() && onSave(name.trim())}
-            className="mt-2 w-full rounded-md border border-rule/40 bg-transparent px-3 py-3 text-lg outline-none focus:border-brass"
+            className="field mt-2 py-3 text-lg"
           />
         </label>
 
         <div className="divider my-6" />
 
-        <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Share link</div>
+        <div className="eyebrow text-brass">Share link</div>
         <p className="mt-1 text-[12px] text-ash">The whole plan is encoded in the URL. No account, no server copy.</p>
         <div className="mt-3 flex gap-2">
-          <input readOnly value={shareUrl} className="flex-1 truncate rounded-md border border-rule/40 bg-transparent px-3 py-2 font-mono text-[11px] text-ash outline-none" />
+          <input readOnly value={shareUrl} className="field flex-1 truncate font-mono text-[11px] text-ash outline-none" />
           <button onClick={copy} className="btn btn-brass whitespace-nowrap text-xs">
             {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
           </button>

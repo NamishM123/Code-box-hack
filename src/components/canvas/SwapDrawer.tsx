@@ -40,13 +40,13 @@ export function SwapDrawer({ current, alternatives, onClose, onPick, onDescribe,
       <div className="relative h-full w-full max-w-md overflow-auto border-l border-rule bg-paper p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Choose a {current.category}</div>
+            <div className="eyebrow text-brass">Choose a {current.category}</div>
             <div className="font-display text-2xl">Every option that fits this spot</div>
           </div>
           <button onClick={onClose} className="rounded-full border border-rule/40 p-2 hover:border-brass"><X className="h-4 w-4" /></button>
         </div>
         <div className="mb-6 rounded-md border border-brass/40 p-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Current</div>
+          <div className="eyebrow">Current</div>
           <div className="mt-2 flex gap-3">
             <img src={current.image} className="h-14 w-14 rounded object-cover" alt="" />
             <div>
@@ -57,14 +57,14 @@ export function SwapDrawer({ current, alternatives, onClose, onPick, onDescribe,
         </div>
         {onDescribe && (
           <div className="mb-6">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Describe what you want</div>
+            <div className="eyebrow">Describe what you want</div>
             <div className="mt-2 flex gap-2">
               <input
                 value={describeText}
                 onChange={(e) => setDescribeText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submitDescribe()}
                 placeholder="warmer, under $1,500, nothing over 7 feet wide"
-                className="flex-1 rounded-md border border-rule/40 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-ash/60 focus:border-brass"
+                className="field flex-1 text-sm"
               />
               <button
                 onClick={submitDescribe}

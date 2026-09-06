@@ -3,10 +3,10 @@ import { Nav } from "@/components/Nav";
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen">
+    <main className="flex min-h-screen flex-col">
       <Nav />
       <article className="mx-auto max-w-3xl px-6 pb-20 pt-32 md:pb-28 md:pt-36">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-brass">Sightline</p>
+        <p className="eyebrow text-brass">Sightline</p>
         <h1 className="mt-4 font-display text-5xl md:text-6xl">Terms of use</h1>
         <p className="mt-5 text-sm text-ash">Last updated: September 5, 2026</p>
 

@@ -19,11 +19,11 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
       <div className="border-b border-rule px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Shopping list</div>
+            <div className="eyebrow text-brass">Shopping list</div>
             <div className="font-display text-2xl">{placed.length} pieces</div>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Total / Budget</div>
+            <div className="eyebrow">Total / Budget</div>
             <div className={`font-display text-2xl ${total > budget ? "text-red-600" : ""}`}>
               {money(total)} <span className="text-base text-ash/60">/ {money(budget)}</span>
             </div>
@@ -54,7 +54,7 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
                     <div className="mt-2 border-l-2 border-brass/40 pl-2 text-[11px] leading-relaxed text-ash">{p.rationale[0]}</div>
                   )}
                   <div className="mt-2 flex items-center gap-3 text-[11px]">
-                    <span className="inline-flex items-center gap-1 text-ash"><Star className="h-3 w-3 fill-brass text-brass" /> {prod.rating?.toFixed(1) ?? "—"}</span>
+                    <span className="inline-flex items-center gap-1 text-ash"><Star className="h-3 w-3 fill-brass text-brass" /> {prod.rating?.toFixed(1) ?? "Not rated"}</span>
                     <span className="text-ash">{prod.width}′ W × {prod.depth}′ D × {prod.height}′ H</span>
                   </div>
                   {(prod.availability || prod.summary) && (

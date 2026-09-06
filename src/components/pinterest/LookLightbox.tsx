@@ -159,7 +159,7 @@ export function LookLightbox({
       } else if (!gs.length) {
         setNote(data.notes?.[0] || "Nothing came back for this look.");
       } else if (data.live === false) {
-        setNote("Showing the seed catalog — SERPAPI_KEY isn't reaching the server.");
+        setNote("Showing the seed catalog. SERPAPI_KEY isn't reaching the server.");
       }
     } catch {
       setNote("Could not read this image. Try another pin.");

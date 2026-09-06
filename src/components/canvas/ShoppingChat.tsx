@@ -41,7 +41,7 @@ export function ShoppingChat({ onSearch, onChoose, existing }: {
     <div className="border-t border-rule p-4">
       <div className="mb-3 flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-brass" />
-        <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Ask for more options</div>
+        <div className="eyebrow text-brass">Ask for more options</div>
       </div>
 
       {turns.length > 0 && (
@@ -59,7 +59,7 @@ export function ShoppingChat({ onSearch, onChoose, existing }: {
                 <>
                   <div className="text-[11px] text-ash">
                     {t.results?.length
-                      ? `Found ${t.results.length} for ${t.category}${existing.has(t.category!) ? " — pick one to replace what's there" : " — pick one to add it"}.`
+                      ? `Found ${t.results.length} for ${t.category}${existing.has(t.category!) ? ". Pick one to replace what's there" : ". Pick one to add it"}.`
                       : `No live matches for ${t.category}. Try different words.`}
                   </div>
                   <ul className="space-y-2">
@@ -95,7 +95,7 @@ export function ShoppingChat({ onSearch, onChoose, existing }: {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="a walnut floor lamp under $100"
-          className="flex-1 rounded-md border border-rule/40 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-ash/60 focus:border-brass"
+          className="field flex-1 text-sm"
         />
         <button onClick={submit} disabled={!text.trim()} className="btn btn-brass shrink-0 text-xs">
           <Send className="h-3.5 w-3.5" />
