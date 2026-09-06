@@ -47,6 +47,8 @@ export interface RichVibe extends Vibe {
   /** The room shell the image shows, so a plan can be built to its shape. */
   widthFt?: number;
   depthFt?: number;
+  wallColor?: string;
+  floorColor?: string;
   openings?: { kind: "door" | "window"; wall: "N" | "S" | "E" | "W"; positionFt: number; widthFt: number; swingFt?: number }[];
 }
 

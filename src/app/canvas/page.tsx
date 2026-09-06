@@ -42,6 +42,8 @@ interface Brief extends RoomSpec {
   lookProducts?: Product[];
   /** Where those pieces stood in the picture, so the plan can copy it. */
   lookPlan?: ReferencePlan;
+  /** The picture itself, as a style reference for the realistic render. */
+  inspirationImage?: string;
 }
 
 type LiveListing = {

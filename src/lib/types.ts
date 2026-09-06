@@ -60,6 +60,9 @@ export interface Opening {
 }
 
 export interface DetectedRoom {
+  /** Surface colours read off an inspiration picture, when there was one. */
+  wallColor?: string;
+  floorColor?: string;
   widthFt: number;
   depthFt: number;
   openings: Opening[];

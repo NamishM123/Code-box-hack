@@ -188,6 +188,8 @@ export function LookLightbox({
       openings: sameShape ? (vibe?.openings ?? []) : [],
       existing: [],
       palette: vibe?.palette || [],
+      wallColor: vibe?.wallColor,
+      floorColor: vibe?.floorColor,
       lightingNote: sameShape
         ? "Room shell read from the inspiration image."
         : "Proportions from the inspiration image. Map your own room from Capture for exact measurements."
@@ -223,7 +225,10 @@ export function LookLightbox({
       searchTerms: vibe?.searchTerms,
       detected,
       lookProducts: chosen,
-      lookPlan
+      lookPlan,
+      // Carried so the realistic view can style itself on the actual picture
+      // rather than on a handful of hex codes.
+      inspirationImage: pin.srcLarge || pin.src
     };
 
     try {

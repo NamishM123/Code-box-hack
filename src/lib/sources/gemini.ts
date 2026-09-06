@@ -175,6 +175,8 @@ const LOOK_SCHEMA = {
     note: { type: "string" },
     widthFt: { type: "number" },
     depthFt: { type: "number" },
+    wallColor: { type: "string" },
+    floorColor: { type: "string" },
     openings: {
       type: "array",
       items: {
@@ -232,6 +234,9 @@ export interface LookItem {
 export interface GeminiLook extends GeminiVibe {
   widthFt: number;
   depthFt: number;
+  /** Read straight off the picture, rather than guessed from the palette. */
+  wallColor?: string;
+  floorColor?: string;
   openings: Opening[];
   items: LookItem[];
 }
@@ -259,6 +264,8 @@ Return the look AND an inventory of what is actually in the picture.
 - At most ${MAX_ITEMS} items.
 
 Also return the room shell so a floor plan can be rebuilt from it:
+- "wallColor": the dominant WALL colour as a hex string, read off the picture. A green feature wall is green here, not the colour of the trim.
+- "floorColor": the FLOOR colour as a hex string.
 - "widthFt"/"depthFt": the room's approximate footprint in FEET. Set scale from an interior door (about 2.6-3 ft wide, 6.7 ft tall) or a queen bed (5 x 6.7 ft).
 - "openings": doors and windows you can see. Wall N is y=0, S is y=depth, W is x=0, E is x=width. "positionFt" is the distance along that wall to the opening's near edge. An empty array is valid — do not invent openings.
 
@@ -280,8 +287,20 @@ And the look itself:
  * the count honest.
  */
 export async function readLook(images: InlineImage[]): Promise<GeminiLook> {
-  const json = await callGemini({ prompt: LOOK_PROMPT, images, schema: LOOK_SCHEMA });
+  return normalizeLook(await callGemini({ prompt: LOOK_PROMPT, images, schema: LOOK_SCHEMA }));
+}
 
+export { LOOK_PROMPT };
+
+/**
+ * Turns whatever a vision model hands back into a GeminiLook we can trust.
+ *
+ * Kept apart from the transport because more than one provider produces this
+ * shape now, and the clamping is the part that must not diverge between them:
+ * a position outside the room or a category we don't model breaks the layout
+ * engine, not the prompt.
+ */
+export function normalizeLook(json: any): GeminiLook {
   const widthFt = clamp(num(json.widthFt, 13), 5, 40);
   const depthFt = clamp(num(json.depthFt, 12), 5, 40);
 
@@ -320,6 +339,8 @@ export async function readLook(images: InlineImage[]): Promise<GeminiLook> {
     note: String(json.note || ""),
     widthFt,
     depthFt,
+    wallColor: isHex(json.wallColor) ? json.wallColor : undefined,
+    floorColor: isHex(json.floorColor) ? json.floorColor : undefined,
     openings,
     items
   };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { hasGemini, readLook, type InlineImage } from "@/lib/sources/gemini";
+import type { InlineImage } from "@/lib/sources/gemini";
+import { VISION_KEYS, hasVision, readLook, visionProvider } from "@/lib/sources/vision";
 import { hasApify, scrapePinterest } from "@/lib/sources/apify";
 
 export const runtime = "nodejs";
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "no_images", message: "Could not read any image." }, { status: 404 });
     }
 
-    if (!hasGemini()) {
+    if (!hasVision()) {
       // The client can still extract a palette locally, but it cannot read an
       // inventory, so the shop will fall back to generic per-room queries. Say
       // that plainly instead of returning a bare null.
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
         images: images.map(toDataUrl),
         vibe: null,
         source: "images_only",
-        reason: "GOOGLE_AI_API_KEY isn't reaching the server, so the picture can't be read."
+        reason: `No vision key is reaching the server, so the picture can't be read. Looked for ${VISION_KEYS.join(" and ")}.`
       });
     }
 
@@ -44,7 +45,11 @@ export async function POST(req: Request) {
     // actually in the picture, not just its palette, or it goes back to
     // shopping a fixed category mix.
     const vibe = await readLook(images);
-    return NextResponse.json({ vibe, images: images.slice(0, 3).map(toDataUrl), source: "gemini" });
+    return NextResponse.json({
+      vibe,
+      images: images.slice(0, 3).map(toDataUrl),
+      source: visionProvider()
+    });
   } catch (e) {
     return NextResponse.json(
       {
