@@ -459,10 +459,24 @@ function PanelGroup<T extends string>({ label, items, value, onChange }: { label
 }
 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  // Kept as its own text buffer so backspacing to empty stays empty instead
+  // of snapping to "0" and then having new digits type in after it.
+  const [text, setText] = useState(String(value));
+  useEffect(() => { if (+text !== value) setText(String(value)); }, [value]);
+
   return (
     <label className="block">
       <div className="text-[10px] uppercase tracking-[0.2em] text-ash">{label}</div>
-      <input type="number" value={value} onChange={(e) => onChange(+e.target.value)} className="mt-1 w-full rounded-md border border-rule bg-transparent px-3 py-2 text-lg outline-none focus:border-brass" />
+      <input
+        type="number"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (e.target.value !== "" && !Number.isNaN(+e.target.value)) onChange(+e.target.value);
+        }}
+        onBlur={() => { if (text === "" || Number.isNaN(+text)) { setText("0"); onChange(0); } }}
+        className="mt-1 w-full rounded-md border border-rule bg-transparent px-3 py-2 text-lg outline-none focus:border-brass"
+      />
     </label>
   );
 }
