@@ -134,11 +134,12 @@ export function isWallHung(product: Product) {
 /**
  * Yaw in radians for a placed item.
  *
- * The layout engine's rotation is authored for the 2D plan, where a piece's
- * facing is ambiguous. Models are built facing +z, so a piece backed against a
- * wall can end up nose-first into it. A 180 degree flip fixes that without
- * changing the footprint the plan and the fit check agreed on, so the two views
- * never disagree about the space a piece takes.
+ * The solver decides which way a piece faces, so this trusts it. The flip is
+ * only a rescue for a facing that came from somewhere else, a dragged piece or
+ * a room saved before the solver existed, and it fires only when a piece is
+ * genuinely nose-first into a wall with room behind it. A looser threshold
+ * would undo deliberate angles, spinning a chair out of the conversation ring
+ * because it happened to sit near a wall.
  */
 export function yawFor(item: PlacedItem, product: Product, room: RoomSpec) {
   const base = (-item.rotation * Math.PI) / 180;
@@ -150,7 +151,7 @@ export function yawFor(item: PlacedItem, product: Product, room: RoomSpec) {
   const ahead = wallDistance(item.x, item.y, fx, fz, room) - half;
   const behind = wallDistance(item.x, item.y, -fx, -fz, room) - half;
 
-  return ahead < 1.25 && behind > ahead ? base + Math.PI : base;
+  return ahead < 0.45 && behind > ahead + 1.5 ? base + Math.PI : base;
 }
 
 /** Distance from a plan point to the first wall along a direction, in feet. */

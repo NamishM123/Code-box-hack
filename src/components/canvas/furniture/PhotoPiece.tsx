@@ -3,7 +3,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import type { PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { hangCenterY } from "@/lib/furniture";
+import { hangCenterY, yawFor } from "@/lib/furniture";
 import { loadCutout, type CutoutState } from "./cutout";
 import { SceneMode } from "./pieces";
 import { shadowBlobTexture } from "./textures";
@@ -53,7 +53,7 @@ export function PhotoPiece({ item, product, room, cutout, onSelect }: Props) {
   const board = useRef<THREE.Group>(null);
   const x = item.x - room.widthFt / 2;
   const z = item.y - room.depthFt / 2;
-  const yaw = (-item.rotation * Math.PI) / 180;
+  const yaw = yawFor(item, product, room);
   const blob = useMemo(() => shadowBlobTexture(), []);
   const { lightsOn } = useContext(SceneMode);
   const tint = lightsOn ? "#C6A87E" : "#FFFFFF";
@@ -122,15 +122,47 @@ export function PhotoPiece({ item, product, room, cutout, onSelect }: Props) {
         <planeGeometry args={[product.width * 1.25, product.depth * 1.25]} />
         <meshBasicMaterial map={blob || undefined} transparent opacity={0.62} color="#000000" depthWrite={false} />
       </mesh>
-      <Billboard target={board} x={x} z={z} />
+      <Billboard target={board} x={x} z={z} yaw={yaw} free={isSymmetric(product)} />
     </group>
   );
 }
 
-/** Turns a cutout around its own axis so it always faces the camera. */
-function Billboard({ target, x, z }: { target: React.RefObject<THREE.Group>; x: number; z: number }) {
+/** How far a cutout may turn from the way the piece actually faces. */
+const MAX_TURN = (52 * Math.PI) / 180;
+
+/**
+ * Pieces with no front. A round table, a plant, a floor lamp look the same from
+ * every side, so holding them to an orientation only turns them edge-on and
+ * thin. They may face the camera freely; nothing about the room is lost.
+ */
+function isSymmetric(product: Product) {
+  if (product.category === "plant" || product.category === "lamp") return true;
+  return product.category === "table" && Math.abs(product.width - product.depth) < 0.35;
+}
+
+/**
+ * A cutout turns toward the camera, but only within an arc of the direction the
+ * piece actually faces.
+ *
+ * Turning freely would keep the photo perfectly legible and destroy the thing
+ * the layout just decided: a sofa facing the far wall would look like it faces
+ * you from every angle, and the room would read as furniture scattered at
+ * random. Clamping means walking around the room shows a piece turning away,
+ * which is what tells you where its front is, while never letting it go so
+ * edge-on that it thins to a line.
+ */
+function Billboard({ target, x, z, yaw, free }: { target: React.RefObject<THREE.Group>; x: number; z: number; yaw: number; free: boolean }) {
   useFrame(({ camera }) => {
-    if (target.current) target.current.rotation.y = Math.atan2(camera.position.x - x, camera.position.z - z);
+    if (!target.current) return;
+    const toCamera = Math.atan2(camera.position.x - x, camera.position.z - z);
+    if (free) {
+      target.current.rotation.y = toCamera;
+      return;
+    }
+    let delta = toCamera - yaw;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    target.current.rotation.y = yaw + Math.max(-MAX_TURN, Math.min(MAX_TURN, delta));
   });
   return null;
 }

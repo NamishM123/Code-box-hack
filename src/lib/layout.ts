@@ -215,6 +215,48 @@ function backingScore(rect: Rect, scene: Scene, wall: Wall) {
   return wallIsSolid(scene, wall, from, to) ? 2.5 : -1.5;
 }
 
+/**
+ * Orientation rules, kept separate from position because a piece can stand in
+ * the right spot and still face the wrong way, which is the failure that makes
+ * a room read as scattered rather than arranged.
+ */
+
+/** Snaps a free angle so pieces look placed rather than dropped. */
+function snapAngle(deg: number, step = 5) {
+  return Math.round(deg / step) * step;
+}
+
+/** How squarely a piece faces a point: 1 dead on, -1 turned away. */
+function facesToward(rect: Rect, target: Vec) {
+  const dir = facing(rect.rot);
+  const to: Vec = [target[0] - rect.x, target[1] - rect.y];
+  const len = Math.hypot(to[0], to[1]) || 1;
+  return (dir[0] * to[0] + dir[1] * to[1]) / len;
+}
+
+/**
+ * What the seating should look at. A room wants one thing to be the subject:
+ * the screen if there is one, otherwise the daylight, otherwise its own centre.
+ */
+function focalTarget(scene: Scene, products: Product[]): Vec {
+  if (products.some((p) => p.category === "tv")) return [scene.W / 2, scene.D / 2];
+  const window = scene.openings.find((o) => o.kind === "window");
+  if (window) return alongWall(window.wall, (window.from + window.to) / 2, scene.W, scene.D);
+  return [scene.W / 2, scene.D / 2];
+}
+
+/**
+ * Feng shui's coffin position: a bed whose foot points straight out of the
+ * door. Being off the door's line already scores, but a bed aimed down it is
+ * the one orientation the tradition treats as worth moving the bed for.
+ */
+function coffinPenalty(rect: Rect, scene: Scene, isBed: boolean) {
+  if (!isBed) return 0;
+  const aimedAtDoor = facesToward(rect, scene.entry.at);
+  const offAxis = lateralOffset([rect.x, rect.y], facing(rect.rot), scene.entry.at);
+  return aimedAtDoor > 0.8 && offAxis < 2.5 ? -8 : 0;
+}
+
 /** The far corner diagonally opposite the entry, where a vertical accent lands. */
 function baguaCorner(scene: Scene): Vec {
   const [ex, ey] = scene.entry.at;
@@ -246,7 +288,7 @@ function wallFaced(rect: Rect, scene: Scene): Wall {
 
 /* ------------------------------------------------------------ the passes */
 
-function placePrimary(scene: Scene, product: Product, w: Weights, viewIdeal?: number) {
+function placePrimary(scene: Scene, product: Product, w: Weights, viewIdeal?: number, focal?: Vec) {
   // A seat may sit against the wall, or float slightly forward when the room
   // is being arranged around conversation rather than around its perimeter.
   const standoffs = w.gather > 1 ? [0, 0.8, 1.6] : [0];
@@ -258,19 +300,25 @@ function placePrimary(scene: Scene, product: Product, w: Weights, viewIdeal?: nu
     // With a screen in the set, the seat is chosen partly on whether the wall
     // it looks at lands at a watchable distance.
     const viewFit = viewIdeal ? -Math.abs(throwDistance(r, scene) - viewIdeal) * 0.55 : 0;
+    // Face the subject of the room, and never point a bed down the doorway.
+    const focalFit = focal ? facesToward(r, focal) * 2.2 : 0;
     return (
       commandScore(r, scene) * w.fengShui +
       backingScore(r, scene, wall) * w.fengShui +
       (wallLength(wall, scene.W, scene.D) / Math.max(scene.W, scene.D)) * 2 +
       openFloor * 0.35 * w.openness +
-      viewFit
+      viewFit +
+      focalFit +
+      coffinPenalty(r, scene, product.category === "bed") * w.fengShui
     );
   });
 
   if (!rect) return null;
   commit(scene, product, rect, [
     "Command position: it sees the entry without sitting in its line, with a solid wall behind.",
-    "Backed to the longest usable wall so the floor stays open."
+    product.category === "bed"
+      ? "Turned so the foot does not point straight out of the door."
+      : "Squared up to the focal point of the room rather than to the nearest wall."
   ]);
   return rect;
 }
@@ -322,9 +370,12 @@ function placeTable(scene: Scene, table: Product, seat: Rect | null) {
   }
   const dir = facing(seat.rot);
   const reach = seat.d / 2 + CLEARANCES.secondaryFt + table.depth / 2;
+  // Squared to the room's own axes, not to whatever angle the seat took, so a
+  // rectangular table reads parallel to the walls the way it would be set.
+  const rot = snapAngle(seat.rot, 90);
   const candidates: Rect[] = [];
   for (let step = reach - 0.4; step <= reach + 1.4; step += 0.2) {
-    candidates.push({ x: seat.x + dir[0] * step, y: seat.y + dir[1] * step, w: table.width, d: table.depth, rot: seat.rot });
+    candidates.push({ x: seat.x + dir[0] * step, y: seat.y + dir[1] * step, w: table.width, d: table.depth, rot });
   }
   const rect = best(candidates, scene, (r) => -distance([r.x, r.y], [seat.x + dir[0] * reach, seat.y + dir[1] * reach]));
   if (rect) {
@@ -337,10 +388,15 @@ function placeRug(scene: Scene, rug: Product, anchors: Rect[]) {
   if (!anchors.length) return null;
   const cx = anchors.reduce((s, r) => s + r.x, 0) / anchors.length;
   const cy = anchors.reduce((s, r) => s + r.y, 0) / anchors.length;
+  // A rug runs with the room: its long side along the room's long axis, or the
+  // floor reads as fighting the walls.
+  const rugRunsDeep = rug.depth >= rug.width;
+  const roomRunsDeep = scene.D >= scene.W;
+  const rot = rugRunsDeep === roomRunsDeep ? 0 : 90;
   const candidates: Rect[] = [];
   for (let dx = -1.5; dx <= 1.5; dx += 0.5) {
     for (let dy = -1.5; dy <= 1.5; dy += 0.5) {
-      candidates.push({ x: cx + dx, y: cy + dy, w: rug.width, d: rug.depth, rot: 0 });
+      candidates.push({ x: cx + dx, y: cy + dy, w: rug.width, d: rug.depth, rot });
     }
   }
   // A rug lies under everything, so it only has to stay inside the room.
@@ -351,7 +407,7 @@ function placeRug(scene: Scene, rug: Product, anchors: Rect[]) {
     productId: rug.id,
     x: round(rect.x),
     y: round(rect.y),
-    rotation: 0,
+    rotation: rect.rot,
     fit: insideRoom(rect, scene.W, scene.D, 0) ? "fits" : "conflict",
     rationale: ["Sized to sit under the front legs of the seating so the group reads as one island."]
   });
@@ -368,7 +424,7 @@ function placeSeatRing(scene: Scene, chairs: Product[], center: Vec, w: Weights)
         const x = center[0] + Math.cos(rad) * r;
         const y = center[1] + Math.sin(rad) * r;
         // turned to look back at the middle of the group
-        const rot = (Math.atan2(center[1] - y, center[0] - x) * 180) / Math.PI - 90;
+        const rot = snapAngle((Math.atan2(center[1] - y, center[0] - x) * 180) / Math.PI - 90);
         candidates.push({ x, y, w: chair.width, d: chair.depth, rot });
       }
     }
@@ -491,7 +547,8 @@ function solve(room: RoomSpec, products: Product[], detected: DetectedRoom | und
   const primary = pick("bed") || pick("sofa") || pick("desk");
   const screen = pick("tv");
   const viewIdeal = screen ? screen.width * TV_DIAGONAL_RATIO * TV_VIEW_MULTIPLE : undefined;
-  const seat = primary ? placePrimary(scene, primary, w, viewIdeal) : null;
+  const focal = focalTarget(scene, products);
+  const seat = primary ? placePrimary(scene, primary, w, viewIdeal, focal) : null;
   if (primary && !seat) unplaceable(scene, primary);
 
   if (screen) placeTv(scene, screen, seat, w);
