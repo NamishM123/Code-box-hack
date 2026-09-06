@@ -15,8 +15,11 @@ import { SAMPLE_CATALOG } from "@/lib/catalog";
 import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec, Category } from "@/lib/types";
 
 const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
+const RenderScene = dynamic(() => import("@/components/canvas/RenderScene").then((m) => m.RenderScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 
-type View = "top" | "3d";
+type View = "top" | "3d" | "render";
+
+const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered" };
 
 interface Brief extends RoomSpec { detected: DetectedRoom | null }
 
@@ -149,9 +152,9 @@ export default function CanvasPage() {
             <div className="mt-1 text-[11px] text-ash">Public sample floor plan · {usingLiveCatalog ? "live catalog data; verify before purchase" : "seed catalog fallback"}</div>
           </div>
           <div className="flex rounded-full border border-rule p-1 text-xs">
-            {(["top", "3d"] as const).map((v) => (
+            {(["top", "3d", "render"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
-                {v === "top" ? "2D top" : "3D"}
+                {VIEW_LABELS[v]}
               </button>
             ))}
           </div>
@@ -183,6 +186,9 @@ export default function CanvasPage() {
             )}
             {view === "3d" && (
               <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
+            )}
+            {view === "render" && (
+              <RenderScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} />
             )}
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-ghost" onClick={() => applyLayout(activeLayout)}><Wand2 className="h-3.5 w-3.5" /> Re-run principles</button>

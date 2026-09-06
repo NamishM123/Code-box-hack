@@ -1,8 +1,9 @@
 "use client";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
+import { OrbitControls, ContactShadows } from "@react-three/drei";
 import { useMemo } from "react";
 import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
+import { StudioEnvironment } from "./furniture/StudioEnvironment";
 
 interface Props {
   room: RoomSpec;
@@ -26,7 +27,7 @@ export function RoomScene({ room, detected, products, placed, selectedId }: Prop
           <color attach="background" args={["#141416"]} />
           <ambientLight intensity={0.5} />
           <directionalLight position={[8, 12, 6]} intensity={1.15} castShadow />
-          <Environment preset="apartment" />
+          <StudioEnvironment />
 
           <group position={[-room.widthFt / 2, 0, -room.depthFt / 2]}>
             <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[room.widthFt / 2, 0, room.depthFt / 2]}>
