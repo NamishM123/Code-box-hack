@@ -7,6 +7,7 @@ import { Plus, Trash2, Heart, Sparkles, X } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { deleteRoom, listRooms, type SavedRoom } from "@/lib/storage";
+import { seedDemoRooms } from "@/lib/demoRooms";
 import { listLikedPins, removeLikedPin, saveStolenLook, type LikedPin } from "@/lib/storage";
 import { stealLook } from "@/lib/vibe";
 import { money } from "@/lib/utils";
@@ -20,6 +21,7 @@ export default function RoomsPage() {
   const [usingLookId, setUsingLookId] = useState<string | null>(null);
 
   useEffect(() => {
+    seedDemoRooms();
     setRooms(listRooms());
     setLiked(listLikedPins());
     setReady(true);
