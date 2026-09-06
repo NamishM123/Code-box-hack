@@ -144,10 +144,11 @@ export function Glyph({ name, className = "h-6 w-6", strokeWidth = 1.5 }: { name
  * Store wordmarks for the trust row. Set as type rather than uploaded brand
  * assets, drawn in a single ink weight so the row reads as one strip.
  */
-export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
+export const SHOPS: { name: string; style: string; href: string; mark?: JSX.Element }[] = [
   {
     name: "amazon",
     style: "lowercase font-semibold tracking-[-0.04em]",
+    href: "https://www.amazon.com",
     mark: (
       <svg viewBox="0 0 40 12" className="mt-0.5 h-2.5 w-9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
         <path d="M2 4c6.5 5.4 29.5 5.4 36 0" />
@@ -157,6 +158,7 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
   {
     name: "TARGET",
     style: "font-bold tracking-[0.02em]",
+    href: "https://www.target.com",
     mark: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="10" />
@@ -167,6 +169,7 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
   {
     name: "Walmart",
     style: "font-semibold tracking-[-0.02em]",
+    href: "https://www.walmart.com",
     mark: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
         <path d="M12 3v5.4M12 15.6V21M4.2 7.5l4.7 2.7M15.1 13.8l4.7 2.7M4.2 16.5l4.7-2.7M15.1 10.2l4.7-2.7" />
@@ -176,6 +179,7 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
   {
     name: "Facebook Marketplace",
     style: "font-medium tracking-[-0.02em]",
+    href: "https://www.facebook.com/marketplace",
     mark: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
         <path d="M3.5 8.5 5.5 4h13l2 4.5" />
@@ -184,12 +188,12 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
       </svg>
     )
   },
-  { name: "WAYFAIR", style: "font-semibold tracking-[0.06em]" },
-  { name: "IKEA", style: "font-extrabold tracking-[0.04em]" },
-  { name: "West Elm", style: "font-normal tracking-[0.12em] uppercase" },
-  { name: "CB2", style: "font-bold tracking-[0.08em]" },
-  { name: "Article", style: "font-medium tracking-[-0.01em]" },
-  { name: "OfferUp", style: "font-semibold tracking-[-0.02em]" },
-  { name: "Craigslist", style: "font-normal tracking-[-0.01em]" },
-  { name: "Overstock", style: "font-medium tracking-[0.02em]" }
+  { name: "WAYFAIR", style: "font-semibold tracking-[0.06em]", href: "https://www.wayfair.com" },
+  { name: "IKEA", style: "font-extrabold tracking-[0.04em]", href: "https://www.ikea.com" },
+  { name: "West Elm", style: "font-normal tracking-[0.12em] uppercase", href: "https://www.westelm.com" },
+  { name: "CB2", style: "font-bold tracking-[0.08em]", href: "https://www.cb2.com" },
+  { name: "Article", style: "font-medium tracking-[-0.01em]", href: "https://www.article.com" },
+  { name: "OfferUp", style: "font-semibold tracking-[-0.02em]", href: "https://offerup.com" },
+  { name: "Craigslist", style: "font-normal tracking-[-0.01em]", href: "https://www.craigslist.org" },
+  { name: "Overstock", style: "font-medium tracking-[0.02em]", href: "https://www.overstock.com" }
 ];

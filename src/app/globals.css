@@ -238,6 +238,6 @@ html, body {
 input[type="file"]::file-selector-button { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .charm, .bob, .marquee-track, .chrome { animation: none !important; }
+  .charm, .bob, .chrome { animation: none !important; }
   html { scroll-behavior: auto; }
 }
