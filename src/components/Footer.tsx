@@ -7,7 +7,6 @@ const COLUMNS: { title: string; items: FooterItem[] }[] = [
     title: "Product",
     items: [
       { label: "Overview", href: "/product" },
-      { label: "Pieces", href: "/pieces" },
       { label: "How it works", href: "/how-it-works" }
     ]
   },
@@ -22,7 +21,7 @@ const COLUMNS: { title: string; items: FooterItem[] }[] = [
   },
   {
     title: "Shops",
-    items: [{ label: "Browse shops", href: "/shops" }, "Amazon", "Target", "Facebook Marketplace", "Wayfair"]
+    items: ["Amazon", "Target", "Facebook Marketplace", "Wayfair"]
   },
   {
     title: "Company",

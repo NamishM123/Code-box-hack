@@ -8,8 +8,6 @@ import { AuthButton } from "@/components/AuthButton";
 
 const LINKS = [
   { label: "Product", href: "/product" },
-  { label: "Pieces", href: "/#pieces" },
-  { label: "Shops", href: "/shops" },
   { label: "How it works", href: "/how-it-works" },
   { label: "Your Rooms", href: "/rooms" },
   { label: "Rooms", href: "/#rooms" }
