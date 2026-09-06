@@ -2,18 +2,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Check, ImagePlus, Loader2, Ruler, Sun, X, ArrowRight, Sparkles, Link as LinkIcon, Upload } from "lucide-react";
+import { Camera, Check, ImagePlus, Loader2, Ruler, Sun, X, ArrowRight, Sparkles, Upload, Heart, Search } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { detectFromFiles, scoreQuality } from "@/lib/detectRoom";
 import { extractVibeFromImage, type RichVibe } from "@/lib/vibe";
-import { STYLE_PRESETS } from "@/lib/principles";
-import { takeStolenLook } from "@/lib/storage";
+import { takeStolenLook, listLikedPins, type LikedPin } from "@/lib/storage";
 import type { DetectedRoom, RoomType, Goal, Category } from "@/lib/types";
 
 type Step = "frame" | "capture" | "confirm" | "brief";
 
 interface Shot { id: string; file?: File; url: string; ok: boolean; reason?: string; demo?: boolean }
+interface UnsplashPin { id: string; src: string; srcLarge: string; alt: string; aspect: number; photographer: string }
 
 const EMPTY_ROOM_DEMO: Shot[] = Array.from({ length: 6 }, (_, index) => ({
   id: `empty-room-demo-${index + 1}`,
@@ -32,9 +32,12 @@ export default function CapturePage() {
   const [detected, setDetected] = useState<DetectedRoom | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [budget, setBudget] = useState(2500);
-  const [style, setStyle] = useState("warm-minimal");
   const [mustHave, setMustHave] = useState<Category[]>([]);
-  const [pinUrl, setPinUrl] = useState("");
+  const [likedPins, setLikedPins] = useState<LikedPin[]>([]);
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<UnsplashPin[]>([]);
+  const [searching, setSearching] = useState(false);
   const [pinImage, setPinImage] = useState<string | null>(null);
   const [vibe, setVibe] = useState<RichVibe | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
@@ -73,6 +76,8 @@ export default function CapturePage() {
     });
     setStep("brief");
   }, []);
+
+  useEffect(() => { setLikedPins(listLikedPins()); }, []);
 
   async function addFiles(fileList: FileList | null) {
     if (!fileList) return;
@@ -135,28 +140,29 @@ export default function CapturePage() {
     setStep("confirm");
   }
 
-  async function applyPinterest() {
-    if (!pinUrl) return;
+  async function applyImageUrl(url: string) {
+    setPinImage(url);
     setPinLoading(true);
     setPinError(null);
     try {
-      const res = await fetch("/api/pinterest", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: pinUrl })
-      });
-      const json = await res.json();
-      if (!res.ok) { setPinError(json.message || "Could not read that link."); return; }
-      if (json.images?.[0]) setPinImage(json.images[0]);
-      if (json.vibe) {
-        setVibe(json.vibe);
-      } else if (json.images?.[0]) {
-        const blob = await fetch(json.images[0]).then((r) => r.blob());
-        setVibe(await extractVibeFromImage(blob));
-      }
-    } catch (e) {
-      setPinError("Could not reach the pin. Try uploading a screenshot instead.");
+      const blob = await fetch(url).then((r) => r.blob());
+      setVibe(await extractVibeFromImage(blob));
+    } catch {
+      setPinError("Could not read that image.");
     } finally { setPinLoading(false); }
+  }
+
+  async function searchUnsplash() {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/unsplash?q=${encodeURIComponent(searchQuery.trim())}&per_page=12`);
+      if (res.ok) {
+        const json = await res.json();
+        setSearchResults(json.photos || []);
+      }
+    } catch { /* silently fail */ }
+    finally { setSearching(false); }
   }
 
   async function applyInspirationFile(file: File) {
@@ -177,7 +183,7 @@ export default function CapturePage() {
 
   function toGo() {
     const brief = {
-      roomType, goal, budget, style, mustHave,
+      roomType, goal, budget, mustHave,
       widthFt: detected?.widthFt ?? 14, depthFt: detected?.depthFt ?? 12,
       vibeTags: vibe?.tags, vibePalette: vibe?.palette,
       // Free-text design notes fold in alongside the Pinterest-derived terms,
@@ -338,19 +344,6 @@ export default function CapturePage() {
                   </div>
 
                   <div className="card p-5">
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Style</div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-                      {STYLE_PRESETS.map((s) => (
-                        <button key={s.key} onClick={() => setStyle(s.key)} className={`rounded-md border p-3 text-left transition ${style === s.key ? "border-brass" : "border-rule hover:border-ash/40"}`}>
-                          <div className="flex gap-1">{s.palette.slice(0, 4).map((c) => <span key={c} className="h-4 w-4 rounded-full border border-rule" style={{ background: c }} />)}</div>
-                          <div className="mt-2 font-display text-lg">{s.label}</div>
-                          <div className="text-[11px] text-ash">{s.vibe.join(" · ")}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="card p-5">
                     <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Must-haves</div>
                     <div className="mt-3 grid grid-cols-3 gap-2 md:grid-cols-4">
                       {(["sofa", "chair", "table", "rug", "lamp", "shelf", "plant", "art", "bed", "desk", "dresser", "mirror"] as Category[]).map((c) => {
@@ -369,14 +362,45 @@ export default function CapturePage() {
                       <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Inspiration</div>
                       <Sparkles className="h-4 w-4 text-brass" />
                     </div>
-                    <p className="mt-2 text-[12px] text-ash">Paste a Pinterest link or upload a screenshot. We read the palette and vibe.</p>
-                    <div className="mt-4 flex gap-2">
-                      <div className="flex flex-1 items-center rounded-md border border-rule px-3">
-                        <LinkIcon className="h-3.5 w-3.5 text-ash" />
-                        <input value={pinUrl} onChange={(e) => setPinUrl(e.target.value)} placeholder="https://pinterest.com/pin/…" className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-ash/60" />
+                    <p className="mt-2 text-[12px] text-ash">Pick from your liked Pinterest saves, search Unsplash, or upload a screenshot.</p>
+
+                    {likedPins.length > 0 && (
+                      <div className="mt-4">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Your saves</div>
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                          {likedPins.slice(0, 6).map((pin) => (
+                            <button key={pin.id} onClick={() => { setSelectedPinId(pin.id); applyImageUrl(pin.src); }} className={`group relative aspect-square overflow-hidden rounded-md border transition ${selectedPinId === pin.id ? "border-brass ring-1 ring-brass" : "border-rule hover:border-ash"}`}>
+                              <img src={pin.src} alt={pin.title} className="h-full w-full object-cover" />
+                              <div className="absolute right-1 top-1"><Heart className="h-3 w-3 fill-red-400 text-red-400" /></div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <button onClick={applyPinterest} disabled={!pinUrl || pinLoading} className="btn btn-brass">{pinLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Read"}</button>
+                    )}
+
+                    <div className="mt-4">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Search Unsplash</div>
+                      <div className="mt-2 flex gap-2">
+                        <div className="flex flex-1 items-center rounded-md border border-rule px-3">
+                          <Search className="h-3.5 w-3.5 text-ash" />
+                          <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchUnsplash()} placeholder="warm minimalist living room" className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-ash/60" />
+                        </div>
+                        <button onClick={searchUnsplash} disabled={!searchQuery.trim() || searching} className="btn btn-brass">{searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Search"}</button>
+                      </div>
+                      {searchResults.length > 0 && (
+                        <div className="mt-3 max-h-64 overflow-y-auto rounded-md border border-rule p-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            {searchResults.map((photo) => (
+                              <button key={photo.id} onClick={() => { setSelectedPinId(photo.id); applyImageUrl(photo.src); }} className={`group relative aspect-square overflow-hidden rounded-md border transition ${selectedPinId === photo.id ? "border-brass ring-1 ring-brass" : "border-rule hover:border-ash"}`}>
+                                <img src={photo.src} alt={photo.alt} className="h-full w-full object-cover" />
+                                <div className="absolute inset-x-0 bottom-0 bg-ink/60 px-1 py-0.5 text-[9px] text-paper truncate">{photo.photographer}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+
                     <div className="mt-3 flex items-center gap-2 text-[11px] text-ash">
                       <span>or</span>
                       <label className="inline-flex cursor-pointer items-center gap-1 text-brass hover:underline">
