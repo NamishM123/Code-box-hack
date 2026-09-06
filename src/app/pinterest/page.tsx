@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Heart } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 
@@ -13,7 +14,7 @@ interface Pin {
   id: string;
   src: string;
   alt: string;
-  aspect: number; // height / width ratio
+  aspect: number;
   title: string;
   subtitle: string;
 }
@@ -146,7 +147,7 @@ function generatePin(category: Category, index: number): Pin {
   const seed = category.charCodeAt(0) * 1000 + index;
   const r = seededRandom(seed);
   const palette = PALETTES[category][index % PALETTES[category].length];
-  const aspect = 0.9 + r * 0.9; // between 0.9 and 1.8
+  const aspect = 0.9 + r * 0.9;
   const title = TITLES[category][index % TITLES[category].length];
   const subtitle = SUBTITLES[index % SUBTITLES.length];
 
@@ -181,7 +182,6 @@ function buildShapes(seed: number, w: number, h: number, c1: string, c2: string,
   const r4 = seededRandom(seed + 4);
   const r5 = seededRandom(seed + 5);
 
-  // large background shape
   if (r1 > 0.5) {
     const rx = w * 0.15 + r2 * w * 0.35;
     const ry = h * 0.2 + r3 * h * 0.3;
@@ -193,13 +193,11 @@ function buildShapes(seed: number, w: number, h: number, c1: string, c2: string,
     parts.push(`<rect x="${(w - rw) / 2}" y="${(h - rh) / 2}" width="${rw}" height="${rh}" rx="${rx}" fill="${c3}" opacity="0.45"/>`);
   }
 
-  // accent circle
   const cx = w * 0.2 + r4 * w * 0.6;
   const cy = h * 0.2 + r5 * h * 0.6;
   const cr = 20 + r1 * 50;
   parts.push(`<circle cx="${cx}" cy="${cy}" r="${cr}" fill="${c4}" opacity="0.6"/>`);
 
-  // small decoration
   if (r3 > 0.4) {
     const lx = w * 0.1 + r5 * w * 0.3;
     const ly = h * 0.6 + r1 * h * 0.2;
@@ -207,7 +205,6 @@ function buildShapes(seed: number, w: number, h: number, c1: string, c2: string,
     parts.push(`<line x1="${lx}" y1="${ly}" x2="${lx + 60}" y2="${ly + 20}" stroke="${c4}" stroke-width="1.5" opacity="0.3"/>`);
   }
 
-  // top-right arch
   if (r2 > 0.5) {
     parts.push(`<path d="M${w * 0.6},${h * 0.08} Q${w * 0.85},${h * 0.05} ${w * 0.85},${h * 0.3}" stroke="${c4}" stroke-width="1.5" fill="none" opacity="0.35"/>`);
   }
@@ -223,8 +220,19 @@ export default function PinterestPage() {
   const [category, setCategory] = useState<Category>("office");
   const [pins, setPins] = useState<Pin[]>([]);
   const [page, setPage] = useState(0);
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
+  const [likedPins, setLikedPins] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
+
+  const toggleLike = useCallback((pinId: string) => {
+    setLikedPins((prev) => {
+      const next = new Set(prev);
+      if (next.has(pinId)) next.delete(pinId);
+      else next.add(pinId);
+      return next;
+    });
+  }, []);
 
   const loadMore = useCallback(() => {
     if (loadingRef.current) return;
@@ -262,6 +270,15 @@ export default function PinterestPage() {
     return () => io.disconnect();
   }, [loadMore]);
 
+  useEffect(() => {
+    if (selectedPin) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [selectedPin]);
+
   const palette = HUE[category];
 
   return (
@@ -269,53 +286,50 @@ export default function PinterestPage() {
       <Nav />
 
       {/* hero */}
-      <section className="mx-auto max-w-[1120px] px-6 pb-6 pt-32 md:pt-36">
+      <section className="mx-auto max-w-[1120px] px-6 pb-6 pt-32 text-center md:pt-36">
         <p className="eyebrow mb-3" style={{ color: palette.accent }}>
           Curated inspiration
         </p>
         <h1 className="font-display text-4xl md:text-5xl lg:text-6xl">
           Pinterest
         </h1>
-        <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ash">
+        <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-ash">
           Scroll through curated room inspo — save what speaks to you, and
           let your next space take shape.
         </p>
       </section>
 
-      {/* category tabs */}
-      <div className="sticky top-[68px] z-40 mx-auto max-w-[1120px] px-6 pb-4 pt-2">
-        <div
-          className="inline-flex items-center gap-1 rounded-full p-1"
-          style={{
-            background: "rgba(255,255,255,0.75)",
-            backdropFilter: "blur(16px)",
-            border: `1px solid ${palette.muted}44`,
-            boxShadow: "0 4px 24px -8px rgba(0,0,0,0.08)",
-          }}
-        >
+      {/* category tabs — large, centered, evenly spaced */}
+      <div className="mx-auto max-w-[720px] px-6 pb-8 pt-2">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           {TABS.map((tab) => {
             const active = category === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => setCategory(tab.key)}
-                className="relative rounded-full px-5 py-2.5 text-[13px] font-medium transition-colors"
+                className="relative overflow-hidden rounded-2xl px-4 py-5 text-center font-medium transition-all duration-300 md:rounded-3xl md:px-6 md:py-7"
                 style={{
+                  background: active ? palette.accent : "rgba(255,255,255,0.8)",
                   color: active ? "#fff" : palette.accent,
+                  border: active ? `2px solid ${palette.accent}` : `2px solid ${palette.muted}55`,
+                  boxShadow: active
+                    ? `0 8px 32px -8px ${palette.accent}66`
+                    : "0 2px 12px -4px rgba(0,0,0,0.06)",
+                  transform: active ? "scale(1.02)" : "scale(1)",
                 }}
               >
+                <span className="block text-2xl md:text-3xl">{tab.icon}</span>
+                <span className="mt-2 block text-sm font-semibold tracking-wide md:text-base">
+                  {tab.label}
+                </span>
                 {active && (
                   <motion.span
-                    layoutId="pinterest-tab-bg"
-                    className="absolute inset-0 rounded-full"
-                    style={{ background: palette.accent }}
+                    layoutId="tab-indicator"
+                    className="absolute inset-x-4 bottom-2 mx-auto h-1 rounded-full bg-white/40 md:bottom-3"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
-                <span className="relative z-10 flex items-center gap-2">
-                  <span>{tab.icon}</span>
-                  {tab.label}
-                </span>
               </button>
             );
           })}
@@ -332,14 +346,18 @@ export default function PinterestPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
           >
-            <MasonryGrid pins={pins} palette={palette} />
+            <MasonryGrid
+              pins={pins}
+              palette={palette}
+              likedPins={likedPins}
+              onToggleLike={toggleLike}
+              onSelect={setSelectedPin}
+            />
           </motion.div>
         </AnimatePresence>
 
-        {/* infinite scroll sentinel */}
         <div ref={sentinelRef} className="h-10" />
 
-        {/* loading indicator */}
         <div className="flex justify-center py-6">
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
@@ -355,14 +373,138 @@ export default function PinterestPage() {
         </div>
       </section>
 
+      {/* lightbox */}
+      <AnimatePresence>
+        {selectedPin && (
+          <Lightbox
+            pin={selectedPin}
+            palette={palette}
+            liked={likedPins.has(selectedPin.id)}
+            onToggleLike={() => toggleLike(selectedPin.id)}
+            onClose={() => setSelectedPin(null)}
+          />
+        )}
+      </AnimatePresence>
+
       <Footer />
     </main>
   );
 }
 
+/* ------------------------------------------------------------ lightbox -- */
+
+function Lightbox({
+  pin,
+  palette,
+  liked,
+  onToggleLike,
+  onClose,
+}: {
+  pin: Pin;
+  palette: { accent: string; muted: string };
+  liked: boolean;
+  onToggleLike: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* close button */}
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
+          aria-label="Close"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {/* image */}
+        <div className="overflow-auto">
+          <img
+            src={pin.src}
+            alt={pin.alt}
+            className="block w-full"
+            style={{ aspectRatio: `1 / ${pin.aspect}` }}
+          />
+        </div>
+
+        {/* info + actions */}
+        <div className="flex flex-col gap-3 p-5">
+          <div>
+            <h2 className="text-lg font-bold text-ink">{pin.title}</h2>
+            <p className="mt-0.5 text-[13px] text-ash">{pin.subtitle}</p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            {/* heart / like — bottom left */}
+            <button
+              onClick={onToggleLike}
+              className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-all duration-200 active:scale-95"
+              style={{
+                background: liked ? "#FEE2E2" : "#F5F5F4",
+                color: liked ? "#E60023" : "#6E6C67",
+                border: liked ? "1.5px solid #FECACA" : "1.5px solid #E7E5E0",
+              }}
+            >
+              <Heart
+                className="h-[18px] w-[18px] transition-transform duration-200"
+                fill={liked ? "#E60023" : "none"}
+                stroke={liked ? "#E60023" : "currentColor"}
+                strokeWidth={2}
+                style={{ transform: liked ? "scale(1.15)" : "scale(1)" }}
+              />
+              {liked ? "Liked" : "Like"}
+            </button>
+
+            {/* steal this look — bottom right */}
+            <button
+              className="rounded-full px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-200 active:scale-95"
+              style={{
+                background: palette.accent,
+                boxShadow: `0 4px 16px -4px ${palette.accent}88`,
+              }}
+            >
+              Steal this Look
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* -------------------------------------------------------- masonry grid -- */
 
-function MasonryGrid({ pins, palette }: { pins: Pin[]; palette: { accent: string; muted: string } }) {
+function MasonryGrid({
+  pins,
+  palette,
+  likedPins,
+  onToggleLike,
+  onSelect,
+}: {
+  pins: Pin[];
+  palette: { accent: string; muted: string };
+  likedPins: Set<string>;
+  onToggleLike: (id: string) => void;
+  onSelect: (pin: Pin) => void;
+}) {
   const cols = useColumns();
   const columns: Pin[][] = Array.from({ length: cols }, () => []);
   const heights = new Array(cols).fill(0);
@@ -378,7 +520,15 @@ function MasonryGrid({ pins, palette }: { pins: Pin[]; palette: { accent: string
       {columns.map((col, ci) => (
         <div key={ci} className="flex flex-1 flex-col gap-4">
           {col.map((pin, pi) => (
-            <PinCard key={pin.id} pin={pin} palette={palette} index={ci * 100 + pi} />
+            <PinCard
+              key={pin.id}
+              pin={pin}
+              palette={palette}
+              index={ci * 100 + pi}
+              liked={likedPins.has(pin.id)}
+              onToggleLike={() => onToggleLike(pin.id)}
+              onSelect={() => onSelect(pin)}
+            />
           ))}
         </div>
       ))}
@@ -406,13 +556,18 @@ function PinCard({
   pin,
   palette,
   index,
+  liked,
+  onToggleLike,
+  onSelect,
 }: {
   pin: Pin;
   palette: { accent: string; muted: string };
   index: number;
+  liked: boolean;
+  onToggleLike: () => void;
+  onSelect: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   return (
     <motion.div
@@ -422,8 +577,8 @@ function PinCard({
       className="group relative cursor-pointer"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onSelect}
     >
-      {/* image */}
       <div
         className="overflow-hidden rounded-2xl lg:rounded-3xl"
         style={{
@@ -442,7 +597,6 @@ function PinCard({
           loading="lazy"
         />
 
-        {/* hover overlay */}
         <AnimatePresence>
           {hovered && (
             <motion.div
@@ -450,27 +604,37 @@ function PinCard({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="absolute inset-0 flex items-start justify-end rounded-2xl p-3 lg:rounded-3xl"
-              style={{ background: "rgba(0,0,0,0.15)" }}
+              className="absolute inset-0 flex items-end justify-between rounded-2xl p-3 lg:rounded-3xl"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.1) 100%)" }}
             >
+              {/* heart on hover — bottom left */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSaved((s) => !s);
+                  onToggleLike();
                 }}
-                className="rounded-full px-4 py-2 text-[13px] font-semibold text-white transition-transform active:scale-95"
-                style={{
-                  background: saved ? palette.accent : "#E60023",
-                }}
+                className="grid h-9 w-9 place-items-center rounded-full bg-white/90 backdrop-blur-sm transition-transform active:scale-90"
               >
-                {saved ? "Saved" : "Save"}
+                <Heart
+                  className="h-4 w-4"
+                  fill={liked ? "#E60023" : "none"}
+                  stroke={liked ? "#E60023" : "#333"}
+                  strokeWidth={2}
+                />
               </button>
+
+              {/* steal this look on hover — bottom right */}
+              <span
+                className="rounded-full px-3 py-1.5 text-[11px] font-semibold text-white"
+                style={{ background: palette.accent }}
+              >
+                Steal this Look
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* caption */}
       <div className="mt-2 px-1">
         <p className="truncate text-[13px] font-semibold text-ink">
           {pin.title}
