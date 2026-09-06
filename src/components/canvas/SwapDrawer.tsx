@@ -8,8 +8,8 @@ export function SwapDrawer({ current, alternatives, onClose, onPick }: {
 }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-ink/70" onClick={onClose} />
-      <div className="relative h-full w-full max-w-md overflow-auto border-l border-rule/40 bg-ink p-6">
+      <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative h-full w-full max-w-md overflow-auto border-l border-rule bg-paper p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Swap {current.category}</div>

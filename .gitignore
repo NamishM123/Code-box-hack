@@ -10,3 +10,4 @@ __pycache__/
 *.py[cod]
 .turbo
 next-env.d.ts
+*.tsbuildinfo
