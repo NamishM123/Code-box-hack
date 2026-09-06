@@ -35,6 +35,21 @@ const MAX_IMAGE_BYTES = 4_000_000;
  * the capture flow and the live catalog already read, so a key set for those
  * has to work here too rather than silently reporting no key at all.
  */
+/**
+ * Which deployment this is, in the words Vercel uses for it.
+ *
+ * A key is set per environment, so "no key found" is almost never a missing
+ * key -- it is a key attached to Production being asked for by a Preview
+ * build, or the other way round. Without knowing which one answered, that is
+ * indistinguishable from having set nothing at all, and it has cost real time.
+ */
+function whereAmI() {
+  const env = process.env.VERCEL_ENV;
+  if (!env) return "";
+  const branch = process.env.VERCEL_GIT_COMMIT_REF;
+  return ` This is the ${env} deployment${branch ? ` of branch ${branch}` : ""}, so check the key is enabled for ${env} in Vercel's environment variables and redeploy.`;
+}
+
 function googleKey() {
   return process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 }
@@ -133,8 +148,12 @@ export async function POST(req: Request) {
         // Name every variable checked: the last time this fired, the key was
         // set under a name this route did not look at.
         error:
-          "No image key found. This looked for OPENAI_API_KEY, GOOGLE_AI_API_KEY and GEMINI_API_KEY and found none of them set. Add one in the environment and redeploy. RENDER_PROVIDER=openai|gemini pins which is used.",
-        checked: ["OPENAI_API_KEY", "GOOGLE_AI_API_KEY", "GEMINI_API_KEY"]
+          "No image key found. This looked for OPENAI_API_KEY, GOOGLE_AI_API_KEY and GEMINI_API_KEY and found none of them set." +
+          whereAmI() +
+          " RENDER_PROVIDER=openai|gemini pins which is used.",
+        checked: ["OPENAI_API_KEY", "GOOGLE_AI_API_KEY", "GEMINI_API_KEY"],
+        environment: process.env.VERCEL_ENV || null,
+        branch: process.env.VERCEL_GIT_COMMIT_REF || null
       },
       { status: 501 }
     );
