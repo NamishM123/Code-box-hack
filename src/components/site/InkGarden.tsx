@@ -146,7 +146,7 @@ export function InkGarden({
  * Sits at z-0 with the page's own content lifted to z-10 in the root layout, so
  * it reads through the gaps between cards without ever catching a click.
  */
-export function InkGardenBackdrop({ opacity = 0.5, params, sourceUrl }: InkGardenProps) {
+export function InkGardenBackdrop({ opacity = 0.38, params, sourceUrl }: InkGardenProps) {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
       <InkGarden opacity={opacity} params={params} sourceUrl={sourceUrl} />
