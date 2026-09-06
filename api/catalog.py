@@ -3,10 +3,26 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
-from scripts.live_catalog import SEEDS, fetch, fit_status
+# The repo root is not on sys.path inside a Vercel Python function, so the
+# sibling `scripts` package has to be pointed at explicitly. vercel.json ships
+# it via includeFiles.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from scripts.live_catalog import SEEDS, fetch, fit_status
+    IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover - only hit when bundling is wrong
+    # A raised ImportError at module scope is a 502 from the browser's side,
+    # and the canvas then has no idea why its catalog feed vanished. Degrade to
+    # an empty, valid response instead: the canvas already treats an empty
+    # catalog as "no confirmed listings" and fills the room from /api/search.
+    SEEDS, fetch, fit_status = [], None, None
+    IMPORT_ERROR = f"{type(exc).__name__}: {exc}"
 
 
 def number(values: dict[str, list[str]], key: str, default: float, minimum: float, maximum: float) -> float:
@@ -25,7 +41,7 @@ class handler(BaseHTTPRequestHandler):
         max_depth = number(query, "max_depth", 18, 1, 300)
         terms = query.get("query", [""])[0].lower().split()
         results = []
-        for seed in SEEDS:
+        for seed in SEEDS if fetch else []:
             try:
                 item = fetch(seed)
             except Exception:
@@ -39,11 +55,14 @@ class handler(BaseHTTPRequestHandler):
             item["fit_status"], item["rationale"] = fit_status(item, wall_span, max_depth)
             results.append(item)
 
-        body = json.dumps({
+        payload = {
             "constraints_inches": {"free_wall_span": wall_span, "max_depth": max_depth},
             "results": results,
             "notice": "Live public-page demo data. Product facts are point-in-time observations; verify dimensions before purchase.",
-        }).encode("utf-8")
+        }
+        if IMPORT_ERROR:
+            payload["error"] = IMPORT_ERROR
+        body = json.dumps(payload).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Cache-Control", "s-maxage=900, stale-while-revalidate=900")

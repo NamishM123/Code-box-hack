@@ -365,7 +365,10 @@ export default function CanvasPage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="pill">Canvas · Fig. 01</div>
-            <h1 className="font-display mt-3 text-4xl md:text-5xl">A {brief.style.replace("-", " ")} {brief.roomType || "room"}</h1>
+            {/* Guarded the same way roomName is: a brief saved by an older
+                build, or a shared link missing the field, has no style, and an
+                unguarded .replace here took the whole canvas down. */}
+            <h1 className="font-display mt-3 text-4xl md:text-5xl">A {(brief.style || "warm-minimal").replace("-", " ")} {brief.roomType || "room"}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ash">
               <span>{feet(brief.widthFt)} × {feet(brief.depthFt)}</span>
               <span className="text-rule">/</span>
