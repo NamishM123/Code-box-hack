@@ -35,7 +35,16 @@ html {
 }
 
 html, body {
-  background: rgb(var(--paper));
+  /* Two soft glows in the accent colors the hero footage and wordmark
+     already use, so every page carries a little of that same warmth
+     instead of sitting on one flat, basic dark fill. Fixed so it reads
+     as one continuous wash behind the page rather than repeating per
+     screen height as the user scrolls. */
+  background:
+    radial-gradient(55% 45% at 12% 0%, rgba(168, 87, 26, 0.16), transparent 60%),
+    radial-gradient(45% 38% at 100% 8%, rgba(224, 174, 85, 0.10), transparent 60%),
+    rgb(var(--paper));
+  background-attachment: fixed;
   color: rgb(var(--ink));
   font-family: "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "ss01", "cv11";
@@ -207,6 +216,19 @@ html, body {
   /* On the footage, and anywhere else sitting over a dark image. */
   .btn-ondark { background: transparent; color: #fff; border-color: rgba(255,255,255,0.9); }
   .btn-ondark:hover { background: #fff; color: rgb(var(--ink)); }
+
+  /* Frosted glass pill: for the hero's own actions, sitting directly over
+     the footage rather than a solid page background. */
+  .btn-glass {
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.10);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset;
+  }
+  .btn-glass:hover { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.55); }
 
   .link-underline {
     background-image: linear-gradient(currentColor, currentColor);

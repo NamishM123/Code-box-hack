@@ -17,8 +17,7 @@ const PAGES = [
   { label: "Product", href: "/product" },
   { label: "Pinterest", href: "/pinterest" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Your Rooms", href: "/rooms" },
-  { label: "Pricing", href: "/pricing" }
+  { label: "Your Rooms", href: "/rooms" }
 ];
 
 export function Hero() {
@@ -95,11 +94,8 @@ export function Hero() {
             className="rise mt-8 flex flex-wrap items-center gap-3 md:mt-9"
             style={{ ["--delay" as string]: "0.35s" }}
           >
-            <Link href="/capture" className="btn btn-ondark px-8 py-3">
+            <Link href="/capture" className="btn btn-glass px-8 py-3">
               Map your room
-            </Link>
-            <Link href="/canvas?demo=1" className="nav-link py-3 text-white/75 hover:text-white">
-              See a demo room
             </Link>
           </div>
         </div>

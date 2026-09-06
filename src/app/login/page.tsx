@@ -29,10 +29,10 @@ export default function LoginPage() {
     <main className="min-h-screen">
       <Nav />
       <section className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 py-16">
-        <div className="w-full border border-white/10 bg-charcoal/60 p-8 sm:p-10">
-          <Link href="/" className="mb-10 inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-ash hover:text-paper"><ArrowLeft size={14} /> Back to Sightline</Link>
+        <div className="w-full border border-white/10 bg-card/60 p-8 sm:p-10">
+          <Link href="/" className="mb-10 inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-ash hover:text-ink"><ArrowLeft size={14} /> Back to Sightline</Link>
           <p className="text-xs uppercase tracking-[0.22em] text-brass">Your saved spaces</p>
-          <h1 className="mt-4 font-display text-5xl leading-none text-paper">Sign in to Sightline.</h1>
+          <h1 className="mt-4 font-display text-5xl leading-none text-ink">Sign in to Sightline.</h1>
           <p className="mt-5 leading-relaxed text-ash">Save room captures, return to layouts, and keep your furniture shortlist in one place.</p>
 
           {isSupabaseConfigured ? (
