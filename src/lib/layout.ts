@@ -38,6 +38,12 @@ interface Scene {
   D: number;
   openings: Opening[];
   entry: { at: Vec; wall: Wall };
+  /**
+   * The door swing no piece may stand in. Separate from `entry`, which is only
+   * a guess at where you walk in when no door was seen and is used for scoring.
+   * Null means no swing is being enforced.
+   */
+  doorSwing: Vec | null;
   blockers: Rect[];
   slots: Slot[];
   /** Floor reserved in front of pieces that have to be reachable. */
@@ -110,7 +116,7 @@ function buildScene(room: RoomSpec, detected?: DetectedRoom): Scene {
 
   const blockers: Rect[] = (detected?.existing || []).map((e) => ({ x: e.x, y: e.y, w: e.widthFt, d: e.depthFt, rot: 0 }));
 
-  return { W, D, openings, entry, blockers, slots: [], zones: [], items: [], notes: [] };
+  return { W, D, openings, entry, doorSwing: entry.at, blockers, slots: [], zones: [], items: [], notes: [] };
 }
 
 /** A point on a wall, `along` feet from that wall's origin. */
@@ -160,7 +166,7 @@ function approachZone(rect: Rect, category: Category): Rect | null {
 
 function violates(rect: Rect, scene: Scene, gap = BREATHING_FT, category?: Category): boolean {
   if (!insideRoom(rect, scene.W, scene.D, 0)) return true;
-  if (distance([rect.x, rect.y], scene.entry.at) < DOOR_SWING_FT + CLEARANCES.doorSwingBufferFt) return true;
+  if (scene.doorSwing && distance([rect.x, rect.y], scene.doorSwing) < DOOR_SWING_FT + CLEARANCES.doorSwingBufferFt) return true;
   for (const b of scene.blockers) if (overlaps(rect, b, gap)) return true;
   for (const s of scene.slots) if (overlaps(rect, s.rect, gap)) return true;
   // never stand in the space something else needs to be reached through
@@ -843,6 +849,17 @@ function solveFromReference(
   ref: ReferencePlan
 ) {
   const scene = buildScene(room, detected);
+
+  // No door in the picture means no door swing to keep clear. buildScene
+  // assumes an entry mid near-wall so the designed layouts leave a way in, but
+  // holding a copied plan to a door nobody saw moves furniture the photograph
+  // put somewhere on purpose -- a dresser centred on the near wall was being
+  // shoved 4ft sideways to clear a doorway that does not exist. A door the
+  // picture actually shows is still enforced.
+  if (!detected?.openings?.some((o) => o.kind === "door")) {
+    scene.doorSwing = null;
+    scene.notes.push("No door was visible in the picture, so the plan copies it without one.");
+  }
 
   // The photo's room and the shopper's room are rarely the same size, so
   // positions are carried across as proportions of each axis rather than as

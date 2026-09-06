@@ -244,11 +244,18 @@ export function establishingShot(widthFt: number, depthFt: number, aspect: numbe
   // The scene puts the room's centre at the origin, so a plan point is an
   // offset from it. Only the direction is taken from the viewpoint: how far
   // back to stand is what keeps the whole room in frame.
-  const dx = viewpoint ? viewpoint.x - widthFt / 2 : Math.max(widthFt, depthFt) * DEFAULT_EYE[0];
-  const dz = viewpoint ? viewpoint.y - depthFt / 2 : depthFt * DEFAULT_EYE[1];
+  const offX = viewpoint ? viewpoint.x - widthFt / 2 : 0;
+  const offZ = viewpoint ? viewpoint.y - depthFt / 2 : 0;
+
+  // A vantage reported at or near the room's own centre carries no direction to
+  // stand in, and normalising it put the camera at the origin -- inside the
+  // furniture, looking at nothing. Fall back to the default corner instead.
+  const usable = viewpoint != null && Math.hypot(offX, offZ) > Math.min(widthFt, depthFt) * 0.2;
+  const dx = usable ? offX : Math.max(widthFt, depthFt) * DEFAULT_EYE[0];
+  const dz = usable ? offZ : depthFt * DEFAULT_EYE[1];
   const reach = Math.hypot(dx, dz) || 1;
 
-  const eye = Math.min(WALL_HEIGHT_FT - 0.7, Math.max(2.2, viewpoint?.heightFt ?? WALL_HEIGHT_FT * 0.68));
+  const eye = Math.min(WALL_HEIGHT_FT - 0.7, Math.max(2.2, (usable ? viewpoint?.heightFt : undefined) ?? WALL_HEIGHT_FT * 0.68));
 
   return {
     position: [(dx / reach) * back, eye, (dz / reach) * back] as [number, number, number],
