@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { deleteRoom, listRooms, type SavedRoom } from "@/lib/storage";
@@ -23,24 +23,28 @@ export default function RoomsPage() {
     <main className="min-h-screen">
       <Nav />
       <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-10">
           <div>
-            <div className="pill">Archive</div>
-            <h1 className="font-display mt-3 text-5xl">Saved rooms</h1>
+            <div className="pill">Your Rooms</div>
+            <h1 className="font-display mt-3 text-5xl">Your rooms</h1>
             <p className="mt-2 text-[13px] text-ash">Stored in this browser. Share links carry the full plan in the URL.</p>
           </div>
-          <Link href="/capture" className="btn btn-primary"><Camera className="h-4 w-4" /> Map a new room</Link>
         </div>
 
-        {ready && !rooms.length && (
-          <div className="card grid place-items-center px-6 py-24 text-center">
-            <div className="font-display text-3xl">Nothing saved yet.</div>
-            <p className="mt-2 max-w-sm text-[13px] text-ash">Photograph a room, pick a layout, and hit Save. It lands here.</p>
-            <Link href="/capture" className="btn btn-brass mt-6">Start a room</Link>
-          </div>
-        )}
+        {ready && <div className="grid gap-4 md:grid-cols-3">
+          <Link
+            href="/capture"
+            className="card card-lift group grid min-h-56 place-items-center border-dashed p-6 text-center hover:border-brass"
+          >
+            <span>
+              <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-rule bg-white transition group-hover:border-brass group-hover:text-brass">
+                <Plus className="h-6 w-6" />
+              </span>
+              <span className="mt-4 block font-display text-2xl">Create a new room</span>
+              <span className="mt-1 block text-[12px] text-ash">Photograph your space and start a new plan.</span>
+            </span>
+          </Link>
 
-        <div className="grid gap-4 md:grid-cols-3">
           {rooms.map((r, i) => (
             <motion.div
               key={r.id}
@@ -81,7 +85,7 @@ export default function RoomsPage() {
               </div>
             </motion.div>
           ))}
-        </div>
+        </div>}
       </div>
       <Footer />
     </main>
