@@ -153,6 +153,9 @@ export default function CapturePage() {
       widthFt: detected?.widthFt ?? 14, depthFt: detected?.depthFt ?? 12,
       vibeTags: vibe?.tags, vibePalette: vibe?.palette,
       searchTerms: vibe?.searchTerms,
+      // Keep the reference views with the spatial brief. Demo shots are public
+      // assets, and user shots remain available for the immediate canvas view.
+      capturePhotoUrls: shots.filter((s) => s.ok).map((s) => s.url),
       detected
     };
     sessionStorage.setItem("sightline:brief", JSON.stringify(brief));
