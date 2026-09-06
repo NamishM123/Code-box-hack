@@ -8,6 +8,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { TopView } from "@/components/canvas/TopView";
 import { ProductRail } from "@/components/canvas/ProductRail";
+import { ShoppingChat } from "@/components/canvas/ShoppingChat";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
@@ -246,6 +247,44 @@ export default function CanvasPage() {
     setSwapId(null);
   }
 
+  const existingCategories = useMemo(() => new Set(products.map((p) => p.category)), [products]);
+
+  /** Shopping-list chat: free text in, category inferred, several live candidates back. */
+  async function searchForChat(text: string): Promise<{ category: Category; results: Product[] }> {
+    if (!brief) return { category: "table", results: [] };
+    const res = await fetch("/api/search", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...brief, describe: text, topN: 6 })
+    });
+    if (!res.ok) throw new Error(`search ${res.status}`);
+    const json = await res.json();
+    return { category: json.category, results: (json.alternates ?? []) as Product[] };
+  }
+
+  /**
+   * The chat's decision has to actually change the room: replace the piece
+   * already in that category, or add this as a new piece and re-run layout
+   * so it lands somewhere sensible rather than floating unplaced.
+   */
+  function chooseFromChat(category: Category, product: Product) {
+    if (!brief) return;
+    const current = products.find((p) => p.category === category);
+    if (current) {
+      setProducts((prev) => prev.map((p) => (p.id === current.id ? product : p)));
+      setPlaced((prev) => prev.map((p) => (p.productId === current.id ? { ...p, productId: product.id, rationale: ["Added from chat."] } : p)));
+      setTotal((t) => t - current.price + product.price);
+      setLiveAlternates((prev) => ({ ...prev, [category]: (prev[category] || []).filter((p) => p.id !== product.id) }));
+    } else {
+      const nextProducts = [...products, product];
+      const ls = generateLayouts(brief, nextProducts, brief.detected || undefined);
+      setProducts(nextProducts);
+      setLayouts(ls);
+      setPlaced((ls[activeLayout] ?? ls[0]).placed);
+      setTotal(nextProducts.reduce((sum, p) => sum + p.price, 0));
+    }
+  }
+
   const roomName = brief ? `${(brief.style || "warm-minimal").replace("-", " ")} ${brief.roomType || "room"}` : "Room";
 
   const shareUrl = useMemo(() => {
@@ -396,7 +435,10 @@ export default function CanvasPage() {
           </div>
 
           <div className="space-y-4">
-            <ProductRail placed={placed} products={products} selectedId={selectedId} onSelect={setSelectedId} total={total} budget={brief.budget} onSwap={setSwapId} />
+            <ProductRail
+              placed={placed} products={products} selectedId={selectedId} onSelect={setSelectedId} total={total} budget={brief.budget} onSwap={setSwapId}
+              chat={<ShoppingChat onSearch={searchForChat} onChoose={chooseFromChat} existing={existingCategories} />}
+            />
             <SuggestionsPanel suggestions={suggestions} />
             {brief.vibePalette && (
               <div className="card p-4">

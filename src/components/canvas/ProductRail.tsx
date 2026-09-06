@@ -7,9 +7,10 @@ const SOURCE_LABEL: Record<string, string> = { amazon: "Amazon", facebook: "Face
 const FIT_LABEL = { fits: "Fits", tight: "Tight fit", conflict: "Conflict", unverified: "Unverified" };
 const FIT_STYLE = { fits: "text-brass border-brass/40", tight: "text-amber-600 border-amber-500/50", conflict: "text-red-600 border-red-500/50", unverified: "text-ash border-ash/40" };
 
-export function ProductRail({ placed, products, selectedId, onSelect, total, budget, onSwap }: {
+export function ProductRail({ placed, products, selectedId, onSelect, total, budget, onSwap, chat }: {
   placed: PlacedItem[]; products: Product[]; selectedId: string | null;
   onSelect: (id: string) => void; total: number; budget: number; onSwap: (id: string) => void;
+  chat?: React.ReactNode;
 }) {
   const byId = Object.fromEntries(products.map((p) => [p.id, p]));
   return (
@@ -70,6 +71,7 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
           );
         })}
       </ul>
+      {chat}
     </div>
   );
 }

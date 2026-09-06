@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { recommend } from "@/lib/recommend";
 import { hasSerpApi, searchAmazon, searchGoogleShopping } from "@/lib/sources/serpapi";
 import { hasApify, searchFacebookMarketplace } from "@/lib/sources/apify";
+import { inferCategory } from "@/lib/sources/dimensions";
 import type { Category, Product, RoomSpec } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -45,11 +46,14 @@ export async function POST(req: Request) {
   const wantLive = body.live !== false && (hasSerpApi() || hasApify());
 
   // Scoped re-search for one category, driven by the Swap drawer's describe
-  // box. Runs a fresh live query for just this category and returns several
-  // ranked candidates rather than a single pick.
-  if (body.onlyCategory) {
+  // box or the shopping-list chat box. Runs a fresh live query for just this
+  // category and returns several ranked candidates rather than a single pick.
+  // If no category is given (the chat box doesn't ask for one), infer it
+  // from the free text itself, e.g. "walnut floor lamp under $100" -> lamp.
+  if (body.onlyCategory || body.describe) {
+    const category = body.onlyCategory || (inferCategory(body.describe || "") as Category);
     if (!wantLive) {
-      return NextResponse.json({ category: body.onlyCategory, alternates: [], live: false, notes: ["Add SERPAPI_KEY or APIFY_TOKEN for live alternates."] });
+      return NextResponse.json({ category, alternates: [], live: false, notes: ["Add SERPAPI_KEY or APIFY_TOKEN for live alternates."] });
     }
     const target = Math.round(spec.budget / Math.max(1, spec.mustHave.length || 1));
     const styleWords = [body.describe, ...(body.searchTerms || []), body.describe ? "" : spec.style.replace("-", " ")]
@@ -57,13 +61,13 @@ export async function POST(req: Request) {
     let found: Product[] = [];
     const notes: string[] = [];
     try {
-      found = await fetchCategory(body.onlyCategory, styleWords, target);
+      found = await fetchCategory(category, styleWords, target);
     } catch (e) {
       notes.push(String((e as Error)?.message || e).slice(0, 160));
     }
     const ranked = rankCandidates(found, target, spec);
     return NextResponse.json({
-      category: body.onlyCategory,
+      category,
       alternates: ranked.slice(0, body.topN ?? ALT_LIMIT),
       live: true,
       poolSize: found.length,
