@@ -12,7 +12,7 @@ import { ShoppingChat } from "@/components/canvas/ShoppingChat";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
-import { generateLayouts, previewFit, reseat } from "@/lib/layout";
+import { generateLayouts, previewFit, reseat, type ReferencePlan } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
@@ -38,6 +38,10 @@ interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
   searchTerms?: string[];
   capturePhotoUrls?: string[];
+  /** Pieces already chosen from a Pinterest look, laid out as-is. */
+  lookProducts?: Product[];
+  /** Where those pieces stood in the picture, so the plan can copy it. */
+  lookPlan?: ReferencePlan;
 }
 
 type LiveListing = {
@@ -151,6 +155,22 @@ export default function CanvasPage() {
     const stored = sessionStorage.getItem("sightline:brief");
     const b: Brief = params.get("demo") ? DEMO_BRIEF : stored ? JSON.parse(stored) : DEMO_BRIEF;
     setBrief(b);
+
+    // 3b. Pieces picked from a Pinterest look arrive with the brief. They were
+    // already searched, ranked and pruned by hand in the lightbox, so lay them
+    // out as they are rather than spending another dozen searches re-finding
+    // them and possibly landing on different listings.
+    if (b.lookProducts?.length) {
+      const chosen = b.lookProducts;
+      setProducts(chosen);
+      setTotal(chosen.reduce((sum, product) => sum + product.price, 0));
+      setFeed({ live: true, poolSize: chosen.length, sources: [`${chosen.length} from your look`] });
+      const looked = generateLayouts(b, chosen, b.detected || undefined, b.lookPlan);
+      setLayouts(looked);
+      setPlaced(looked[0].placed);
+      setLoading(false);
+      return;
+    }
     (async () => {
       // Two feeds, run together. The Python catalog returns a small set of
       // publicly-listed items with confirmed dimensions; /api/search fans out
@@ -345,7 +365,10 @@ export default function CanvasPage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="pill">Canvas · Fig. 01</div>
-            <h1 className="font-display mt-3 text-4xl md:text-5xl">A {brief.style.replace("-", " ")} {brief.roomType || "room"}</h1>
+            {/* Guarded the same way roomName is: a brief saved by an older
+                build, or a shared link missing the field, has no style, and an
+                unguarded .replace here took the whole canvas down. */}
+            <h1 className="font-display mt-3 text-4xl md:text-5xl">A {(brief.style || "warm-minimal").replace("-", " ")} {brief.roomType || "room"}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ash">
               <span>{feet(brief.widthFt)} × {feet(brief.depthFt)}</span>
               <span className="text-rule">/</span>

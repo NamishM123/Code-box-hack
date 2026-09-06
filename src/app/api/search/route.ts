@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { recommend } from "@/lib/recommend";
-import { hasSerpApi, searchAmazon, searchGoogleShopping } from "@/lib/sources/serpapi";
-import { hasApify, searchFacebookMarketplace } from "@/lib/sources/apify";
+import { fetchCategory, hasAnyLiveSource } from "@/lib/sources/fanout";
 import { inferCategory } from "@/lib/sources/dimensions";
 import type { Category, Product, RoomSpec } from "@/lib/types";
 
@@ -43,7 +42,7 @@ export async function POST(req: Request) {
     vibeTags: body.vibeTags
   };
 
-  const wantLive = body.live !== false && (hasSerpApi() || hasApify());
+  const wantLive = body.live !== false && hasAnyLiveSource();
 
   // Scoped re-search for one category, driven by the Swap drawer's describe
   // box or the shopping-list chat box. Runs a fresh live query for just this
@@ -123,24 +122,6 @@ export async function POST(req: Request) {
     poolSize: pool.length,
     notes
   });
-}
-
-async function fetchCategory(category: Category, styleWords: string, maxPrice: number): Promise<Product[]> {
-  const query = `${styleWords} ${category}`.trim();
-  const tasks: Promise<Product[]>[] = [];
-
-  if (hasSerpApi()) {
-    tasks.push(searchGoogleShopping({ query, category, maxPrice: maxPrice * 2, limit: 12 }));
-    tasks.push(searchAmazon({ query, category, limit: 12 }));
-  }
-  if (hasApify()) {
-    tasks.push(searchFacebookMarketplace({ query, category, maxPrice: maxPrice * 2, limit: 10 }));
-  }
-
-  const settled = await Promise.allSettled(tasks);
-  const out: Product[] = [];
-  for (const s of settled) if (s.status === "fulfilled") out.push(...s.value);
-  return out;
 }
 
 /**

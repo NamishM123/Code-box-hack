@@ -134,6 +134,39 @@ function Piece({
 const REFERENCE_EDGE = 1280;
 
 /**
+ * The lens the reference frame is shot through: wide, and far enough back that
+ * the whole room is inside it.
+ *
+ * Deliberately not the camera the shopper is looking through. The image model
+ * is told to match this frame, so a 3D view orbited in close came back as a
+ * photograph of one chair rather than of the room. A fixed establishing shot
+ * means the render is always of the room, whatever the canvas happens to be
+ * showing when the frame is taken.
+ */
+const REFERENCE_FOV = 60;
+/** The room and a third again, so nothing sits on the edge of the frame. */
+const REFERENCE_MARGIN = 1.3;
+/** The corner the default view looks from, so the same two walls stand open. */
+const REFERENCE_YAW = (36 * Math.PI) / 180;
+
+function referenceCamera(room: RoomSpec, aspect: number) {
+  const camera = new THREE.PerspectiveCamera(REFERENCE_FOV, aspect, 0.1, 500);
+  const tanY = Math.tan((REFERENCE_FOV * Math.PI) / 360);
+  const tanX = tanY * Math.max(0.6, aspect);
+
+  // Seen from a corner a room is as wide as its plan diagonal and as tall as
+  // its walls. Whichever needs more of the frame sets how far back to stand.
+  const halfWide = (Math.hypot(room.widthFt, room.depthFt) / 2) * REFERENCE_MARGIN;
+  const halfTall = (WALL_HEIGHT_FT / 2) * REFERENCE_MARGIN;
+  const back = Math.max(halfWide / tanX, halfTall / tanY);
+
+  camera.position.set(Math.sin(REFERENCE_YAW) * back, WALL_HEIGHT_FT * 0.62, Math.cos(REFERENCE_YAW) * back);
+  camera.lookAt(0, WALL_HEIGHT_FT * 0.42, 0);
+  camera.updateProjectionMatrix();
+  return camera;
+}
+
+/**
  * Hands two grabs back out of the canvas: a lossless PNG for the shopper's own
  * export, and a smaller JPEG for the image model.
  *
@@ -142,27 +175,32 @@ const REFERENCE_EDGE = 1280;
  * the browser to us and from us to the provider, for structure a fraction of
  * the size carries just as well.
  */
-function Snapshot({ bind, bindReference }: { bind: (fn: () => string) => void; bindReference: (fn: () => string) => void }) {
-  const { gl, scene, camera } = useThree();
+function Snapshot({ room, bind, bindReference }: { room: RoomSpec; bind: (fn: () => string) => void; bindReference: (fn: () => string) => void }) {
+  const { gl, scene, camera, size } = useThree();
   useEffect(() => {
-    const draw = () => {
-      gl.render(scene, camera);
+    const draw = (through: THREE.Camera) => {
+      gl.render(scene, through);
       return gl.domElement;
     };
-    bind(() => draw().toDataURL("image/png"));
+    // The export is the shopper's own view: they framed it, they get it.
+    bind(() => draw(camera).toDataURL("image/png"));
     bindReference(() => {
-      const source = draw();
+      const source = draw(referenceCamera(room, size.width / size.height));
       const scale = Math.min(1, REFERENCE_EDGE / Math.max(source.width, source.height));
-      if (scale >= 1) return source.toDataURL("image/jpeg", 0.85);
-      const small = document.createElement("canvas");
-      small.width = Math.round(source.width * scale);
-      small.height = Math.round(source.height * scale);
-      const ctx = small.getContext("2d");
-      if (!ctx) return source.toDataURL("image/jpeg", 0.85);
-      ctx.drawImage(source, 0, 0, small.width, small.height);
-      return small.toDataURL("image/jpeg", 0.85);
+      const shrunk = scale < 1 ? document.createElement("canvas") : null;
+      const ctx = shrunk?.getContext("2d");
+      if (shrunk && ctx) {
+        shrunk.width = Math.round(source.width * scale);
+        shrunk.height = Math.round(source.height * scale);
+        ctx.drawImage(source, 0, 0, shrunk.width, shrunk.height);
+      }
+      const url = (shrunk && ctx ? shrunk : source).toDataURL("image/jpeg", 0.85);
+      // Put the shopper's view back. The grab renders through a different lens,
+      // and the canvas would otherwise sit on that frame until the next tick.
+      gl.render(scene, camera);
+      return url;
     });
-  }, [gl, scene, camera, bind, bindReference]);
+  }, [gl, scene, camera, size.width, size.height, room.widthFt, room.depthFt, bind, bindReference]);
   return null;
 }
 
@@ -531,7 +569,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             maxPolarAngle={Math.PI / 2 - 0.04}
             target={[0, 2.2, 0]}
           />
-          <Snapshot bind={bind} bindReference={bindReference} />
+          <Snapshot room={room} bind={bind} bindReference={bindReference} />
         </Canvas>
 
         {photoreal.status !== "idle" && (

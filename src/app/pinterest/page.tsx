@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Loader2, Search, X } from "lucide-react";
+import { Heart, Search, X } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { toggleLikedPin, listLikedPins, saveStolenLook } from "@/lib/storage";
-import { stealLook } from "@/lib/vibe";
+import { toggleLikedPin, listLikedPins } from "@/lib/storage";
+import { LookLightbox } from "@/components/pinterest/LookLightbox";
+import { SafeImage } from "@/components/SafeImage";
 
 /* ------------------------------------------------------------------ data -- */
 
@@ -260,10 +260,8 @@ export default function PinterestPage() {
   const [usingApi, setUsingApi] = useState(true);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [likedPins, setLikedPins] = useState<Set<string>>(new Set());
-  const [stealing, setStealing] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
-  const router = useRouter();
 
   useEffect(() => {
     setLikedPins(new Set(listLikedPins().map((p) => p.id)));
@@ -284,21 +282,6 @@ export default function PinterestPage() {
       return next;
     });
   }, []);
-
-  /** Hands the pin's image to the same vibe pipeline Brief's Inspiration box
-   * uses, then jumps straight to Brief (stage four) with it pre-filled --
-   * so the live scraper's very first search is shaped by this look. */
-  const stealTheLook = useCallback(async (pin: Pin) => {
-    if (stealing) return;
-    setStealing(true);
-    try {
-      const look = await stealLook(pin.srcLarge || pin.src);
-      saveStolenLook(look);
-      router.push("/capture");
-    } finally {
-      setStealing(false);
-    }
-  }, [stealing, router]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
@@ -518,114 +501,18 @@ export default function PinterestPage() {
       {/* lightbox */}
       <AnimatePresence>
         {selectedPin && (
-          <Lightbox
+          <LookLightbox
             pin={selectedPin}
+            room={room}
             liked={likedPins.has(selectedPin.id)}
             onToggleLike={() => toggleLike(selectedPin)}
             onClose={() => setSelectedPin(null)}
-            onSteal={() => stealTheLook(selectedPin)}
-            stealing={stealing}
           />
         )}
       </AnimatePresence>
 
       <Footer />
     </main>
-  );
-}
-
-/* ------------------------------------------------------------ lightbox -- */
-
-function Lightbox({
-  pin,
-  liked,
-  onToggleLike,
-  onClose,
-  onSteal,
-  stealing
-}: {
-  pin: Pin;
-  liked: boolean;
-  onToggleLike: () => void;
-  onClose: () => void;
-  onSteal: () => void;
-  stealing: boolean;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
-      style={{ background: "rgba(10,9,8,0.72)", backdropFilter: "blur(8px)" }}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 12 }}
-        transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
-        className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-hidden border border-rule bg-card"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center border border-white/40 bg-black/30 text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white hover:text-ink"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="overflow-auto">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={pin.srcLarge || pin.src}
-            alt={pin.alt}
-            className="block w-full"
-            style={{ aspectRatio: `1 / ${pin.aspect}` }}
-          />
-        </div>
-
-        <div className="flex flex-col gap-4 border-t border-rule p-5">
-          <div>
-            <h2 className="display-lg text-[22px]">{pin.title}</h2>
-            <p className="eyebrow mt-1.5">{pin.subtitle}</p>
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={onToggleLike}
-              aria-pressed={liked}
-              className={`btn px-5 py-2.5 ${liked ? "btn-primary" : "btn-light"}`}
-            >
-              <Heart
-                className="h-4 w-4"
-                fill={liked ? "currentColor" : "none"}
-                stroke="currentColor"
-                strokeWidth={1.6}
-              />
-              {liked ? "Liked" : "Like"}
-            </button>
-
-            <button
-              onClick={onSteal}
-              disabled={stealing}
-              className="btn btn-light px-5 py-2.5 disabled:opacity-70"
-            >
-              {stealing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {stealing ? "Reading the look…" : "Steal this Look"}
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 
@@ -714,16 +601,15 @@ function PinCard({
       onClick={onSelect}
     >
       <div
-        className="overflow-hidden border transition-colors duration-500"
+        className="relative overflow-hidden border transition-colors duration-500"
         style={{ borderColor: hovered ? "rgb(var(--ink))" : "rgb(var(--rule))" }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <SafeImage
           src={pin.src}
           alt={pin.alt}
+          label={pin.title}
           className="block w-full object-cover"
           style={{ aspectRatio: `1 / ${pin.aspect}` }}
-          loading="lazy"
         />
 
         <AnimatePresence>

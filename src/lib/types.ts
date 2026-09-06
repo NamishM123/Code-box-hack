@@ -1,4 +1,6 @@
-export type Source = "amazon" | "facebook" | "target" | "wayfair" | "ikea" | "westelm" | "cb2" | "article" | "other";
+export type Source =
+  | "amazon" | "facebook" | "target" | "wayfair" | "ikea" | "westelm" | "cb2" | "article"
+  | "homedepot" | "lowes" | "overstock" | "other";
 
 export type Category =
   | "sofa" | "chair" | "table" | "bed" | "rug" | "lamp" | "shelf" | "plant" | "art" | "desk" | "dresser" | "nightstand" | "mirror" | "tv";
@@ -58,6 +60,9 @@ export interface Opening {
 }
 
 export interface DetectedRoom {
+  /** Surface colours read off an inspiration picture, when there was one. */
+  wallColor?: string;
+  floorColor?: string;
   widthFt: number;
   depthFt: number;
   openings: Opening[];

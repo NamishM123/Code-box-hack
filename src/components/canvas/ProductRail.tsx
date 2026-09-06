@@ -2,6 +2,7 @@
 import { ExternalLink, Star } from "lucide-react";
 import type { PlacedItem, Product } from "@/lib/types";
 import { money } from "@/lib/utils";
+import { SafeImage } from "@/components/SafeImage";
 
 const SOURCE_LABEL: Record<string, string> = { amazon: "Amazon", facebook: "Facebook Marketplace", target: "Target", wayfair: "Wayfair", ikea: "IKEA", westelm: "West Elm", cb2: "CB2", article: "Article" };
 const FIT_LABEL = { fits: "Fits", tight: "Tight fit", conflict: "Conflict", unverified: "Unverified" };
@@ -37,7 +38,7 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
           return (
             <li key={p.productId}>
               <button onClick={() => onSelect(p.productId)} className={`flex w-full items-start gap-3 p-3 text-left transition ${sel ? "bg-butter/20" : "hover:bg-ink/[0.03]"}`}>
-                <img src={prod.image} alt="" className="h-16 w-16 flex-shrink-0 rounded-md object-cover" />
+                <SafeImage src={prod.image} alt={prod.title} label={prod.category} className="h-16 w-16 flex-shrink-0 rounded-md object-cover" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

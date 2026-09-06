@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { hasGemini, readVibe, type InlineImage } from "@/lib/sources/gemini";
+import type { InlineImage } from "@/lib/sources/gemini";
+import { VISION_KEYS, hasVision, readLook, visionProvider } from "@/lib/sources/vision";
 import { hasApify, scrapePinterest } from "@/lib/sources/apify";
 
 export const runtime = "nodejs";
@@ -28,16 +29,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "no_images", message: "Could not read any image." }, { status: 404 });
     }
 
-    if (!hasGemini()) {
-      // The client can still extract a palette locally; hand back the images it should read.
-      return NextResponse.json({ images: images.map(toDataUrl), vibe: null, source: "images_only" });
+    if (!hasVision()) {
+      // The client can still extract a palette locally, but it cannot read an
+      // inventory, so the shop will fall back to generic per-room queries. Say
+      // that plainly instead of returning a bare null.
+      return NextResponse.json({
+        images: images.map(toDataUrl),
+        vibe: null,
+        source: "images_only",
+        reason: `No vision key is reaching the server, so the picture can't be read. Looked for ${VISION_KEYS.join(" and ")}.`
+      });
     }
 
-    const vibe = await readVibe(images);
-    return NextResponse.json({ vibe, images: images.slice(0, 3).map(toDataUrl), source: "gemini" });
+    // readLook, not readVibe: the caller needs the inventory of what is
+    // actually in the picture, not just its palette, or it goes back to
+    // shopping a fixed category mix.
+    const vibe = await readLook(images);
+    return NextResponse.json({
+      vibe,
+      images: images.slice(0, 3).map(toDataUrl),
+      source: visionProvider()
+    });
   } catch (e) {
     return NextResponse.json(
-      { error: "vibe_failed", message: e instanceof Error ? e.message : String(e) },
+      {
+        error: "vibe_failed",
+        reason: `The picture could not be read: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200),
+        message: e instanceof Error ? e.message : String(e)
+      },
       { status: 502 }
     );
   }

@@ -30,15 +30,40 @@ export async function extractVibeFromUrl(url: string): Promise<Vibe> {
   return extractVibeFromImage(blob);
 }
 
+export interface LookItem {
+  category: string;
+  label: string;
+  searchTerm: string;
+  widthFt?: number;
+  depthFt?: number;
+}
+
 export interface RichVibe extends Vibe {
   styleLabel?: string;
   searchTerms?: string[];
   note?: string;
+  /** The pieces actually visible in the image, when Gemini read it. */
+  items?: LookItem[];
+  /** The room shell the image shows, so a plan can be built to its shape. */
+  widthFt?: number;
+  depthFt?: number;
+  wallColor?: string;
+  floorColor?: string;
+  openings?: { kind: "door" | "window"; wall: "N" | "S" | "E" | "W"; positionFt: number; widthFt: number; swingFt?: number }[];
 }
 
 export interface StolenLook {
   pinImage: string;
   vibe: RichVibe;
+  /**
+   * Which reader produced this. "local" means the pixel sampler ran: colours
+   * only, no inventory, so the shop falls back to generic per-room queries and
+   * the matches will not resemble the picture. The caller has to be able to say
+   * so rather than presenting a guess as a read.
+   */
+  source: "gemini" | "local";
+  /** Why the vision pass was skipped, when it was. */
+  reason?: string;
 }
 
 /**
@@ -51,11 +76,14 @@ export interface StolenLook {
  */
 export async function stealLook(imageUrl: string): Promise<StolenLook> {
   let blob: Blob | null = null;
+  let reason: string | undefined;
+
   try {
     const res = await fetch(imageUrl, { mode: "cors" });
     if (res.ok) blob = await res.blob();
+    else reason = `The image host refused the request (${res.status}).`;
   } catch {
-    /* CORS or network failure -- fall through to the local extractor below */
+    reason = "The image could not be fetched from the browser.";
   }
 
   if (blob) {
@@ -64,20 +92,25 @@ export async function stealLook(imageUrl: string): Promise<StolenLook> {
       form.append("images", new File([blob], "look.jpg", { type: blob.type || "image/jpeg" }));
       const res = await fetch("/api/pinterest", { method: "POST", body: form });
       const json = await res.json().catch(() => null);
-      if (res.ok && json?.vibe) return { pinImage: imageUrl, vibe: json.vibe };
+      if (res.ok && json?.vibe) {
+        return { pinImage: imageUrl, vibe: json.vibe, source: "gemini" };
+      }
+      // The route answers with its own reason — no key, or the model errored.
+      // Carrying it up is the difference between "these matches are generic
+      // because X" and a silently wrong terracotta lamp.
+      reason = json?.reason || json?.message || `The image reader returned ${res.status}.`;
     } catch {
-      /* API unreachable -- fall through to the local extractor below */
+      reason = "The image reader could not be reached.";
     }
   }
 
   try {
     const vibe = blob ? await extractVibeFromImage(blob) : await extractVibeFromUrl(imageUrl);
-    return { pinImage: imageUrl, vibe };
+    return { pinImage: imageUrl, vibe, source: "local", reason };
   } catch {
     // Placeholder/mock images (no real image bytes) can't be decoded into a
-    // bitmap. A stolen look should never throw -- worst case, a sensible
-    // default vibe still lets Brief's search proceed.
-    return { pinImage: imageUrl, vibe: fallbackVibe() };
+    // bitmap. A stolen look should never throw.
+    return { pinImage: imageUrl, vibe: fallbackVibe(), source: "local", reason };
   }
 }
 
