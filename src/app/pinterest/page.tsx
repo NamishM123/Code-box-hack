@@ -22,17 +22,62 @@ interface Pin {
   photographer?: string;
 }
 
-const TABS: { key: Category; label: string; icon: string }[] = [
-  { key: "office", label: "Office", icon: "🖥" },
-  { key: "bedroom", label: "Bedroom", icon: "🛏" },
-  { key: "living-room", label: "Living Room", icon: "🛋" },
+const TABS: { key: Category; label: string; Icon: (props: { color: string }) => JSX.Element }[] = [
+  { key: "office", label: "Office", Icon: DeskIcon },
+  { key: "bedroom", label: "Bedroom", Icon: BedIcon },
+  { key: "living-room", label: "Living Room", Icon: SofaIcon },
 ];
 
 const HUE: Record<Category, { bg: string; accent: string; muted: string }> = {
-  office: { bg: "#F7F5F0", accent: "#8B7355", muted: "#C4B59D" },
-  bedroom: { bg: "#F5F0F0", accent: "#9B7B8A", muted: "#C9B0BC" },
-  "living-room": { bg: "#F0F3F0", accent: "#6B8F71", muted: "#A3C4A8" },
+  office: { bg: "#141311", accent: "#8B7355", muted: "#C4B59D" },
+  bedroom: { bg: "#141213", accent: "#9B7B8A", muted: "#C9B0BC" },
+  "living-room": { bg: "#111411", accent: "#6B8F71", muted: "#A3C4A8" },
 };
+
+/* ---- minimalist furniture icons (stroke-only, currentColor-free so the ---- */
+/* ---- active tab color can be passed straight in) -------------------------- */
+
+function DeskIcon({ color }: { color: string }) {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M9 4h6v5H9V4ZM3 9h18M5 9v11M19 9v11"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BedIcon({ color }: { color: string }) {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M3 19v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 19v2M21 19v2M3 15h18M6 10V6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SofaIcon({ color }: { color: string }) {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M5 12V8a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v4M4 12h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1ZM4 17v2M20 17v2"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 /* ---- Unsplash API fetch ---- */
 
@@ -279,17 +324,10 @@ export default function PinterestPage() {
       <Nav />
 
       {/* hero */}
-      <section className="mx-auto max-w-[1120px] px-6 pb-6 pt-32 text-center md:pt-36">
-        <p className="eyebrow mb-3" style={{ color: palette.accent }}>
-          Curated inspiration
-        </p>
-        <h1 className="font-display text-4xl md:text-5xl lg:text-6xl">
-          Pinterest
+      <section className="mx-auto max-w-[1120px] px-6 pb-8 pt-32 text-center md:pt-36">
+        <h1 className="font-display text-3xl uppercase tracking-[0.08em] text-white md:text-4xl lg:text-5xl">
+          Curated Inspiration
         </h1>
-        <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-ash">
-          Scroll through curated room inspo — save what speaks to you, and
-          let your next space take shape.
-        </p>
       </section>
 
       {/* category tabs — large, centered, evenly spaced */}
@@ -303,16 +341,18 @@ export default function PinterestPage() {
                 onClick={() => setCategory(tab.key)}
                 className="relative overflow-hidden rounded-2xl px-4 py-5 text-center font-medium transition-all duration-300 md:rounded-3xl md:px-6 md:py-7"
                 style={{
-                  background: active ? palette.accent : "rgba(255,255,255,0.8)",
+                  background: active ? palette.accent : "rgba(255,255,255,0.06)",
                   color: active ? "#fff" : palette.accent,
-                  border: active ? `2px solid ${palette.accent}` : `2px solid ${palette.muted}55`,
+                  border: active ? `2px solid ${palette.accent}` : `2px solid ${palette.muted}33`,
                   boxShadow: active
                     ? `0 8px 32px -8px ${palette.accent}66`
-                    : "0 2px 12px -4px rgba(0,0,0,0.06)",
+                    : "0 2px 12px -4px rgba(0,0,0,0.35)",
                   transform: active ? "scale(1.02)" : "scale(1)",
                 }}
               >
-                <span className="block text-2xl md:text-3xl">{tab.icon}</span>
+                <span className="flex items-center justify-center">
+                  <tab.Icon color={active ? "#fff" : palette.accent} />
+                </span>
                 <span className="mt-2 block text-sm font-semibold tracking-wide md:text-base">
                   {tab.label}
                 </span>
@@ -416,7 +456,7 @@ function Lightbox({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 28 }}
-        className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-[#1a1a1c] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -440,8 +480,8 @@ function Lightbox({
 
         <div className="flex flex-col gap-3 p-5">
           <div>
-            <h2 className="text-lg font-bold text-ink">{pin.title}</h2>
-            <p className="mt-0.5 text-[13px] text-ash">{pin.subtitle}</p>
+            <h2 className="text-lg font-bold text-white">{pin.title}</h2>
+            <p className="mt-0.5 text-[13px] text-white/60">{pin.subtitle}</p>
           </div>
 
           <div className="flex items-center justify-between">
@@ -449,9 +489,9 @@ function Lightbox({
               onClick={onToggleLike}
               className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-all duration-200 active:scale-95"
               style={{
-                background: liked ? "#FEE2E2" : "#F5F5F4",
-                color: liked ? "#E60023" : "#6E6C67",
-                border: liked ? "1.5px solid #FECACA" : "1.5px solid #E7E5E0",
+                background: liked ? "#3A1F22" : "rgba(255,255,255,0.08)",
+                color: liked ? "#FF6B7A" : "#B8B5AE",
+                border: liked ? "1.5px solid #5A2A2E" : "1.5px solid rgba(255,255,255,0.15)",
               }}
             >
               <Heart
@@ -624,7 +664,7 @@ function PinCard({
       </div>
 
       <div className="mt-2 px-1">
-        <p className="truncate text-[13px] font-semibold text-ink">
+        <p className="truncate text-[13px] font-semibold text-white">
           {pin.title}
         </p>
         <p className="text-[11px]" style={{ color: palette.muted }}>
