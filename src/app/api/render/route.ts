@@ -17,6 +17,12 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+/**
+ * Leave a couple of seconds under maxDuration so the request is cut off here,
+ * with an explanation, rather than by the platform with a blank 504.
+ */
+const CALL_TIMEOUT_MS = 55_000;
+
 const GEMINI_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 const GEMINI_BASE = (process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com").replace(/\/$/, "");
 const OPENAI_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5";
@@ -170,9 +176,16 @@ export async function POST(req: Request) {
       ms: Date.now() - started
     });
   } catch (err) {
+    // A timeout is the one failure with an obvious remedy, so it says what it is.
+    const timedOut = err instanceof Error && (err.name === "TimeoutError" || /abort|timeout/i.test(err.message));
     return NextResponse.json(
       {
-        error: err instanceof Error ? err.message : "Render failed.",
+        error: timedOut
+          ? `${provider} did not return an image within ${CALL_TIMEOUT_MS / 1000}s, which is the ceiling this function runs under. Lower OPENAI_IMAGE_QUALITY to medium, drop OPENAI_IMAGE_SIZE to 1024x1024, or set RENDER_PROVIDER=gemini, which is built for speed.`
+          : err instanceof Error
+            ? err.message
+            : "Render failed.",
+        timedOut,
         provider,
         model: provider === "openai" ? OPENAI_MODEL : GEMINI_MODEL,
         ms: Date.now() - started
@@ -226,7 +239,7 @@ async function renderWithGemini(prompt: string, layout: Reference | null, refere
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key },
     body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE", "TEXT"] } }),
-    signal: AbortSignal.timeout(55000)
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
   });
 
   const json = await res.json();
@@ -264,7 +277,7 @@ async function renderWithOpenAI(prompt: string, layout: Reference | null, refere
     method: "POST",
     headers: { authorization: `Bearer ${key}` },
     body: form,
-    signal: AbortSignal.timeout(55000)
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
   });
 
   const json = await res.json();
