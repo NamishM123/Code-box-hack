@@ -5,20 +5,42 @@
 @tailwind utilities;
 
 :root {
-  --paper: #F0EFEC;
-  --paper-2: #FFFFFF;
-  --ink: #0C0C0D;
-  --panel: #141416;
-  --panel-2: #1D1D20;
-  --ash: #6E6C67;
-  --rule: #DCDAD4;
-  --brass: #B4530F;
-  --butter: #F2B441;
-  --flame: #FF5A1F;
-  --ocean: #2F5CFF;
-  --violet: #7C4DFF;
-  --sage: #4C7A5A;
-  --clay: #C9603F;
+  /* space-separated so Tailwind can apply opacity modifiers, e.g. bg-paper/40 */
+  --paper: 240 239 236;
+  --card: 255 255 255;
+  --ink: 12 12 13;
+  --panel: 20 20 22;
+  --overlay: 29 29 32;
+  --surface: 231 229 224;
+  --ash: 110 108 103;
+  --rule: 220 218 212;
+  --brass: 180 83 15;
+  --butter: 242 180 65;
+  --flame: 255 90 31;
+  --ocean: 47 92 255;
+  --violet: 124 77 255;
+  --sage: 76 122 90;
+  --clay: 201 96 63;
+}
+
+/* Explicit choice wins; otherwise the system setting decides. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: 18 18 20;
+    --card: 27 27 30;
+    --ink: 244 243 240;
+    --surface: 35 34 38;
+    --ash: 166 163 156;
+    --rule: 51 50 55;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: 18 18 20;
+  --card: 27 27 30;
+  --ink: 244 243 240;
+  --surface: 35 34 38;
+  --ash: 166 163 156;
+  --rule: 51 50 55;
 }
 
 html {
@@ -27,13 +49,14 @@ html {
 }
 
 html, body {
-  background: var(--paper);
-  color: var(--ink);
+  background: rgb(var(--paper));
+  color: rgb(var(--ink));
   font-family: "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "ss01", "cv11";
+  transition: background-color .25s ease, color .25s ease;
 }
 
-::selection { background: var(--ink); color: var(--paper); }
+::selection { background: rgb(var(--ink)); color: rgb(var(--paper)); }
 
 @layer components {
   /* ---------------------------------------------------------------- type ---- */
@@ -63,7 +86,7 @@ html, body {
     font-weight: 500;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--ash);
+    color: rgb(var(--ash));
   }
 
   .mono {
@@ -74,8 +97,8 @@ html, body {
 
   .card {
     @apply relative overflow-hidden rounded-2xl;
-    background: var(--paper-2);
-    border: 1px solid var(--rule);
+    background: rgb(var(--card));
+    border: 1px solid rgb(var(--rule));
     box-shadow: 0 1px 2px rgba(12, 12, 13, 0.04), 0 12px 32px -24px rgba(12, 12, 13, 0.35);
   }
 
@@ -89,15 +112,15 @@ html, body {
   /* dark product panels, the way Butter frames its app screenshots */
   .panel {
     @apply relative overflow-hidden rounded-[28px];
-    background: var(--panel);
+    background: rgb(var(--panel));
     border: 1px solid rgba(255,255,255,0.08);
     color: #F4F3F0;
     box-shadow: 0 40px 80px -50px rgba(12,12,13,0.9);
   }
-  .panel-soft { background: var(--panel-2); }
+  .panel-soft { background: rgb(var(--overlay)); }
 
-  .hair { border: 1px solid var(--rule); }
-  .divider { height: 1px; background: var(--rule); }
+  .hair { border: 1px solid rgb(var(--rule)); }
+  .divider { height: 1px; background: rgb(var(--rule)); }
 
   .vignette::after {
     content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -108,16 +131,16 @@ html, body {
 
   .pill {
     @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em];
-    border: 1px solid var(--rule);
+    border: 1px solid rgb(var(--rule));
     background: rgba(255,255,255,0.75);
-    color: var(--ash);
+    color: rgb(var(--ash));
   }
 
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
-    border: 1px solid var(--rule);
-    background: var(--paper-2);
-    color: var(--ash);
+    border: 1px solid rgb(var(--rule));
+    background: rgb(var(--card));
+    color: rgb(var(--ash));
   }
 
   /* the little inline glyph tiles Butter drops between words */
@@ -134,14 +157,14 @@ html, body {
     transition: transform .25s cubic-bezier(.2,.8,.2,1), background-color .25s ease, color .25s ease, border-color .25s ease;
   }
   .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-primary { background: rgb(var(--ink)); color: rgb(var(--paper)); }
   .btn-primary:hover { background: #26262A; }
-  .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
-  .btn-ghost:hover { border-color: var(--ink); }
-  .btn-brass { background: var(--butter); color: var(--ink); }
+  .btn-ghost { background: transparent; color: rgb(var(--ink)); border: 1px solid rgb(var(--rule)); }
+  .btn-ghost:hover { border-color: rgb(var(--ink)); }
+  .btn-brass { background: rgb(var(--butter)); color: rgb(var(--ink)); }
   .btn-brass:hover { background: #E9A72C; }
-  .btn-light { background: var(--paper-2); color: var(--ink); border: 1px solid var(--rule); }
-  .btn-light:hover { background: #fff; border-color: var(--ink); }
+  .btn-light { background: rgb(var(--card)); color: rgb(var(--ink)); border: 1px solid rgb(var(--rule)); }
+  .btn-light:hover { background: #fff; border-color: rgb(var(--ink)); }
 
   .link-underline {
     background-image: linear-gradient(currentColor, currentColor);
@@ -205,7 +228,7 @@ html, body {
 .hatch { background-image: repeating-linear-gradient(45deg, rgba(12,12,13,0.14) 0 2px, transparent 2px 8px); }
 
 .serif-quote::before {
-  content: "\201C"; font-size: 2em; line-height: 0; color: var(--ink);
+  content: "\201C"; font-size: 2em; line-height: 0; color: rgb(var(--ink));
   margin-right: .1em; vertical-align: -0.15em;
 }
 

@@ -5,21 +5,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#F0EFEC",
-        card: "#FFFFFF",
-        ink: "#0C0C0D",
-        panel: "#141416",
-        overlay: "#1D1D20",
-        surface: "#E7E5E0",
-        ash: "#6E6C67",
-        rule: "#DCDAD4",
-        brass: "#B4530F",
-        butter: "#F2B441",
-        flame: "#FF5A1F",
-        ocean: "#2F5CFF",
-        violet: "#7C4DFF",
-        sage: "#4C7A5A",
-        clay: "#C9603F"
+        // rgb(var(--x) / <alpha-value>) so utilities like bg-paper/40 keep
+        // working while also responding to the light/dark theme toggle.
+        paper: "rgb(var(--paper) / <alpha-value>)",
+        card: "rgb(var(--card) / <alpha-value>)",
+        ink: "rgb(var(--ink) / <alpha-value>)",
+        panel: "rgb(var(--panel) / <alpha-value>)",
+        overlay: "rgb(var(--overlay) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        ash: "rgb(var(--ash) / <alpha-value>)",
+        rule: "rgb(var(--rule) / <alpha-value>)",
+        brass: "rgb(var(--brass) / <alpha-value>)",
+        butter: "rgb(var(--butter) / <alpha-value>)",
+        flame: "rgb(var(--flame) / <alpha-value>)",
+        ocean: "rgb(var(--ocean) / <alpha-value>)",
+        violet: "rgb(var(--violet) / <alpha-value>)",
+        sage: "rgb(var(--sage) / <alpha-value>)",
+        clay: "rgb(var(--clay) / <alpha-value>)"
       },
       fontFamily: {
         display: ['"Inter Tight"', "Inter", "ui-sans-serif", "system-ui", "sans-serif"],

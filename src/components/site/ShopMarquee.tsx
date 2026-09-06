@@ -8,7 +8,7 @@ import { SHOPS } from "./Glyphs";
 export function ShopMarquee() {
   const row = [...SHOPS, ...SHOPS];
   return (
-    <section id="shops" className="border-y border-rule/70 bg-white/40">
+    <section id="shops" className="border-y border-rule/70 bg-card/40">
       <div className="mx-auto max-w-[1320px] px-5 pt-8">
         <div className="text-center text-[11px] font-medium uppercase tracking-[0.22em] text-ash">
           One room. Every shop. Priced side by side.
