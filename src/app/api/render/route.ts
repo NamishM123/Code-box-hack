@@ -77,6 +77,8 @@ interface Body {
   layoutImage?: string;
   /** Fast trades rendering quality for a much shorter wait. */
   speed?: "fast" | "best";
+  /** Stream partial images back as they form, rather than waiting for the last one. */
+  stream?: boolean;
 }
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -165,6 +167,14 @@ export async function POST(req: Request) {
   const prompt = buildPrompt(body, references, Boolean(layout));
 
   const gathered = Date.now();
+
+  // Streaming does not make the model finish sooner; it makes the wait visible.
+  // A recognisable image appears in a few seconds and sharpens, instead of a
+  // spinner sitting on nothing for half a minute.
+  if (body.stream && provider === "openai") {
+    return streamFromOpenAI(prompt, layout, references, body.speed !== "best", started, gathered);
+  }
+
   try {
     const callStarted = Date.now();
     const image =
@@ -228,6 +238,112 @@ function buildPrompt(body: Body, references: Reference[], hasLayout: boolean) {
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function openaiForm(prompt: string, layout: Reference | null, references: Reference[], fast: boolean) {
+  const form = new FormData();
+  form.append("model", OPENAI_MODEL);
+  form.append("prompt", prompt);
+  form.append("size", process.env.OPENAI_IMAGE_SIZE || (fast ? "1024x1024" : "1536x1024"));
+  form.append("quality", process.env.OPENAI_IMAGE_QUALITY || (fast ? "medium" : "high"));
+
+  const files = [layout, ...references].filter(Boolean) as Reference[];
+  if (!files.length) throw new Error("Nothing to render from: no layout frame and no product photos.");
+  files.forEach((ref, i) => {
+    const ext = ref.mimeType.includes("png") ? "png" : ref.mimeType.includes("webp") ? "webp" : "jpg";
+    form.append("image[]", new Blob([new Uint8Array(ref.bytes)], { type: ref.mimeType }), `${i === 0 && layout ? "layout" : "product"}-${i}.${ext}`);
+  });
+  return form;
+}
+
+/**
+ * Relays OpenAI's partial images straight through to the browser as they
+ * arrive, so the view can show the picture forming.
+ */
+function streamFromOpenAI(
+  prompt: string,
+  layout: Reference | null,
+  references: Reference[],
+  fast: boolean,
+  started: number,
+  gathered: number
+) {
+  const form = openaiForm(prompt, layout, references, fast);
+  form.append("stream", "true");
+  form.append("partial_images", "2");
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (payload: Record<string, unknown>) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      try {
+        const res = await fetch(`${OPENAI_BASE}/v1/images/edits`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+          body: form,
+          signal: AbortSignal.timeout(CALL_TIMEOUT_MS)
+        });
+        if (!res.ok || !res.body) {
+          const detail = await res.text().catch(() => "");
+          send({ type: "error", error: detail.slice(0, 400) || `OpenAI returned ${res.status}.` });
+          return controller.close();
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let partials = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+          for (const block of events) {
+            const line = block.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            const raw = line.slice(5).trim();
+            if (!raw || raw === "[DONE]") continue;
+            let event: any;
+            try {
+              event = JSON.parse(raw);
+            } catch {
+              continue;
+            }
+            const b64 = event?.b64_json || event?.data?.[0]?.b64_json;
+            if (!b64) continue;
+            const final = typeof event?.type === "string" && event.type.endsWith(".completed");
+            if (!final) partials++;
+            send({
+              type: final ? "done" : "partial",
+              image: `data:image/png;base64,${b64}`,
+              provider: "openai",
+              model: OPENAI_MODEL,
+              partials,
+              referenceMs: gathered - started,
+              ms: Date.now() - started
+            });
+          }
+        }
+        controller.close();
+      } catch (err) {
+        const timedOut = err instanceof Error && (err.name === "TimeoutError" || /abort|timeout/i.test(err.message));
+        send({
+          type: "error",
+          error: timedOut
+            ? `openai did not return an image within ${CALL_TIMEOUT_MS / 1000}s. Lower OPENAI_IMAGE_QUALITY, drop OPENAI_IMAGE_SIZE, or set RENDER_PROVIDER=gemini.`
+            : err instanceof Error
+              ? err.message
+              : "Render failed."
+        });
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive" }
+  });
 }
 
 /** Google: everything goes in one multimodal request. */

@@ -230,9 +230,26 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
     download(grab.current(), `sightline-room-${room.widthFt.toFixed(0)}x${room.depthFt.toFixed(0)}.png`);
   }
 
-  async function renderPhotoreal() {
-    setPhotoreal({ status: "working" });
-    const pieces = placed
+  /**
+   * A render is worth keeping: the same room, the same pieces and the same
+   * speed produce the same picture, so coming back to this tab should not cost
+   * another half minute and another call.
+   */
+  function signature(pieces: unknown, mode: string) {
+    return `sightline:render:${mode}:${JSON.stringify(pieces)}`;
+  }
+
+  function cached(key: string) {
+    try {
+      return sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  /** What the render is of, independent of the frame that illustrates it. */
+  function piecesForRender() {
+    return placed
       .map((item) => {
         const product = byId[item.productId];
         if (!product) return null;
@@ -250,29 +267,91 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         };
       })
       .filter(Boolean);
+  }
+
+  async function renderPhotoreal(force = false) {
+    const pieces = piecesForRender();
+    const key = signature(pieces, speed);
+    if (!force) {
+      const hit = cached(key);
+      if (hit) return setPhotoreal({ status: "done", image: hit, ms: 0 });
+    }
+
+    setPhotoreal({ status: "working" });
+
+    const payload = JSON.stringify({
+      layoutImage: grabReference.current?.(),
+      speed,
+      stream: true,
+      widthFt: room.widthFt,
+      depthFt: room.depthFt,
+      style: room.style,
+      roomType: room.roomType,
+      palette: detected?.palette,
+      lightingNote: detected?.lightingNote,
+      pieces
+    });
 
     try {
-      const res = await fetch("/api/render", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          // the frame on screen right now is the layout to match
-          layoutImage: grabReference.current?.(),
-          speed,
-          widthFt: room.widthFt,
-          depthFt: room.depthFt,
-          style: room.style,
-          roomType: room.roomType,
-          palette: detected?.palette,
-          lightingNote: detected?.lightingNote,
-          pieces
-        })
-      });
+      const res = await fetch("/api/render", { method: "POST", headers: { "content-type": "application/json" }, body: payload });
+
+      // Streaming replies arrive as events; everything else is one JSON body.
+      if (res.ok && res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let last: any = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
+          for (const block of blocks) {
+            const line = block.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            let event: any;
+            try {
+              event = JSON.parse(line.slice(5).trim());
+            } catch {
+              continue;
+            }
+            if (event.type === "error") {
+              return setPhotoreal({ status: "error", error: event.error });
+            }
+            last = event;
+            // show each partial the moment it lands
+            setPhotoreal({
+              status: event.type === "done" ? "done" : "working",
+              image: event.image,
+              provider: event.provider,
+              model: event.model,
+              ms: event.ms,
+              providerMs: event.providerMs
+            });
+          }
+        }
+        if (last?.image) {
+          setPhotoreal((prev) => ({ ...prev, status: "done" }));
+          try {
+            sessionStorage.setItem(key, last.image);
+          } catch {
+            /* a full or blocked store just means no cache */
+          }
+        }
+        return;
+      }
+
       const json = await res.json();
       if (!res.ok) {
         return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).`, provider: json?.provider, model: json?.model, ms: json?.ms });
       }
       setPhotoreal({ status: "done", image: json.image, provider: json.provider, model: json.model, ms: json.ms, providerMs: json.providerMs });
+      try {
+        sessionStorage.setItem(key, json.image);
+      } catch {
+        /* no cache is not a failure */
+      }
     } catch (err) {
       setPhotoreal({ status: "error", error: err instanceof Error ? err.message : "Render failed." });
     }
@@ -288,6 +367,16 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
   const kicked = useRef(false);
   useEffect(() => {
     if (!auto || kicked.current) return;
+
+    // A room already rendered needs nothing from the canvas, so it shows at
+    // once rather than waiting on a frame it is not going to send.
+    const hit = cached(signature(piecesForRender(), speed));
+    if (hit) {
+      kicked.current = true;
+      setPhotoreal({ status: "done", image: hit, ms: 0 });
+      return;
+    }
+
     const timer = setTimeout(() => {
       if (!grab.current) return;
       kicked.current = true;
@@ -295,7 +384,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
     }, 900);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, placed]);
+  }, [auto, placed, speed]);
 
   return (
     <div className="card h-[560px]">
@@ -320,7 +409,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             <Gauge className="h-3 w-3" />
             {speed === "fast" ? "Fast" : "Best"}
           </button>
-          <button onClick={renderPhotoreal} disabled={photoreal.status === "working"} className={TOOL_BUTTON} title="Render this room from the pieces you chose">
+          <button onClick={() => renderPhotoreal()} disabled={photoreal.status === "working"} className={TOOL_BUTTON} title="Render this room from the pieces you chose">
             {photoreal.status === "working" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             Photoreal
           </button>
@@ -394,10 +483,22 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         {photoreal.status !== "idle" && (
           <div className="absolute inset-0 flex items-center justify-center bg-panel/95 p-4">
             {photoreal.status === "working" && (
-              <div className="text-center text-paper">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                <div className="mt-4 font-display text-2xl">Rendering the room</div>
-                <div className="mt-1 text-[12px] opacity-70">Sending the layout and the photos of the pieces you chose.</div>
+              <div className="flex h-full w-full flex-col items-center justify-center text-center text-paper">
+                {photoreal.image ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoreal.image} alt="Render in progress" className="min-h-0 flex-1 rounded-xl object-contain" />
+                    <div className="mt-3 flex items-center gap-2 text-[12px] opacity-70">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sharpening…
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <div className="mt-4 font-display text-2xl">Rendering the room</div>
+                    <div className="mt-1 text-[12px] opacity-70">Sending the layout and the photos of the pieces you chose.</div>
+                  </>
+                )}
               </div>
             )}
             {photoreal.status === "error" && (
@@ -420,7 +521,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
                       {photoreal.providerMs ? ` (${((photoreal.providerMs || 0) / 1000).toFixed(1)}s in the model)` : ""}
                     </span>
                   )}
-                  <button onClick={renderPhotoreal} className="btn btn-light text-xs">
+                  <button onClick={() => renderPhotoreal(true)} className="btn btn-light text-xs">
                     <Sparkles className="h-3.5 w-3.5" /> Render again
                   </button>
                   {!auto && (
