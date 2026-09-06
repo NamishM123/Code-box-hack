@@ -3,8 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Check, ImagePlus, Loader2, Ruler, Sun, X, ArrowRight, Sparkles, Upload, Heart, Search } from "lucide-react";
-import { Nav } from "@/components/Nav";
-import { Footer } from "@/components/Footer";
 import { detectFromFiles, scoreQuality } from "@/lib/detectRoom";
 import { extractVibeFromImage, type RichVibe } from "@/lib/vibe";
 import { takeStolenLook, listLikedPins, type LikedPin } from "@/lib/storage";
@@ -204,30 +202,18 @@ export default function CapturePage() {
 
   return (
     <main className="min-h-screen">
-      <Nav />
-      <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
+      <div className="mx-auto max-w-5xl px-6 pb-20 pt-12">
         <Stepper step={step} />
         <AnimatePresence mode="wait">
           {step === "frame" && (
-            <Section key="frame" title="Frame the room" subtitle="Choose the room and the goal. This shapes the capture guide and the recommendation.">
-              <div className="grid gap-6 md:grid-cols-2">
-                <PanelGroup label="Room type" items={[
-                  { k: "living", l: "Living" },
-                  { k: "bedroom", l: "Bedroom" },
-                  { k: "office", l: "Office" },
-                  { k: "studio", l: "Studio" }
-                ]} value={roomType} onChange={(v) => setRoomType(v as RoomType)} />
-                <PanelGroup label="Goal" items={[
-                  { k: "functional", l: "Make it functional" },
-                  { k: "storage", l: "Add storage" },
-                  { k: "seating", l: "Replace seating" },
-                  { k: "refresh", l: "Refresh the look" }
-                ]} value={goal} onChange={(v) => setGoal(v as Goal)} />
-              </div>
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-                <button className="text-sm text-brass hover:underline" onClick={() => { setDemoCaptureEnabled(true); setShots(EMPTY_ROOM_DEMO); setStep("capture"); }}>Use demo room</button>
-                <NextBar onNext={() => setStep("capture")} />
-              </div>
+            <Section key="frame" title="Frame the room" subtitle="Choose the room type. This shapes the capture guide and the recommendation.">
+              <PanelGroup label="Room type" items={[
+                { k: "living", l: "Living" },
+                { k: "bedroom", l: "Bedroom" },
+                { k: "office", l: "Office" },
+                { k: "studio", l: "Studio" }
+              ]} value={roomType} onChange={(v) => setRoomType(v as RoomType)} />
+              <NextBar onNext={() => setStep("capture")} />
             </Section>
           )}
 
@@ -253,7 +239,6 @@ export default function CapturePage() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ash">
                     <span>{shots.length}/12 photos · {okCount} usable</span>
-                    {isDemoCapture && <><span className="text-brass">Empty-room demo set</span><button className="text-ink underline underline-offset-4" onClick={() => { setDemoCaptureEnabled(false); setShots([]); }}>Use my own photos</button></>}
                   </div>
                 </div>
                 <div className="card p-4">
@@ -271,11 +256,11 @@ export default function CapturePage() {
               <NextBar
                 onBack={() => setStep("frame")}
                 onNext={analyze}
-                nextLabel={analyzing ? "Analyzing…" : isDemoCapture ? "Analyze demo room" : "Analyze the room"}
+                nextLabel={analyzing ? "Analyzing…" : "Analyze"}
                 disabled={!canAnalyze || analyzing}
                 icon={analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
               />
-              {!canAnalyze && <div className="mt-2 text-right text-[11px] text-ash">Add 6 usable photos to continue, or use the demo room.</div>}
+              {!canAnalyze && <div className="mt-2 text-right text-[11px] text-ash">Add 6 usable photos to continue.</div>}
             </Section>
           )}
 
@@ -362,7 +347,7 @@ export default function CapturePage() {
                       <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Inspiration</div>
                       <Sparkles className="h-4 w-4 text-brass" />
                     </div>
-                    <p className="mt-2 text-[12px] text-ash">Pick from your liked Pinterest saves, search Unsplash, or upload a screenshot.</p>
+                    <p className="mt-2 text-[12px] text-ash">Pick from your saved ideas, search Unsplash, or upload a screenshot.</p>
 
                     {likedPins.length > 0 && (
                       <div className="mt-4">
@@ -455,7 +440,6 @@ export default function CapturePage() {
           )}
         </AnimatePresence>
       </div>
-      <Footer />
     </main>
   );
 }

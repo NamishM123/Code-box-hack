@@ -369,8 +369,8 @@ export default function PinterestPage() {
 
       {/* hero */}
       <section className="mx-auto max-w-[1120px] px-6 pb-8 pt-32 text-center md:pt-36">
-        <p className="eyebrow mb-4">Curated inspiration</p>
-        <h1 className="display-xl text-[clamp(40px,7vw,76px)]">Pinterest</h1>
+        <p className="eyebrow mb-4">Curated Inspiration</p>
+        <h1 className="display-xl text-[clamp(40px,7vw,76px)]">Ideas</h1>
         <p className="caption mx-auto mt-5 max-w-md normal-case tracking-[0.08em]">
           Search a vibe, pick a room, or do both. Save what speaks to you and let
           your next space take shape.

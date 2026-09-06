@@ -15,7 +15,7 @@ import { MarketplaceCarousel } from "./MarketplaceCarousel";
 
 const PAGES = [
   { label: "Product", href: "/product" },
-  { label: "Pinterest", href: "/pinterest" },
+  { label: "Ideas", href: "/pinterest" },
   { label: "How it works", href: "/how-it-works" },
   { label: "Your Rooms", href: "/rooms" }
 ];

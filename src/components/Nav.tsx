@@ -6,7 +6,7 @@ import { AuthButton } from "@/components/AuthButton";
 
 const LINKS = [
   { label: "Product", href: "/product" },
-  { label: "Pinterest", href: "/pinterest" },
+  { label: "Ideas", href: "/pinterest" },
   { label: "How it works", href: "/how-it-works" },
   { label: "Your Rooms", href: "/rooms" }
 ];
@@ -50,9 +50,6 @@ export function Nav() {
 
         <div className="flex shrink-0 items-center gap-4">
           <AuthButton />
-          <Link href="/capture" className="btn btn-primary hidden px-5 py-2.5 sm:inline-flex">
-            Map your room
-          </Link>
           <button
             onClick={() => setOpen((v) => !v)}
             aria-label="Menu"
@@ -76,13 +73,6 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/capture"
-            onClick={() => setOpen(false)}
-            className="nav-link block px-5 py-4 text-ink"
-          >
-            Map your room
-          </Link>
         </nav>
       )}
     </header>
