@@ -1,5 +1,7 @@
-import type { Product, Source } from "../types";
+import type { Category, Product, Source } from "../types";
+import { isPlausiblePrice } from "../pricing";
 import { guessColor, inferCategory, parseDimensions } from "./dimensions";
+import { isAccessoryListing } from "./relevance";
 
 /**
  * SerpAPI adapter. One key covers Google Shopping (which spans Target,
@@ -36,7 +38,7 @@ export async function searchGoogleShopping(args: SearchArgs): Promise<Product[]>
     num: String(args.limit ?? 20)
   });
   if (args.minPrice || args.maxPrice) {
-    params.set("tbs", `mr:1,price:1,ppr_min:${args.minPrice ?? 0},ppr_max:${args.maxPrice ?? 100000}`);
+    params.set("tbs", `mr:1,price:1,ppr_min:${Math.round(args.minPrice ?? 0)},ppr_max:${Math.round(args.maxPrice ?? 100000)}`);
   }
 
   const json = await getJson(`${BASE}?${params}`);
@@ -68,7 +70,22 @@ export async function searchAmazon(args: SearchArgs): Promise<Product[]> {
     amazon_domain: "amazon.com"
   });
 
-  const json = await getJson(`${BASE}?${params}`);
+  // Amazon's own price refinement. p_36 takes cents, and an open upper
+  // bound is written as "min-". Without it this engine ignored the band
+  // entirely and returned $9 accessories next to $4,000 sectionals.
+  const rh = amazonPriceRefinement(args.minPrice, args.maxPrice);
+  if (rh) params.set("rh", rh);
+
+  let json: any;
+  try {
+    json = await getJson(`${BASE}?${params}`);
+  } catch (err) {
+    // If the refinement is what the API objected to, the unfiltered
+    // search is still worth having — the caller filters by price anyway.
+    if (!rh) throw err;
+    params.delete("rh");
+    json = await getJson(`${BASE}?${params}`);
+  }
   const results: any[] = json?.organic_results || [];
 
   return results
@@ -96,7 +113,12 @@ interface Raw {
 
 function normalize(r: Raw): Product | null {
   if (!r.title || !r.url || !r.image || !r.price) return null;
-  const category = (r.category === "auto" ? inferCategory(r.title) : r.category) as Product["category"];
+  const category = (r.category === "auto" ? inferCategory(r.title) : r.category) as Category;
+  // Prices no listing for this category could carry are parse failures or
+  // accessories, not bargains.
+  if (!isPlausiblePrice(category, r.price)) return null;
+  if (isAccessoryListing(r.title, category)) return null;
+
   const dims = parseDimensions(r.snippet, category);
   return {
     id: r.id,
@@ -115,6 +137,13 @@ function normalize(r: Raw): Product | null {
   };
 }
 
+function amazonPriceRefinement(min?: number, max?: number): string | null {
+  const lo = min && min > 0 ? Math.round(min * 100) : null;
+  const hi = max && max > 0 ? Math.round(max * 100) : null;
+  if (lo === null && hi === null) return null;
+  return `p_36:${lo ?? ""}-${hi ?? ""}`;
+}
+
 function mapSource(name?: string): Source {
   const n = (name || "").toLowerCase();
   if (n.includes("amazon")) return "amazon";
@@ -128,13 +157,50 @@ function mapSource(name?: string): Source {
   return "other";
 }
 
-function numericPrice(v: unknown): number {
-  if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const m = v.replace(/,/g, "").match(/(\d+(?:\.\d+)?)/);
-    return m ? parseFloat(m[1]) : 0;
+/**
+ * Listing prices arrive as numbers, as "$1,299.99", as ranges, and as
+ * strings with an unrelated number in front ("Save $50, now $499"). The
+ * old first-number-wins read priced that last one at $50, which is how a
+ * $500 lamp ended up scoring as the best fit for a $60 slot.
+ */
+export function numericPrice(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : 0;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return numericPrice(o.extracted_value ?? o.value ?? o.amount ?? o.raw ?? o.price);
   }
-  return 0;
+  if (typeof v !== "string") return 0;
+
+  const s = v.replace(/,/g, "");
+  // A range ("$1,200 - $1,800") is quoted low-to-high; the low end is what
+  // the listing actually sells at.
+  const range = s.match(/\$\s*(\d+(?:\.\d+)?)\s*(?:[-–—]|\bto\b)\s*\$?\s*(\d+(?:\.\d+)?)/);
+  if (range) return Math.min(parseFloat(range[1]), parseFloat(range[2]));
+
+  // Prefer numbers attached to a currency symbol over any bare number, and
+  // drop the ones a discount word claims ("Save $50", "was $650") so the
+  // price left over is what the listing actually sells at.
+  const tagged: { value: number; start: number; end: number }[] = [];
+  for (const m of s.matchAll(/\$\s*(\d+(?:\.\d+)?)/g)) {
+    tagged.push({ value: parseFloat(m[1]), start: m.index ?? 0, end: (m.index ?? 0) + m[0].length });
+  }
+  if (tagged.length) {
+    // "was $650" marks the price that follows it; "$50 off" marks the one
+    // before it. Checking both lists against both sides let the "was" in
+    // "$499, was $650" disqualify the $499 it had nothing to do with.
+    const leading = /\b(save|was|were|reg|regularly|list|orig|originally|msrp|before|compare)\b/i;
+    const trailing = /\b(off|discount)\b/i;
+    const kept = tagged.filter((t) =>
+      !leading.test(s.slice(Math.max(0, t.start - 16), t.start)) &&
+      !trailing.test(s.slice(t.end, t.end + 12).split("$")[0])
+    );
+    // Every price claimed by a discount word ("$50 off $499") means the
+    // largest is the item and the rest are the markdown.
+    return kept.length ? Math.min(...kept.map((t) => t.value)) : Math.max(...tagged.map((t) => t.value));
+  }
+
+  const bare = s.match(/(\d+(?:\.\d+)?)/);
+  return bare ? parseFloat(bare[1]) : 0;
 }
 
 async function getJson(url: string): Promise<any> {

@@ -1,5 +1,7 @@
-import type { Product } from "../types";
+import type { Category, Product } from "../types";
+import { isPlausiblePrice } from "../pricing";
 import { guessColor, inferCategory, parseDimensions } from "./dimensions";
+import { isAccessoryListing } from "./relevance";
 
 /**
  * Apify adapter for Facebook Marketplace and Pinterest.
@@ -19,6 +21,7 @@ export interface MarketplaceArgs {
   query: string;
   category: string;
   city?: string;
+  minPrice?: number;
   maxPrice?: number;
   limit?: number;
 }
@@ -31,6 +34,7 @@ export async function searchFacebookMarketplace(args: MarketplaceArgs): Promise<
   const input = {
     keyword: args.query,
     city: args.city || "newyork",
+    minPrice: args.minPrice,
     maxPrice: args.maxPrice,
     maxItems: args.limit ?? 20
   };
@@ -52,7 +56,12 @@ export async function searchFacebookMarketplace(args: MarketplaceArgs): Promise<
       const url: string = r.url || (r.id ? `https://facebook.com/marketplace/item/${r.id}` : "");
       if (!title || !price || !image || !url) return null;
 
-      const category = (args.category === "auto" ? inferCategory(title) : args.category) as Product["category"];
+      const category = (args.category === "auto" ? inferCategory(title) : args.category) as Category;
+      // Marketplace is where the parts-and-covers listings live, and the
+      // actor honours minPrice inconsistently, so re-check both here.
+      if (!isPlausiblePrice(category, price)) return null;
+      if (isAccessoryListing(title, category)) return null;
+
       const dims = parseDimensions([title, r.description].filter(Boolean).join(" "), category);
       return {
         id: `fb-${r.id || url}`,
