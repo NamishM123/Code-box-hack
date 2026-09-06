@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { toggleLikedPin, listLikedPins, type LikedPin } from "@/lib/storage";
+import { toggleLikedPin, listLikedPins } from "@/lib/storage";
 
 /* ------------------------------------------------------------------ data -- */
 
@@ -14,10 +14,12 @@ type Category = "office" | "bedroom" | "living-room";
 interface Pin {
   id: string;
   src: string;
+  srcLarge?: string;
   alt: string;
   aspect: number;
   title: string;
   subtitle: string;
+  photographer?: string;
 }
 
 const TABS: { key: Category; label: string; icon: string }[] = [
@@ -31,6 +33,42 @@ const HUE: Record<Category, { bg: string; accent: string; muted: string }> = {
   bedroom: { bg: "#F5F0F0", accent: "#9B7B8A", muted: "#C9B0BC" },
   "living-room": { bg: "#F0F3F0", accent: "#6B8F71", muted: "#A3C4A8" },
 };
+
+/* ---- Unsplash API fetch ---- */
+
+async function fetchUnsplashPins(category: Category, page: number): Promise<Pin[] | null> {
+  try {
+    const res = await fetch(
+      `/api/unsplash?category=${category}&page=${page}&per_page=20`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.photos || !Array.isArray(data.photos)) return null;
+    return data.photos.map(
+      (p: {
+        id: string;
+        src: string;
+        srcLarge: string;
+        alt: string;
+        aspect: number;
+        photographer: string;
+      }) => ({
+        id: p.id,
+        src: p.src,
+        srcLarge: p.srcLarge,
+        alt: p.alt,
+        aspect: p.aspect,
+        title: p.alt || "Interior inspiration",
+        subtitle: `Photo by ${p.photographer}`,
+        photographer: p.photographer,
+      })
+    );
+  } catch {
+    return null;
+  }
+}
+
+/* ---- SVG fallback generators ---- */
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed) * 10000;
@@ -64,93 +102,48 @@ const PALETTES: Record<Category, string[][]> = {
   ],
 };
 
-const TITLES: Record<Category, string[]> = {
+const FALLBACK_TITLES: Record<Category, string[]> = {
   office: [
-    "Minimal Walnut Desk Setup",
-    "Japandi Home Office",
-    "Industrial Loft Workspace",
-    "Scandinavian Study Nook",
-    "Mid-Century Modern Office",
-    "Warm Neutral Workspace",
-    "Concrete & Wood Studio",
-    "Bohemian Creative Corner",
-    "Monochrome Focus Room",
-    "Architect's Drafting Room",
-    "Cozy Cabin Office",
-    "Modern Farmhouse Desk",
-    "Art Deco Work Suite",
-    "Minimalist White Studio",
-    "Vintage Library Office",
-    "Zen Productivity Space",
-    "Copper & Oak Study",
-    "Nordic Light Workspace",
-    "Urban Loft Corner Desk",
-    "Rustic Modern Office",
+    "Minimal Walnut Desk Setup", "Japandi Home Office", "Industrial Loft Workspace",
+    "Scandinavian Study Nook", "Mid-Century Modern Office", "Warm Neutral Workspace",
+    "Concrete & Wood Studio", "Bohemian Creative Corner", "Monochrome Focus Room",
+    "Architect's Drafting Room", "Cozy Cabin Office", "Modern Farmhouse Desk",
+    "Art Deco Work Suite", "Minimalist White Studio", "Vintage Library Office",
+    "Zen Productivity Space", "Copper & Oak Study", "Nordic Light Workspace",
+    "Urban Loft Corner Desk", "Rustic Modern Office",
   ],
   bedroom: [
-    "Soft Linen Retreat",
-    "Moody Terracotta Suite",
-    "Cloud-White Sanctuary",
-    "Blush & Sage Bedroom",
-    "Wabi-Sabi Sleep Space",
-    "French Provincial Nook",
-    "Organic Modern Bedroom",
-    "Coastal Calm Retreat",
-    "Layered Textile Haven",
-    "Earth-Tone Cocoon",
-    "Parisian Apartment Suite",
-    "Desert Rose Bedroom",
-    "Warm Minimalist Haven",
-    "Vintage Velvet Room",
-    "Scandi Cozy Bedroom",
-    "Neutral Palette Retreat",
-    "Boho Chic Sanctuary",
-    "Japandi Sleep Space",
-    "Muted Luxe Bedroom",
-    "Cottagecore Nook",
+    "Soft Linen Retreat", "Moody Terracotta Suite", "Cloud-White Sanctuary",
+    "Blush & Sage Bedroom", "Wabi-Sabi Sleep Space", "French Provincial Nook",
+    "Organic Modern Bedroom", "Coastal Calm Retreat", "Layered Textile Haven",
+    "Earth-Tone Cocoon", "Parisian Apartment Suite", "Desert Rose Bedroom",
+    "Warm Minimalist Haven", "Vintage Velvet Room", "Scandi Cozy Bedroom",
+    "Neutral Palette Retreat", "Boho Chic Sanctuary", "Japandi Sleep Space",
+    "Muted Luxe Bedroom", "Cottagecore Nook",
   ],
   "living-room": [
-    "Sunlit Olive Lounge",
-    "Earthy Conversation Pit",
-    "Modern Farmhouse Living",
-    "Sage & Cream Sitting Room",
-    "Open-Plan Garden View",
-    "Warm Wood Living Space",
-    "Botanical Living Room",
-    "Curated Gallery Lounge",
-    "Organic Modern Parlor",
-    "Nordic Hygge Room",
-    "Terracotta & Linen Lounge",
-    "Vintage Eclectic Living",
-    "Coastal Modern Retreat",
-    "Artisan Living Room",
-    "Minimalist Green Space",
-    "Mid-Century Warm Lounge",
-    "Desert Modern Living",
-    "Woven Texture Lounge",
-    "Grand Arched Salon",
-    "Natural Light Nook",
+    "Sunlit Olive Lounge", "Earthy Conversation Pit", "Modern Farmhouse Living",
+    "Sage & Cream Sitting Room", "Open-Plan Garden View", "Warm Wood Living Space",
+    "Botanical Living Room", "Curated Gallery Lounge", "Organic Modern Parlor",
+    "Nordic Hygge Room", "Terracotta & Linen Lounge", "Vintage Eclectic Living",
+    "Coastal Modern Retreat", "Artisan Living Room", "Minimalist Green Space",
+    "Mid-Century Warm Lounge", "Desert Modern Living", "Woven Texture Lounge",
+    "Grand Arched Salon", "Natural Light Nook",
   ],
 };
 
-const SUBTITLES = [
-  "Save for later",
-  "Interior inspo",
-  "Dream space",
-  "Room goals",
-  "Design bookmark",
-  "Mood board add",
-  "Home vision",
-  "Style reference",
+const FALLBACK_SUBTITLES = [
+  "Save for later", "Interior inspo", "Dream space", "Room goals",
+  "Design bookmark", "Mood board add", "Home vision", "Style reference",
 ];
 
-function generatePin(category: Category, index: number): Pin {
+function generateFallbackPin(category: Category, index: number): Pin {
   const seed = category.charCodeAt(0) * 1000 + index;
   const r = seededRandom(seed);
   const palette = PALETTES[category][index % PALETTES[category].length];
   const aspect = 0.9 + r * 0.9;
-  const title = TITLES[category][index % TITLES[category].length];
-  const subtitle = SUBTITLES[index % SUBTITLES.length];
+  const title = FALLBACK_TITLES[category][index % FALLBACK_TITLES[category].length];
+  const subtitle = FALLBACK_SUBTITLES[index % FALLBACK_SUBTITLES.length];
 
   const w = 400;
   const h = Math.round(w * aspect);
@@ -159,23 +152,6 @@ function generatePin(category: Category, index: number): Pin {
   const c3 = palette[2];
   const c4 = palette[3];
 
-  const shapes = buildShapes(seed, w, h, c1, c2, c3, c4);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-    <defs>
-      <linearGradient id="bg${index}" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="${c1}"/>
-        <stop offset="100%" stop-color="${c2}"/>
-      </linearGradient>
-    </defs>
-    <rect width="${w}" height="${h}" fill="url(#bg${index})"/>
-    ${shapes}
-  </svg>`;
-
-  const src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  return { id: `${category}-${index}`, src, alt: title, aspect, title, subtitle };
-}
-
-function buildShapes(seed: number, w: number, h: number, c1: string, c2: string, c3: string, c4: string) {
   const parts: string[] = [];
   const r1 = seededRandom(seed + 1);
   const r2 = seededRandom(seed + 2);
@@ -184,43 +160,28 @@ function buildShapes(seed: number, w: number, h: number, c1: string, c2: string,
   const r5 = seededRandom(seed + 5);
 
   if (r1 > 0.5) {
-    const rx = w * 0.15 + r2 * w * 0.35;
-    const ry = h * 0.2 + r3 * h * 0.3;
-    parts.push(`<ellipse cx="${w * 0.5}" cy="${h * 0.45}" rx="${rx}" ry="${ry}" fill="${c3}" opacity="0.5"/>`);
+    parts.push(`<ellipse cx="${w * 0.5}" cy="${h * 0.45}" rx="${w * 0.15 + r2 * w * 0.35}" ry="${h * 0.2 + r3 * h * 0.3}" fill="${c3}" opacity="0.5"/>`);
   } else {
     const rw = w * 0.4 + r2 * w * 0.3;
     const rh = h * 0.3 + r3 * h * 0.3;
-    const rx = 8 + r4 * 30;
-    parts.push(`<rect x="${(w - rw) / 2}" y="${(h - rh) / 2}" width="${rw}" height="${rh}" rx="${rx}" fill="${c3}" opacity="0.45"/>`);
+    parts.push(`<rect x="${(w - rw) / 2}" y="${(h - rh) / 2}" width="${rw}" height="${rh}" rx="${8 + r4 * 30}" fill="${c3}" opacity="0.45"/>`);
   }
+  parts.push(`<circle cx="${w * 0.2 + r4 * w * 0.6}" cy="${h * 0.2 + r5 * h * 0.6}" r="${20 + r1 * 50}" fill="${c4}" opacity="0.6"/>`);
 
-  const cx = w * 0.2 + r4 * w * 0.6;
-  const cy = h * 0.2 + r5 * h * 0.6;
-  const cr = 20 + r1 * 50;
-  parts.push(`<circle cx="${cx}" cy="${cy}" r="${cr}" fill="${c4}" opacity="0.6"/>`);
-
-  if (r3 > 0.4) {
-    const lx = w * 0.1 + r5 * w * 0.3;
-    const ly = h * 0.6 + r1 * h * 0.2;
-    parts.push(`<line x1="${lx}" y1="${ly}" x2="${lx + 80}" y2="${ly - 30}" stroke="${c4}" stroke-width="2" opacity="0.4"/>`);
-    parts.push(`<line x1="${lx}" y1="${ly}" x2="${lx + 60}" y2="${ly + 20}" stroke="${c4}" stroke-width="1.5" opacity="0.3"/>`);
-  }
-
-  if (r2 > 0.5) {
-    parts.push(`<path d="M${w * 0.6},${h * 0.08} Q${w * 0.85},${h * 0.05} ${w * 0.85},${h * 0.3}" stroke="${c4}" stroke-width="1.5" fill="none" opacity="0.35"/>`);
-  }
-
-  return parts.join("\n    ");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="bg${index}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#bg${index})"/>${parts.join("")}</svg>`;
+  return { id: `${category}-${index}`, src: `data:image/svg+xml,${encodeURIComponent(svg)}`, alt: title, aspect, title, subtitle };
 }
 
 /* ------------------------------------------------------------------ page -- */
 
-const BATCH = 20;
+const PER_PAGE = 20;
 
 export default function PinterestPage() {
   const [category, setCategory] = useState<Category>("office");
   const [pins, setPins] = useState<Pin[]>([]);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [usingApi, setUsingApi] = useState(true);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [likedPins, setLikedPins] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -247,27 +208,46 @@ export default function PinterestPage() {
     });
   }, []);
 
-  const loadMore = useCallback(() => {
-    if (loadingRef.current) return;
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || !hasMore) return;
     loadingRef.current = true;
-    setPage((p) => {
-      const next = p + 1;
-      const start = p * BATCH;
-      const batch = Array.from({ length: BATCH }, (_, i) => generatePin(category, start + i));
+
+    if (usingApi) {
+      const photos = await fetchUnsplashPins(category, page);
+      if (photos && photos.length > 0) {
+        setPins((prev) => [...prev, ...photos]);
+        setPage((p) => p + 1);
+        if (photos.length < PER_PAGE) setHasMore(false);
+      } else if (page === 1) {
+        setUsingApi(false);
+        const batch = Array.from({ length: PER_PAGE }, (_, i) => generateFallbackPin(category, i));
+        setPins(batch);
+        setPage(2);
+      } else {
+        setHasMore(false);
+      }
+    } else {
+      const start = (page - 1) * PER_PAGE;
+      const batch = Array.from({ length: PER_PAGE }, (_, i) => generateFallbackPin(category, start + i));
       setPins((prev) => [...prev, ...batch]);
-      loadingRef.current = false;
-      return next;
-    });
-  }, [category]);
+      setPage((p) => p + 1);
+    }
+
+    loadingRef.current = false;
+  }, [category, page, hasMore, usingApi]);
 
   useEffect(() => {
     setPins([]);
-    setPage(0);
+    setPage(1);
+    setHasMore(true);
+    setUsingApi(true);
     loadingRef.current = false;
   }, [category]);
 
   useEffect(() => {
-    if (pins.length === 0 && page === 0) loadMore();
+    if (pins.length === 0 && page === 1) {
+      loadMore();
+    }
   }, [pins.length, page, loadMore]);
 
   useEffect(() => {
@@ -371,19 +351,21 @@ export default function PinterestPage() {
 
         <div ref={sentinelRef} className="h-10" />
 
-        <div className="flex justify-center py-6">
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <motion.span
-                key={i}
-                className="block h-2 w-2 rounded-full"
-                style={{ background: palette.muted }}
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-              />
-            ))}
+        {hasMore && (
+          <div className="flex justify-center py-6">
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="block h-2 w-2 rounded-full"
+                  style={{ background: palette.muted }}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* lightbox */}
@@ -437,7 +419,6 @@ function Lightbox({
         className="relative flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* close button */}
         <button
           onClick={onClose}
           className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
@@ -448,17 +429,15 @@ function Lightbox({
           </svg>
         </button>
 
-        {/* image */}
         <div className="overflow-auto">
           <img
-            src={pin.src}
+            src={pin.srcLarge || pin.src}
             alt={pin.alt}
             className="block w-full"
             style={{ aspectRatio: `1 / ${pin.aspect}` }}
           />
         </div>
 
-        {/* info + actions */}
         <div className="flex flex-col gap-3 p-5">
           <div>
             <h2 className="text-lg font-bold text-ink">{pin.title}</h2>
@@ -466,7 +445,6 @@ function Lightbox({
           </div>
 
           <div className="flex items-center justify-between">
-            {/* heart / like — bottom left */}
             <button
               onClick={onToggleLike}
               className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-all duration-200 active:scale-95"
@@ -486,7 +464,6 @@ function Lightbox({
               {liked ? "Liked" : "Like"}
             </button>
 
-            {/* steal this look — bottom right */}
             <button
               className="rounded-full px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-200 active:scale-95"
               style={{
@@ -605,7 +582,7 @@ function PinCard({
         <img
           src={pin.src}
           alt={pin.alt}
-          className="block w-full"
+          className="block w-full object-cover"
           style={{ aspectRatio: `1 / ${pin.aspect}` }}
           loading="lazy"
         />
@@ -620,7 +597,6 @@ function PinCard({
               className="absolute inset-0 flex items-end justify-between rounded-2xl p-3 lg:rounded-3xl"
               style={{ background: "linear-gradient(to top, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.1) 100%)" }}
             >
-              {/* heart on hover — bottom left */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -636,7 +612,6 @@ function PinCard({
                 />
               </button>
 
-              {/* steal this look on hover — bottom right */}
               <span
                 className="rounded-full px-3 py-1.5 text-[11px] font-semibold text-white"
                 style={{ background: palette.accent }}
