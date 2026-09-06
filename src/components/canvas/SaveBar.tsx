@@ -11,6 +11,15 @@ export function SaveDialog({ defaultName, shareUrl, onSave, onClose }: {
   const [name, setName] = useState(defaultName);
   const [copied, setCopied] = useState(false);
 
+  /**
+   * Saving with the name box left empty did nothing at all: the click was
+   * guarded on a non-empty name, so the button just swallowed it with no
+   * message and no save. A room does not need a name to be worth keeping.
+   */
+  function finalName() {
+    return name.trim() || defaultName.trim() || "Untitled Room";
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -39,7 +48,7 @@ export function SaveDialog({ defaultName, shareUrl, onSave, onClose }: {
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && name.trim() && onSave(name.trim())}
+            onKeyDown={(e) => e.key === "Enter" && onSave(finalName())}
             className="mt-2 w-full rounded-md border border-rule/40 bg-transparent px-3 py-3 text-lg outline-none focus:border-brass"
           />
         </label>
@@ -57,7 +66,7 @@ export function SaveDialog({ defaultName, shareUrl, onSave, onClose }: {
 
         <div className="mt-7 flex justify-end gap-2">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => name.trim() && onSave(name.trim())}>
+          <button className="btn btn-primary" onClick={() => onSave(finalName())}>
             <Save className="h-3.5 w-3.5" /> Save to this browser
           </button>
         </div>
