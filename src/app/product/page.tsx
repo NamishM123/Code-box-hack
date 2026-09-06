@@ -1,2 +1,23 @@
 import { EditorialPage } from "@/components/EditorialPage";
-export default function ProductPage() { return <EditorialPage eyebrow="The product" title="A room editor for considered decisions." intro="Sightline turns a short set of room photos into an editable plan you can test before you follow a product link." cards={[{ label: "01", title: "Capture", body: "Six clear photos give the room editor a starting point. You can use the demo room at any time." }, { label: "02", title: "Arrange", body: "Move furniture blocks, choose a layout, and inspect the rationale behind every placement." }, { label: "03", title: "Compare", body: "Open product links and compare listings side by side before deciding where to buy." }]} />; }
+
+export default function ProductPage() {
+  return (
+    <EditorialPage
+      eyebrow="The product"
+      title="A room editor for considered decisions."
+      intro="Sightline turns a short set of room photos into an editable plan you can test before you follow a product link."
+      gallery={[
+        {
+          src: "/sketches/room-study-01.jpg",
+          alt: "Ink study of a living room with a pendant lamp and fireplace",
+          caption: "Study 01 · Ink and wash"
+        },
+        {
+          src: "/sketches/room-study-02.jpg",
+          alt: "Line drawing of a seating group beneath a ring pendant",
+          caption: "Study 02 · Line"
+        }
+      ]}
+    />
+  );
+}
