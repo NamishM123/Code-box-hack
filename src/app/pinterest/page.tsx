@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { toggleLikedPin, listLikedPins, type LikedPin } from "@/lib/storage";
 
 /* ------------------------------------------------------------------ data -- */
 
@@ -225,11 +226,23 @@ export default function PinterestPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
-  const toggleLike = useCallback((pinId: string) => {
+  useEffect(() => {
+    const ids = new Set(listLikedPins().map((p) => p.id));
+    setLikedPins(ids);
+  }, []);
+
+  const toggleLike = useCallback((pin: Pin) => {
+    const nowLiked = toggleLikedPin({
+      id: pin.id,
+      title: pin.title,
+      subtitle: pin.subtitle,
+      src: pin.src,
+      aspect: pin.aspect,
+    });
     setLikedPins((prev) => {
       const next = new Set(prev);
-      if (next.has(pinId)) next.delete(pinId);
-      else next.add(pinId);
+      if (nowLiked) next.add(pin.id);
+      else next.delete(pin.id);
       return next;
     });
   }, []);
@@ -380,7 +393,7 @@ export default function PinterestPage() {
             pin={selectedPin}
             palette={palette}
             liked={likedPins.has(selectedPin.id)}
-            onToggleLike={() => toggleLike(selectedPin.id)}
+            onToggleLike={() => toggleLike(selectedPin)}
             onClose={() => setSelectedPin(null)}
           />
         )}
@@ -502,7 +515,7 @@ function MasonryGrid({
   pins: Pin[];
   palette: { accent: string; muted: string };
   likedPins: Set<string>;
-  onToggleLike: (id: string) => void;
+  onToggleLike: (pin: Pin) => void;
   onSelect: (pin: Pin) => void;
 }) {
   const cols = useColumns();
@@ -526,7 +539,7 @@ function MasonryGrid({
               palette={palette}
               index={ci * 100 + pi}
               liked={likedPins.has(pin.id)}
-              onToggleLike={() => onToggleLike(pin.id)}
+              onToggleLike={() => onToggleLike(pin)}
               onSelect={() => onSelect(pin)}
             />
           ))}

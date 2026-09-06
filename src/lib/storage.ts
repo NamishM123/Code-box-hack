@@ -136,3 +136,55 @@ function fromBase64Url(s: string): string {
   const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
   return new TextDecoder().decode(bytes);
 }
+
+/* ---------- liked Pinterest pins ---------- */
+
+const LIKED_KEY = "sightline:liked-pins";
+
+export interface LikedPin {
+  id: string;
+  title: string;
+  subtitle: string;
+  src: string;
+  aspect: number;
+  likedAt: number;
+}
+
+export function listLikedPins(): LikedPin[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LIKED_KEY);
+    if (!raw) return [];
+    const pins = JSON.parse(raw) as LikedPin[];
+    return Array.isArray(pins) ? pins.sort((a, b) => b.likedAt - a.likedAt) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function toggleLikedPin(pin: Omit<LikedPin, "likedAt">): boolean {
+  const pins = listLikedPins();
+  const exists = pins.some((p) => p.id === pin.id);
+  const next = exists
+    ? pins.filter((p) => p.id !== pin.id)
+    : [{ ...pin, likedAt: Date.now() }, ...pins].slice(0, 200);
+  try {
+    localStorage.setItem(LIKED_KEY, JSON.stringify(next));
+  } catch {
+    /* quota exceeded */
+  }
+  return !exists;
+}
+
+export function isLikedPin(id: string): boolean {
+  return listLikedPins().some((p) => p.id === id);
+}
+
+export function removeLikedPin(id: string): void {
+  const next = listLikedPins().filter((p) => p.id !== id);
+  try {
+    localStorage.setItem(LIKED_KEY, JSON.stringify(next));
+  } catch {
+    /* nothing useful to do */
+  }
+}

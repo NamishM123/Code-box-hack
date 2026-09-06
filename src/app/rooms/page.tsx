@@ -1,22 +1,33 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Plus, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Trash2, Heart, X } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { deleteRoom, listRooms, type SavedRoom } from "@/lib/storage";
+import { listLikedPins, removeLikedPin, type LikedPin } from "@/lib/storage";
 import { money } from "@/lib/utils";
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<SavedRoom[]>([]);
+  const [liked, setLiked] = useState<LikedPin[]>([]);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => { setRooms(listRooms()); setReady(true); }, []);
+  useEffect(() => {
+    setRooms(listRooms());
+    setLiked(listLikedPins());
+    setReady(true);
+  }, []);
 
   function remove(id: string) {
     deleteRoom(id);
     setRooms(listRooms());
+  }
+
+  function unlikePin(id: string) {
+    removeLikedPin(id);
+    setLiked(listLikedPins());
   }
 
   return (
@@ -86,6 +97,88 @@ export default function RoomsPage() {
             </motion.div>
           ))}
         </div>}
+
+        {/* liked Pinterest inspiration */}
+        {ready && (
+          <section className="mt-16">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-red-400" fill="#f87171" stroke="#f87171" />
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-brass">Liked Inspiration</span>
+                </div>
+                <h2 className="font-display mt-2 text-3xl">Pinterest saves</h2>
+                <p className="mt-1 text-[13px] text-ash">
+                  Images you&apos;ve liked from the{" "}
+                  <Link href="/pinterest" className="link-underline font-medium text-ink">Pinterest</Link>{" "}
+                  feed.
+                </p>
+              </div>
+              {liked.length > 0 && (
+                <Link href="/pinterest" className="btn btn-ghost text-xs">
+                  Browse more
+                </Link>
+              )}
+            </div>
+
+            {liked.length === 0 ? (
+              <div className="card grid min-h-40 place-items-center border-dashed p-6 text-center">
+                <div>
+                  <Heart className="mx-auto h-8 w-8 text-rule" />
+                  <p className="mt-3 font-display text-lg">No liked images yet</p>
+                  <p className="mt-1 text-[12px] text-ash">
+                    Head to the{" "}
+                    <Link href="/pinterest" className="link-underline font-medium text-ink">Pinterest</Link>{" "}
+                    tab and hit the heart on images you love.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <AnimatePresence>
+                  {liked.map((pin, i) => (
+                    <motion.div
+                      key={pin.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3, delay: i * 0.03 }}
+                      className="card card-lift group relative overflow-hidden"
+                    >
+                      <div className="overflow-hidden">
+                        <img
+                          src={pin.src}
+                          alt={pin.title}
+                          className="block w-full"
+                          style={{ aspectRatio: `1 / ${pin.aspect}` }}
+                          loading="lazy"
+                        />
+                      </div>
+
+                      {/* remove button */}
+                      <button
+                        onClick={() => unlikePin(pin.id)}
+                        className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
+                        title="Remove from liked"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+
+                      <div className="p-3">
+                        <p className="truncate text-[13px] font-semibold text-ink">{pin.title}</p>
+                        <p className="mt-0.5 text-[11px] text-ash">{pin.subtitle}</p>
+                        <p className="mt-1.5 text-[10px] text-ash/60">
+                          {new Date(pin.likedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </section>
+        )}
       </div>
       <Footer />
     </main>
