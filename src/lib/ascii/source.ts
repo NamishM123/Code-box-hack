@@ -1,35 +1,54 @@
 /**
  * The picture the effect samples.
  *
- * The look was authored against a photograph, but the reference file that
- * preset shipped with (ref-029.webp) isn't in this repository, so the source is
- * painted here instead: a seeded field of blooms in the site's own palette.
- * It is deterministic — same garden on every load, on every machine — and the
- * renderer never knows the difference, because all it ever does is downsample
- * whatever canvas it is handed.
+ * The look was authored against a photograph, and the reference file that
+ * preset shipped with (ref-029.webp) isn't in this repository — nor is there
+ * any network route to fetch one. So the source is painted here instead.
  *
- * Drop a real photo in and pass its URL to `loadImageSource` if one ever
- * arrives; `paintInkGarden` is only the fallback.
+ * The thing that matters, and the thing a first attempt at this gets wrong: a
+ * dither can only resolve detail the source actually contains. Soft blobs on an
+ * empty ground dither into scattered dots, because that is honestly all that is
+ * there. So this paints like a photograph of a border in full bloom — heads
+ * packed edge to edge and overflowing the frame, each one built from dozens of
+ * individual florets or layered petals, kept sharp enough to carry
+ * high-frequency detail down to the cell grid, over a dense bed of foliage with
+ * no empty black left to speak of.
+ *
+ * Deterministic: same garden on every load, on every machine. Pass a real photo
+ * to `loadImageSource` and the renderer will sample that instead.
  */
 
 import { mulberry32 } from "./types";
 
-/** Warm blacks and metals lifted straight off the site's CSS custom properties. */
-const PETALS = [
-  ["#E0AE55", "#A8571A"],
-  ["#F2EFE8", "#B0684A"],
-  ["#D9541F", "#6A2E10"],
-  ["#E8E3D9", "#8C6A3E"],
-  ["#B0684A", "#4A2A1C"]
+/** hue, saturation, lightness — jittered per petal, so blooms aren't flat. */
+type Hsl = [number, number, number];
+
+/** Cream, gold and dusty blush: the reference's own range, warmed to the site's. */
+const PALETTES: Hsl[][] = [
+  [[44, 28, 90], [38, 34, 72]],
+  [[41, 74, 64], [32, 68, 44]],
+  [[8, 42, 74], [4, 38, 54]],
+  [[46, 16, 93], [40, 22, 76]],
+  [[20, 48, 58], [16, 46, 38]]
 ];
-const LEAF = ["#5A6B54", "#2C3A2A"];
+
+const FOLIAGE: Hsl[] = [
+  [96, 22, 13],
+  [88, 26, 9],
+  [104, 18, 17]
+];
+
+function hsl([h, s, l]: Hsl, dl = 0, a = 1): string {
+  const li = Math.max(0, Math.min(100, l + dl));
+  return a >= 1 ? `hsl(${h} ${s}% ${li}%)` : `hsl(${h} ${s}% ${li}% / ${a})`;
+}
 
 /**
- * Paints a garden of blooms into `canvas`.
+ * Paints the garden into `canvas`.
  *
- * The renderer reads tone, not detail, so everything here is drawn soft: wide
- * radial washes, petals with a bright core falling to nothing at the tip, and a
- * closing blur so the dither resolves it as gradient rather than as noise.
+ * Four passes back to front — bed, far heads, mid heads, near heads — each one
+ * sharper and brighter than the last, which is what gives the dither something
+ * to separate into depth rather than one flat speckle.
  */
 export function paintInkGarden(canvas: HTMLCanvasElement, seed = 29): HTMLCanvasElement {
   const w = canvas.width;
@@ -37,15 +56,17 @@ export function paintInkGarden(canvas: HTMLCanvasElement, seed = 29): HTMLCanvas
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
   const rnd = mulberry32(seed);
+  const unit = Math.min(w, h);
 
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = "#0a0908";
+  ctx.fillStyle = "#0a0907";
   ctx.fillRect(0, 0, w, h);
 
-  // Two low washes so the empty ground still has somewhere to fall away to.
+  // A warm bed under everything, so no part of the frame samples as pure black.
   for (const [x, y, r, color] of [
-    [0.18 * w, 0.08 * h, 0.75 * w, "rgba(168,87,26,0.38)"],
-    [0.92 * w, 0.72 * h, 0.66 * w, "rgba(224,174,85,0.22)"]
+    [0.22 * w, 0.18 * h, 0.62 * w, "rgba(120, 74, 32, 0.22)"],
+    [0.86 * w, 0.62 * h, 0.58 * w, "rgba(96, 72, 40, 0.18)"],
+    [0.5 * w, 0.95 * h, 0.55 * w, "rgba(60, 58, 38, 0.16)"]
   ] as [number, number, number, string][]) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, color);
@@ -54,124 +75,255 @@ export function paintInkGarden(canvas: HTMLCanvasElement, seed = 29): HTMLCanvas
     ctx.fillRect(0, 0, w, h);
   }
 
-  const unit = Math.min(w, h);
+  paintFoliage(ctx, w, h, unit, rnd);
 
-  // Stems first, so every bloom sits on top of its own stalk.
-  const blooms: { x: number; y: number; r: number; palette: string[]; petals: number }[] = [];
-  const count = 17;
-  for (let i = 0; i < count; i++) {
-    const big = i < 7;
-    const x = (0.06 + rnd() * 0.88) * w;
-    const y = (0.08 + rnd() * 0.78) * h;
-    const r = (big ? 0.15 + rnd() * 0.09 : 0.05 + rnd() * 0.05) * unit;
-    blooms.push({
-      x,
-      y,
-      r,
-      palette: PETALS[Math.floor(rnd() * PETALS.length)],
-      petals: 5 + Math.floor(rnd() * 7)
-    });
-  }
+  // Heads, back to front. Overflowing the frame on every side is what keeps the
+  // edges as busy as the middle — a border doesn't stop at the crop.
+  paintLayer(ctx, w, h, unit, rnd, { count: 12, min: 0.10, max: 0.15, blur: 7, shade: -26, alpha: 0.9 });
+  paintLayer(ctx, w, h, unit, rnd, { count: 9, min: 0.13, max: 0.19, blur: 2.4, shade: -6, alpha: 0.97 });
+  paintLayer(ctx, w, h, unit, rnd, { count: 6, min: 0.16, max: 0.25, blur: 0.7, shade: 10, alpha: 1 });
 
-  ctx.filter = "blur(3px)";
-  for (const b of blooms) {
-    const baseX = b.x + (rnd() - 0.5) * 0.18 * w;
-    ctx.strokeStyle = LEAF[0];
-    ctx.globalAlpha = 0.5;
-    ctx.lineWidth = Math.max(1.5, b.r * 0.09);
-    ctx.beginPath();
-    ctx.moveTo(baseX, h + 20);
-    ctx.quadraticCurveTo(baseX + (b.x - baseX) * 0.4, (b.y + h) * 0.55, b.x, b.y);
-    ctx.stroke();
-
-    // One leaf per stem, a filled lens shape hung off the midpoint.
-    const lx = (baseX + b.x) / 2;
-    const ly = (h + b.y) / 2;
-    const size = b.r * (0.8 + rnd() * 0.9);
-    const dir = rnd() < 0.5 ? -1 : 1;
-    ctx.fillStyle = LEAF[rnd() < 0.5 ? 0 : 1];
-    ctx.globalAlpha = 0.42;
-    ctx.beginPath();
-    ctx.moveTo(lx, ly);
-    ctx.quadraticCurveTo(lx + dir * size, ly - size * 0.75, lx + dir * size * 1.7, ly - size * 0.1);
-    ctx.quadraticCurveTo(lx + dir * size * 0.8, ly + size * 0.55, lx, ly);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
-  for (const b of blooms) paintBloom(ctx, b.x, b.y, b.r, b.petals, b.palette, rnd);
-
-  ctx.filter = "none";
-
-  // A closing vignette keeps the corners quiet so page text has somewhere to sit.
-  const vig = ctx.createRadialGradient(w * 0.5, h * 0.45, unit * 0.15, w * 0.5, h * 0.5, unit * 0.95);
+  // Barely any vignette — the reference is lit to the corners, and anything
+  // heavier here simply deletes the flowers the dither was meant to draw.
+  const vig = ctx.createRadialGradient(w * 0.5, h * 0.45, unit * 0.5, w * 0.5, h * 0.5, unit * 1.15);
   vig.addColorStop(0, "rgba(0,0,0,0)");
-  vig.addColorStop(1, "rgba(0,0,0,0.62)");
+  vig.addColorStop(1, "rgba(0,0,0,0.34)");
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, w, h);
 
   return canvas;
 }
 
-function paintBloom(
+/**
+ * Runs `draw` on its own canvas and lays the result down blurred.
+ *
+ * `ctx.filter` applies to every single draw call, so setting a blur and then
+ * painting thirty thousand petals blurs thirty thousand times over and takes
+ * seconds. One blurred `drawImage` of a flat layer is the same picture for a
+ * rounding error of the cost.
+ */
+function blurredLayer(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  blur: number,
+  alpha: number,
+  draw: (c: CanvasRenderingContext2D) => void
+) {
+  if (blur <= 0.05) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    draw(ctx);
+    ctx.restore();
+    return;
+  }
+  const layer = document.createElement("canvas");
+  layer.width = w;
+  layer.height = h;
+  const lctx = layer.getContext("2d");
+  if (!lctx) return;
+  draw(lctx);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.filter = `blur(${blur}px)`;
+  ctx.drawImage(layer, 0, 0);
+  ctx.restore();
+  ctx.filter = "none";
+}
+
+interface LayerOpts {
+  count: number;
+  /** Head radius, as a fraction of the frame's short side. */
+  min: number;
+  max: number;
+  blur: number;
+  /** Lightness offset — far heads sit back, near heads come forward. */
+  shade: number;
+  alpha: number;
+}
+
+function paintLayer(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  unit: number,
+  rnd: () => number,
+  o: LayerOpts
+) {
+  blurredLayer(ctx, w, h, o.blur, o.alpha, (c) => {
+    for (let i = 0; i < o.count; i++) {
+      const x = (-0.08 + rnd() * 1.16) * w;
+      const y = (-0.08 + rnd() * 1.16) * h;
+      const r = (o.min + rnd() * (o.max - o.min)) * unit;
+      const palette = PALETTES[Math.floor(rnd() * PALETTES.length)];
+      if (rnd() < 0.62) paintCluster(c, x, y, r, palette, o.shade, rnd);
+      else paintRose(c, x, y, r, palette, o.shade, rnd);
+    }
+  });
+}
+
+/**
+ * A hydrangea head: dozens of small four-petal florets packed into a disc.
+ *
+ * This is the shape that carries the effect. Each floret is only a few cells
+ * across once sampled, so a head resolves as a textured mass rather than a
+ * smooth circle — which is exactly the difference between "a flower" and "a
+ * bunch of dots".
+ */
+function paintCluster(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   r: number,
-  petals: number,
-  palette: string[],
+  palette: Hsl[],
+  shade: number,
   rnd: () => number
 ) {
-  const turn = rnd() * Math.PI * 2;
+  const florets = Math.max(20, Math.min(110, Math.round((r / 13) * (r / 13) * 1.7)));
+  const [light, dark] = palette;
+
+  // A soft mass underneath, so the gaps between florets don't read as holes.
+  const bed = ctx.createRadialGradient(x, y, 0, x, y, r);
+  bed.addColorStop(0, hsl(dark, shade + 4, 0.85));
+  bed.addColorStop(0.75, hsl(dark, shade - 12, 0.6));
+  bed.addColorStop(1, hsl(dark, shade - 30, 0));
+  ctx.fillStyle = bed;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let i = 0; i < florets; i++) {
+    // Square-rooted radius keeps the packing even rather than centre-heavy.
+    const a = rnd() * Math.PI * 2;
+    const d = Math.sqrt(rnd()) * r * 0.94;
+    const fx = x + Math.cos(a) * d;
+    const fy = y + Math.sin(a) * d;
+    const fr = r * (0.13 + rnd() * 0.08);
+    // Florets at the rim fall away from the light.
+    const fall = (1 - d / r) * 14 - 7;
+    const jitter = (rnd() - 0.5) * 14;
+    const turn = rnd() * Math.PI;
+
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.rotate(turn);
+    for (let p = 0; p < 4; p++) {
+      ctx.save();
+      ctx.rotate((p / 4) * Math.PI * 2);
+      const g = ctx.createLinearGradient(0, 0, 0, -fr);
+      g.addColorStop(0, hsl(light, shade + fall + jitter - 10));
+      g.addColorStop(0.6, hsl(light, shade + fall + jitter));
+      g.addColorStop(1, hsl(dark, shade + fall + jitter - 16));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, -fr * 0.6, fr * 0.42, fr * 0.62, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    // The floret's eye — a hard bright speck, the highest-frequency detail here.
+    ctx.fillStyle = hsl(light, shade + 16);
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(0.7, fr * 0.17), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/** A rose: petals in rings, each ring smaller and turned off the last. */
+function paintRose(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  palette: Hsl[],
+  shade: number,
+  rnd: () => number
+) {
+  const [light, dark] = palette;
+  const rings = 5;
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(turn);
-  ctx.filter = `blur(${Math.max(1.5, r * 0.06)}px)`;
+  ctx.rotate(rnd() * Math.PI * 2);
 
-  for (let ring = 0; ring < 2; ring++) {
-    const rr = r * (ring === 0 ? 1 : 0.62);
+  for (let ring = rings - 1; ring >= 0; ring--) {
+    const rr = r * (0.32 + (ring / (rings - 1)) * 0.68);
+    const petals = 5 + ring * 2;
+    const lift = (rings - 1 - ring) * 5;
     for (let i = 0; i < petals; i++) {
-      const a = (i / petals) * Math.PI * 2 + (ring === 0 ? 0 : Math.PI / petals);
       ctx.save();
-      ctx.rotate(a);
-      const grad = ctx.createLinearGradient(0, 0, 0, -rr);
-      grad.addColorStop(0, palette[0]);
-      grad.addColorStop(0.55, palette[1]);
-      grad.addColorStop(1, "rgba(10,9,8,0)");
-      ctx.fillStyle = grad;
-      ctx.globalAlpha = ring === 0 ? 0.85 : 0.65;
+      ctx.rotate((i / petals) * Math.PI * 2 + ring * 0.55);
+      const g = ctx.createLinearGradient(0, -rr * 0.15, 0, -rr);
+      g.addColorStop(0, hsl(light, shade + lift + 6));
+      g.addColorStop(0.55, hsl(light, shade + lift - 6));
+      g.addColorStop(1, hsl(dark, shade + lift - 20));
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.ellipse(0, -rr * 0.55, rr * (0.26 + rnd() * 0.08), rr * 0.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -rr * 0.52, rr * 0.34, rr * 0.55, 0, 0, Math.PI * 2);
       ctx.fill();
+      // A rim on the petal's edge: the specular line that reads as a fold.
+      ctx.strokeStyle = hsl(light, shade + lift + 18, 0.5);
+      ctx.lineWidth = Math.max(0.6, rr * 0.03);
+      ctx.stroke();
       ctx.restore();
     }
   }
 
-  // The eye: a hot core, then a scatter of stamen specks around it.
-  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.4);
-  core.addColorStop(0, "#FBF9F5");
-  core.addColorStop(0.45, palette[0]);
-  core.addColorStop(1, "rgba(10,9,8,0)");
-  ctx.globalAlpha = 1;
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.3);
+  core.addColorStop(0, hsl(dark, shade - 18));
+  core.addColorStop(1, hsl(light, shade + 4, 0));
   ctx.fillStyle = core;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2);
   ctx.fill();
-
-  ctx.filter = "none";
-  ctx.fillStyle = "#FBF9F5";
-  for (let i = 0; i < 14; i++) {
-    const a = rnd() * Math.PI * 2;
-    const d = r * (0.12 + rnd() * 0.2);
-    ctx.globalAlpha = 0.35 + rnd() * 0.5;
-    ctx.beginPath();
-    ctx.arc(Math.cos(a) * d, Math.sin(a) * d, Math.max(0.8, r * 0.022), 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   ctx.restore();
-  ctx.globalAlpha = 1;
-  ctx.filter = "none";
+}
+
+/** The bed the heads sit in: overlapping leaves across the whole frame. */
+function paintFoliage(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  unit: number,
+  rnd: () => number
+) {
+  blurredLayer(ctx, w, h, 2.5, 1, (c) => paintLeaves(c, w, h, unit, rnd));
+}
+
+function paintLeaves(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  unit: number,
+  rnd: () => number
+) {
+  for (let i = 0; i < 70; i++) {
+    const x = (-0.05 + rnd() * 1.1) * w;
+    const y = (-0.05 + rnd() * 1.1) * h;
+    const len = unit * (0.05 + rnd() * 0.13);
+    const wide = len * (0.3 + rnd() * 0.25);
+    const turn = rnd() * Math.PI * 2;
+    const tone = FOLIAGE[Math.floor(rnd() * FOLIAGE.length)];
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(turn);
+    const g = ctx.createLinearGradient(0, 0, len, 0);
+    g.addColorStop(0, hsl(tone, 6, 0.9));
+    g.addColorStop(1, hsl(tone, -10, 0.5));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(len * 0.5, -wide, len, 0);
+    ctx.quadraticCurveTo(len * 0.5, wide, 0, 0);
+    ctx.fill();
+    // The midrib, one shade up — a hard line through an otherwise soft shape.
+    ctx.strokeStyle = hsl(tone, 12, 0.55);
+    ctx.lineWidth = Math.max(0.6, len * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(len, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 /** Loads a photo to sample instead of the painted garden. Resolves null on failure. */
