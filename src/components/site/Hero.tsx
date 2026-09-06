@@ -17,8 +17,7 @@ const PAGES = [
   { label: "Product", href: "/product" },
   { label: "Pinterest", href: "/pinterest" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Your Rooms", href: "/rooms" },
-  { label: "Pricing", href: "/pricing" }
+  { label: "Your Rooms", href: "/rooms" }
 ];
 
 export function Hero() {
@@ -97,9 +96,6 @@ export function Hero() {
           >
             <Link href="/capture" className="btn btn-glass px-8 py-3">
               Map your room
-            </Link>
-            <Link href="/canvas?demo=1" className="btn btn-glass px-8 py-3">
-              See a demo room
             </Link>
           </div>
         </div>

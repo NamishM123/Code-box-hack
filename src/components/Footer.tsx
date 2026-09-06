@@ -21,7 +21,6 @@ export function Footer() {
 
           <div className="flex flex-wrap gap-3">
             <Link href="/capture" className="btn btn-primary px-7 py-3">Map your room</Link>
-            <Link href="/canvas?demo=1" className="btn btn-light px-7 py-3">Demo room</Link>
           </div>
         </div>
 

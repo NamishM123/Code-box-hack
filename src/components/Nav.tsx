@@ -8,8 +8,7 @@ const LINKS = [
   { label: "Product", href: "/product" },
   { label: "Pinterest", href: "/pinterest" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Your Rooms", href: "/rooms" },
-  { label: "Pricing", href: "/pricing" }
+  { label: "Your Rooms", href: "/rooms" }
 ];
 
 /**
@@ -51,9 +50,6 @@ export function Nav() {
 
         <div className="flex shrink-0 items-center gap-4">
           <AuthButton />
-          <Link href="/canvas?demo=1" className="nav-link hidden text-ash hover:text-ink xl:block">
-            Demo room
-          </Link>
           <Link href="/capture" className="btn btn-primary hidden px-5 py-2.5 sm:inline-flex">
             Map your room
           </Link>
