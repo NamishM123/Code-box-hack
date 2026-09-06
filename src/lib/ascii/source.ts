@@ -326,6 +326,31 @@ function paintLeaves(
   }
 }
 
+/**
+ * Softens a loaded image before it is sampled.
+ *
+ * Use this when the only file to hand is a screenshot of a dither rather than
+ * the photograph behind it. Screening an already-screened image beats one dot
+ * grid against another and moires badly; blurring first averages the dots back
+ * into the continuous tone they were standing in for, which is a lossy but
+ * perfectly serviceable source. A radius of roughly one dot pitch is right —
+ * for a 9px cell, 5 to 8.
+ *
+ * Leave it at 0 for a real photograph. Blurring one only throws detail away.
+ */
+export function descreen(img: HTMLImageElement, radius: number): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const ctx = c.getContext("2d");
+  if (ctx) {
+    ctx.filter = `blur(${radius}px)`;
+    ctx.drawImage(img, 0, 0);
+    ctx.filter = "none";
+  }
+  return c;
+}
+
 /** Loads a photo to sample instead of the painted garden. Resolves null on failure. */
 export function loadImageSource(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
