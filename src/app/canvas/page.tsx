@@ -12,7 +12,7 @@ import { ShoppingChat } from "@/components/canvas/ShoppingChat";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
-import { generateLayouts, previewFit, reseat } from "@/lib/layout";
+import { generateLayouts, previewFit, reseat, type ReferencePlan } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
@@ -40,6 +40,8 @@ interface Brief extends RoomSpec {
   capturePhotoUrls?: string[];
   /** Pieces already chosen from a Pinterest look, laid out as-is. */
   lookProducts?: Product[];
+  /** Where those pieces stood in the picture, so the plan can copy it. */
+  lookPlan?: ReferencePlan;
 }
 
 type LiveListing = {
@@ -163,7 +165,7 @@ export default function CanvasPage() {
       setProducts(chosen);
       setTotal(chosen.reduce((sum, product) => sum + product.price, 0));
       setFeed({ live: true, poolSize: chosen.length, sources: [`${chosen.length} from your look`] });
-      const looked = generateLayouts(b, chosen, b.detected || undefined);
+      const looked = generateLayouts(b, chosen, b.detected || undefined, b.lookPlan);
       setLayouts(looked);
       setPlaced(looked[0].placed);
       setLoading(false);

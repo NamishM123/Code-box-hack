@@ -26,6 +26,10 @@ interface LookGroup {
   label: string;
   query: string;
   options: Product[];
+  /** Where this piece stood in the picture's own plan. */
+  x?: number;
+  y?: number;
+  backsTo?: "N" | "E" | "S" | "W" | "none";
 }
 
 /** The Pinterest tab has a bathroom; the layout engine does not. */
@@ -102,13 +106,17 @@ export function LookLightbox({
   }, [onClose]);
 
   /** Exactly one product per piece the picture contains. */
-  const chosen = useMemo(() => {
-    if (!groups) return [];
-    return groups
-      .filter((g) => !skipped.has(key(g)))
-      .map((g) => g.options.find((o) => o.id === picked[key(g)]) || g.options[0])
-      .filter(Boolean) as Product[];
+  const live = useMemo(() => {
+    const out: { product: Product; group: LookGroup }[] = [];
+    for (const g of groups || []) {
+      if (skipped.has(key(g))) continue;
+      const product = g.options.find((o) => o.id === picked[key(g)]) || g.options[0];
+      if (product) out.push({ product, group: g });
+    }
+    return out;
   }, [groups, picked, skipped]);
+
+  const chosen = useMemo(() => live.map((l) => l.product), [live]);
 
   async function shopThisLook() {
     if (loading) return;
@@ -174,6 +182,23 @@ export function LookLightbox({
         : "Proportions from the inspiration image. Map your own room from Capture for exact measurements."
     };
 
+    // The photograph's arrangement, tied to the products actually chosen. The
+    // layout engine scales it into this room and re-checks every position, so
+    // a copied plan still can't produce a fit verdict that isn't real.
+    const placed = live.filter((l) => l.group.x != null && l.group.y != null);
+    const lookPlan = placed.length
+      ? {
+          refW: vibe?.widthFt ?? widthFt,
+          refD: vibe?.depthFt ?? depthFt,
+          items: placed.map((l) => ({
+            productId: l.product.id,
+            x: l.group.x as number,
+            y: l.group.y as number,
+            backsTo: l.group.backsTo
+          }))
+        }
+      : undefined;
+
     const brief = {
       roomType: ROOM_TYPE[room] || "living",
       goal: "refresh",
@@ -186,7 +211,8 @@ export function LookLightbox({
       vibePalette: vibe?.palette,
       searchTerms: vibe?.searchTerms,
       detected,
-      lookProducts: chosen
+      lookProducts: chosen,
+      lookPlan
     };
 
     try {

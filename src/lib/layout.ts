@@ -760,8 +760,30 @@ const VARIANTS: { id: string; name: string; method: string; weights: Weights }[]
   { id: "airy", name: "Airy", method: "Open centre + light on two sides", weights: { fengShui: 0.9, gather: 0.5, openness: 1.7 } }
 ];
 
-export function generateLayouts(room: RoomSpec, products: Product[], detected?: DetectedRoom): LayoutOption[] {
-  return VARIANTS.map((v) => {
+/**
+ * Where each piece stood in the inspiration photograph, in that photograph's
+ * own plan. Positions are the model's perception; whether they are legal in
+ * this room stays this file's decision.
+ */
+export interface ReferencePlan {
+  /** The plan the coordinates below are expressed in, in feet. */
+  refW: number;
+  refD: number;
+  items: {
+    productId: string;
+    x: number;
+    y: number;
+    backsTo?: Wall | "none";
+  }[];
+}
+
+export function generateLayouts(
+  room: RoomSpec,
+  products: Product[],
+  detected?: DetectedRoom,
+  reference?: ReferencePlan
+): LayoutOption[] {
+  const solved = VARIANTS.map((v) => {
     const scene = solve(room, products, detected, v.weights);
     return {
       id: v.id,
@@ -772,6 +794,161 @@ export function generateLayouts(room: RoomSpec, products: Product[], detected?: 
       notes: scene.notes
     };
   });
+
+  // A layout copied off the photograph leads, when there is one to copy.
+  if (reference?.items?.length) {
+    const scene = solveFromReference(room, products, detected, reference);
+    solved.unshift({
+      id: "asphotographed",
+      name: "As photographed",
+      method: "Each piece where it stood in the picture",
+      placed: scene.items,
+      score: rate(scene, { fengShui: 1, gather: 1, openness: 1 }),
+      notes: scene.notes
+    });
+  }
+
+  return solved;
+}
+
+/**
+ * Rebuilds the photograph's arrangement in this room.
+ *
+ * The picture says where things go; this file still says whether they may.
+ * Every candidate goes through the same `violates` gate as any other layout —
+ * inside the room, clear of the door swing, off other pieces and out of their
+ * approach zones — so a copied plan can never produce a fit verdict the
+ * shopper cannot trust. What the reference changes is only which legal spot
+ * gets chosen: the one nearest where the piece stood in the photo.
+ *
+ * Bigger pieces are seated first. A bed that loses its corner to a lamp is a
+ * plan that no longer resembles anything.
+ */
+function solveFromReference(
+  room: RoomSpec,
+  products: Product[],
+  detected: DetectedRoom | undefined,
+  ref: ReferencePlan
+) {
+  const scene = buildScene(room, detected);
+
+  // The photo's room and the shopper's room are rarely the same size, so
+  // positions are carried across as proportions of each axis rather than as
+  // absolute feet.
+  const sx = scene.W / Math.max(1, ref.refW);
+  const sy = scene.D / Math.max(1, ref.refD);
+
+  const byId = new Map(ref.items.map((i) => [i.productId, i]));
+  const ordered = [...products].sort((a, b) => b.width * b.depth - a.width * a.depth);
+
+  for (const product of ordered) {
+    const hint = byId.get(product.id);
+    const target: Vec = hint
+      ? [clampTo(hint.x * sx, 0, scene.W), clampTo(hint.y * sy, 0, scene.D)]
+      : [scene.W / 2, scene.D / 2];
+
+    const wall = hint?.backsTo && hint.backsTo !== "none" ? (hint.backsTo as Wall) : null;
+    const rot = wall ? FACE_INWARD[wall] : snapAngle(facesToward({ x: target[0], y: target[1], w: product.width, d: product.depth, rot: 0 }, [scene.W / 2, scene.D / 2]), 90);
+
+    const candidates = referenceCandidates(target, rot, product, scene, wall);
+    const nearest = (r: Rect) => -distance([r.x, r.y], target);
+
+    // Full clearances first.
+    let spot = best(candidates, scene, nearest, BREATHING_FT, product.category);
+    let snug = false;
+
+    if (!spot) {
+      // Some pieces belong hard against another and are not reached "through"
+      // it — a nightstand at the head of a bed is the standard case, and
+      // solve() seats exactly that at a 0.05ft gap with no approach zone. A
+      // photograph is full of them, so retry on those terms before declaring
+      // the piece homeless. Still every other hard rule: inside the room, off
+      // the door swing, out of anyone else's approach zone.
+      spot = best(candidates, scene, nearest, 0.05);
+      snug = true;
+    }
+
+    if (!spot) {
+      unplaceable(scene, product);
+      continue;
+    }
+
+    // Whatever it ended up touching is what it was meant to touch, so the fit
+    // verdict shouldn't read that closeness as a pinched walkway.
+    const companions = snug ? touching(spot, scene) : [];
+
+    const drift = distance([spot.x, spot.y], target);
+    const note = wall
+      ? `Against the ${wall} wall, where it sits in the picture.`
+      : "Placed where it stands in the picture.";
+    commit(
+      scene,
+      product,
+      spot,
+      [
+        drift < 0.75
+          ? note
+          : `${note} Moved ${drift.toFixed(1)}ft to clear the room's own walls and walkways.`
+      ],
+      companions
+    );
+  }
+
+  if (!ref.items.length) scene.notes.push("Nothing in the picture could be located, so this is the open-plan fallback.");
+  return scene;
+}
+
+/**
+ * Spots to try for a piece, nearest its photographed position first: the exact
+ * point, then flush along its wall if it had one, then rings outward. Rotation
+ * is kept — which way a piece faces is most of what makes a room read like the
+ * photo — so a piece that cannot fit facing that way is reported rather than
+ * quietly spun around.
+ */
+function referenceCandidates(target: Vec, rot: number, product: Product, scene: Scene, wall: Wall | null): Rect[] {
+  const out: Rect[] = [
+    { x: target[0], y: target[1], w: product.width, d: product.depth, rot }
+  ];
+
+  if (wall) {
+    // The whole wall, nearest the photographed spot first. A piece that has
+    // its back to a wall in the picture should keep it even if that means
+    // sliding well along it.
+    const along = wall === "N" || wall === "S" ? target[0] : target[1];
+    const len = wallLength(wall, scene.W, scene.D);
+    for (let slide = 0; slide <= len; slide += 0.5) {
+      for (const dir of slide === 0 ? [1] : [-1, 1]) {
+        const at = along + dir * slide;
+        if (at < product.width / 2 || at > len - product.width / 2) continue;
+        out.push(againstWall(wall, at, product, scene));
+      }
+    }
+  }
+
+  const reach = Math.max(scene.W, scene.D);
+  for (let radius = 0.5; radius <= reach; radius += 0.5) {
+    for (let deg = 0; deg < 360; deg += 30) {
+      const a = (deg * Math.PI) / 180;
+      out.push({
+        x: target[0] + Math.cos(a) * radius,
+        y: target[1] + Math.sin(a) * radius,
+        w: product.width,
+        d: product.depth,
+        rot
+      });
+    }
+  }
+
+  return out;
+}
+
+/** Pieces already in the scene that this one ends up right up against. */
+function touching(rect: Rect, scene: Scene): Rect[] {
+  return scene.slots.map((s) => s.rect).filter((other) => separation(rect, other) < CLEARANCES.walkwayFt);
+}
+
+function clampTo(v: number, lo: number, hi: number) {
+  return Math.min(hi, Math.max(lo, v));
 }
 
 /**

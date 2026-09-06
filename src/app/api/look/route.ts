@@ -65,6 +65,9 @@ interface LookItemIn {
   searchTerm?: string;
   widthFt?: number;
   depthFt?: number;
+  x?: number;
+  y?: number;
+  backsTo?: string;
 }
 
 interface LookBody {
@@ -83,6 +86,10 @@ export interface LookGroup {
   label: string;
   query: string;
   options: Product[];
+  /** Where this piece stood in the picture, passed through for the layout. */
+  x?: number;
+  y?: number;
+  backsTo?: string;
 }
 
 const KNOWN: Category[] = [
@@ -96,9 +103,8 @@ export async function POST(req: Request) {
   const room = body.room && FALLBACK_ITEMS[body.room] ? body.room : "any";
   const budget = clampNum(body.budget, 2500, 100, 100000);
 
-  const items = normalizeItems(body.items).length
-    ? normalizeItems(body.items)
-    : FALLBACK_ITEMS[room];
+  const detected = normalizeItems(body.items);
+  const items: ReturnType<typeof normalizeItems> = detected.length ? detected : FALLBACK_ITEMS[room];
 
   // Two or three words of overall style, folded into each per-piece query so a
   // "platform bed" comes back in the picture's material and colour. Kept short
@@ -115,7 +121,10 @@ export async function POST(req: Request) {
         category: it.category,
         label: it.label,
         query: it.searchTerm,
-        options: SAMPLE_CATALOG.filter((p) => p.category === it.category).slice(0, PER_ITEM)
+        options: SAMPLE_CATALOG.filter((p) => p.category === it.category).slice(0, PER_ITEM),
+        x: it.x,
+        y: it.y,
+        backsTo: it.backsTo
       })),
       live: false,
       notes: ["Using the seed catalog. Add SERPAPI_KEY for live listings."]
@@ -146,7 +155,15 @@ export async function POST(req: Request) {
 
     for (const p of options) seenUrl.add(p.url);
     if (options.length) {
-      groups.push({ category: it.category, label: it.label, query: it.searchTerm, options });
+      groups.push({
+        category: it.category,
+        label: it.label,
+        query: it.searchTerm,
+        options,
+        x: it.x,
+        y: it.y,
+        backsTo: it.backsTo
+      });
     }
   });
 
@@ -158,7 +175,7 @@ export async function POST(req: Request) {
   });
 }
 
-function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string; searchTerm: string }[] {
+function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string; searchTerm: string; x?: number; y?: number; backsTo?: string }[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((i) => i?.category && i?.searchTerm)
@@ -169,7 +186,10 @@ function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string
       return {
         category,
         label: String(i.label || category).slice(0, 120),
-        searchTerm: String(i.searchTerm).replace(/[^\p{L}\p{N}\s&'-]/gu, " ").trim().slice(0, 80)
+        searchTerm: String(i.searchTerm).replace(/[^\p{L}\p{N}\s&'-]/gu, " ").trim().slice(0, 80),
+        x: typeof i.x === "number" ? i.x : undefined,
+        y: typeof i.y === "number" ? i.y : undefined,
+        backsTo: ["N", "E", "S", "W", "none"].includes(String(i.backsTo)) ? String(i.backsTo) : undefined
       };
     })
     .filter((i) => i.searchTerm);

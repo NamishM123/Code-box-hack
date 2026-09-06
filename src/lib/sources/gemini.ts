@@ -197,7 +197,10 @@ const LOOK_SCHEMA = {
           label: { type: "string" },
           searchTerm: { type: "string" },
           widthFt: { type: "number" },
-          depthFt: { type: "number" }
+          depthFt: { type: "number" },
+          x: { type: "number" },
+          y: { type: "number" },
+          backsTo: { type: "string", enum: ["N", "E", "S", "W", "none"] }
         },
         required: ["category", "label", "searchTerm"]
       }
@@ -214,6 +217,11 @@ export interface LookItem {
   searchTerm: string;
   widthFt?: number;
   depthFt?: number;
+  /** Where it stands in the picture's own floor plan, in feet. */
+  x?: number;
+  y?: number;
+  /** The wall its back is against, or "none" if it stands free. */
+  backsTo?: "N" | "E" | "S" | "W" | "none";
 }
 
 export interface GeminiLook extends GeminiVibe {
@@ -238,6 +246,8 @@ Return the look AND an inventory of what is actually in the picture.
 - "label" describes the piece as seen, e.g. "black metal frame queen bed with white linen".
 - "searchTerm" is how a person would search a retailer for THAT piece, e.g. "black metal platform bed queen". No brand names.
 - "widthFt"/"depthFt" are its rough footprint in feet.
+- "x"/"y" are where the piece's CENTRE sits on the floor plan, in feet, in the same plan as widthFt/depthFt below: origin (0,0) is the top-left corner seen from above, x runs along the width, y along the depth. Read the perspective of the photograph and place each piece where it actually stands in the room.
+- "backsTo" is the wall the piece has its back against — N is y=0, S is y=depth, W is x=0, E is x=width — or "none" if it stands free of the walls.
 - Skip small decor: books, cushions, vases, candles, picture frames smaller than a laptop.
 - At most ${MAX_ITEMS} items.
 
@@ -286,7 +296,10 @@ export async function readLook(images: InlineImage[]): Promise<GeminiLook> {
       label: String(i.label || i.category).slice(0, 120),
       searchTerm: String(i.searchTerm).slice(0, 80),
       widthFt: i.widthFt ? clamp(num(i.widthFt), 0.2, 20) : undefined,
-      depthFt: i.depthFt ? clamp(num(i.depthFt), 0.2, 20) : undefined
+      depthFt: i.depthFt ? clamp(num(i.depthFt), 0.2, 20) : undefined,
+      x: i.x != null ? clamp(num(i.x), 0, widthFt) : undefined,
+      y: i.y != null ? clamp(num(i.y), 0, depthFt) : undefined,
+      backsTo: ["N", "E", "S", "W", "none"].includes(i.backsTo) ? i.backsTo : undefined
     }));
 
   return {
