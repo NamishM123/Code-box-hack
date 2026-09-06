@@ -217,6 +217,8 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          // the frame on screen right now is the layout to match
+          layoutImage: grab.current?.(),
           widthFt: room.widthFt,
           depthFt: room.depthFt,
           style: room.style,

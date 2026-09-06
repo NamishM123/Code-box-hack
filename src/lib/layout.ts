@@ -40,6 +40,8 @@ interface Scene {
   entry: { at: Vec; wall: Wall };
   blockers: Rect[];
   slots: Slot[];
+  /** Floor reserved in front of pieces that have to be reachable. */
+  zones: Rect[];
   items: PlacedItem[];
   notes: string[];
 }
@@ -54,6 +56,22 @@ interface Weights {
 }
 
 const DOOR_SWING_FT = 3.2;
+
+/** Unrelated pieces need air between them, not merely no overlap. */
+const BREATHING_FT = 0.5;
+
+/**
+ * Clear floor a piece needs in front of it to be usable: room to pull a drawer,
+ * stand and read a shelf, push a chair back from a desk. Nothing may stand in
+ * it. Without this a chair can legally park an inch off a bookshelf, blocking
+ * the thing it was bought to hold.
+ */
+const APPROACH_FT: Partial<Record<Category, number>> = {
+  shelf: 2.5,
+  dresser: 2.5,
+  desk: 3.0,
+  nightstand: 1.8
+};
 const TV_DIAGONAL_RATIO = 1.1478; // 16:9 panel: diagonal from width
 // 4K sets are watched closer than the old 1.5-2.5x rule of thumb: roughly 1 to
 // 1.5 times the diagonal, so a 65in sits about 5.5-8ft from the seat.
@@ -80,7 +98,7 @@ function buildScene(room: RoomSpec, detected?: DetectedRoom): Scene {
 
   const blockers: Rect[] = (detected?.existing || []).map((e) => ({ x: e.x, y: e.y, w: e.widthFt, d: e.depthFt, rot: 0 }));
 
-  return { W, D, openings, entry, blockers, slots: [], items: [], notes: [] };
+  return { W, D, openings, entry, blockers, slots: [], zones: [], items: [], notes: [] };
 }
 
 /** A point on a wall, `along` feet from that wall's origin. */
@@ -117,16 +135,39 @@ function spanOnWall(rect: Rect, wall: Wall) {
 
 /* ------------------------------------------------------- hard constraints */
 
-function violates(rect: Rect, scene: Scene, gap = 0.1): boolean {
+/** The strip of floor a piece needs kept clear in front of it. */
+function approachZone(rect: Rect, category: Category): Rect | null {
+  const depth = APPROACH_FT[category];
+  if (!depth) return null;
+  const dir = facing(rect.rot);
+  const out = rect.d / 2 + depth / 2;
+  // A foot wider than the piece: standing at the very edge of a bookshelf still
+  // blocks it, and reads as blocking it from most of the room.
+  return { x: rect.x + dir[0] * out, y: rect.y + dir[1] * out, w: rect.w + 1.2, d: depth, rot: rect.rot };
+}
+
+function violates(rect: Rect, scene: Scene, gap = BREATHING_FT, category?: Category): boolean {
   if (!insideRoom(rect, scene.W, scene.D, 0)) return true;
   if (distance([rect.x, rect.y], scene.entry.at) < DOOR_SWING_FT + CLEARANCES.doorSwingBufferFt) return true;
   for (const b of scene.blockers) if (overlaps(rect, b, gap)) return true;
   for (const s of scene.slots) if (overlaps(rect, s.rect, gap)) return true;
+  // never stand in the space something else needs to be reached through
+  for (const z of scene.zones) if (overlaps(rect, z, 0)) return true;
+  // and whatever this piece needs reaching through must itself be clear
+  if (category) {
+    const mine = approachZone(rect, category);
+    if (mine) {
+      for (const b of scene.blockers) if (overlaps(mine, b, 0)) return true;
+      for (const s of scene.slots) if (overlaps(mine, s.rect, 0)) return true;
+    }
+  }
   return false;
 }
 
 function commit(scene: Scene, product: Product, rect: Rect, rationale: string[], companions: Rect[] = []) {
   scene.slots.push({ rect, product });
+  const zone = approachZone(rect, product.category);
+  if (zone) scene.zones.push(zone);
   scene.items.push({
     productId: product.id,
     x: round(rect.x),
@@ -163,11 +204,11 @@ function verdict(rect: Rect, scene: Scene, companions: Rect[] = []): FitVerdict 
  * when a piece genuinely has nowhere to go, which the caller reports rather
  * than forcing.
  */
-function best(candidates: Rect[], scene: Scene, score: (r: Rect) => number, gap = 0.1): Rect | null {
+function best(candidates: Rect[], scene: Scene, score: (r: Rect) => number, gap = BREATHING_FT, category?: Category): Rect | null {
   let winner: Rect | null = null;
   let top = -Infinity;
   for (const c of candidates) {
-    if (violates(c, scene, gap)) continue;
+    if (violates(c, scene, gap, category)) continue;
     const s = score(c);
     if (s > top) {
       top = s;
@@ -494,7 +535,10 @@ function placeSeating(scene: Scene, chairs: Product[], seat: Rect | null, focal:
 }
 
 function placeAgainstFreeWall(scene: Scene, product: Product, note: string, w: Weights) {
-  const rect = best(wallCandidates(product, scene), scene, (r) => {
+  const rect = best(
+    wallCandidates(product, scene),
+    scene,
+    (r) => {
     const wall = wallOf(r, scene) ?? "N";
     const [from, to] = spanOnWall(r, wall);
     return (
@@ -502,7 +546,10 @@ function placeAgainstFreeWall(scene: Scene, product: Product, note: string, w: W
       distance([r.x, r.y], scene.entry.at) * 0.3 * w.fengShui +
       distance([r.x, r.y], [scene.W / 2, scene.D / 2]) * 0.3 * w.openness
     );
-  });
+    },
+    BREATHING_FT,
+    product.category
+  );
   if (rect) commit(scene, product, rect, [note]);
   else unplaceable(scene, product);
   return rect;
@@ -612,17 +659,20 @@ function solve(room: RoomSpec, products: Product[], detected: DetectedRoom | und
       ? [seat.x + facing(seat.rot)[0] * 3, seat.y + facing(seat.rot)[1] * 3]
       : [scene.W / 2, scene.D / 2];
 
+  // Storage goes before the loose seating. It has to be on a wall and it has to
+  // be reachable, so it claims its span and its approach first; a chair can go
+  // almost anywhere and should be the one that yields.
+  for (const shelf of all("shelf")) placeAgainstFreeWall(scene, shelf, "Storage lines a solid wall, with the floor in front of it left clear to reach.", w);
+  for (const dresser of all("dresser")) placeAgainstFreeWall(scene, dresser, "Kept off the entry wall, with drawer room left in front.", w);
+  if (!primary || primary.category !== "desk") {
+    for (const desk of all("desk")) placeAgainstFreeWall(scene, desk, "Set where the work surface catches daylight from the side, with room to push a chair back.", w);
+  }
+
   // Once the screen is on a wall it, not the coffee table, is what the seats
   // address.
   const addressed: Vec | null = screenRect ? [screenRect.x, screenRect.y] : null;
   const chairs = all("chair");
   if (chairs.length) placeSeating(scene, chairs, seat, addressed, groupCenter, w);
-
-  for (const shelf of all("shelf")) placeAgainstFreeWall(scene, shelf, "Storage lines a solid wall, out of the main walkway.", w);
-  for (const dresser of all("dresser")) placeAgainstFreeWall(scene, dresser, "Kept off the entry wall so the room opens as you come in.", w);
-  if (!primary || primary.category !== "desk") {
-    for (const desk of all("desk")) placeAgainstFreeWall(scene, desk, "Set where the work surface catches daylight from the side.", w);
-  }
 
   for (const stand of all("nightstand")) {
     if (!seat) {

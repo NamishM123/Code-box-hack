@@ -42,6 +42,8 @@ interface Body {
   palette?: string[];
   lightingNote?: string;
   pieces: Piece[];
+  /** A PNG data URL of the current 3D view, used as the layout to match. */
+  layoutImage?: string;
 }
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -65,9 +67,12 @@ function describe(p: Piece, room: Body) {
   ].join(", ");
 }
 
-async function fetchImage(url: string): Promise<Part | null> {
+async function fetchImage(url: string, origin: string): Promise<Part | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    // Verified product shots are served from this app, so their URLs are
+    // relative and have to be resolved before the server can fetch them.
+    const absolute = new URL(url, origin).toString();
+    const res = await fetch(absolute, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const type = res.headers.get("content-type") || "image/jpeg";
     if (!type.startsWith("image/")) return null;
@@ -99,7 +104,8 @@ export async function POST(req: Request) {
   }
 
   const withPhotos = body.pieces.filter((p) => p.image).slice(0, MAX_REFERENCE_IMAGES);
-  const references = await Promise.all(withPhotos.map((p) => fetchImage(p.image as string)));
+  const origin = new URL(req.url).origin;
+  const references = await Promise.all(withPhotos.map((p) => fetchImage(p.image as string, origin)));
 
   const prompt = [
     `Photorealistic interior photograph of a ${body.style?.replace("-", " ") || "warm minimal"} ${ROOM_NOUN[body.roomType || ""] || "room"}.`,
@@ -114,13 +120,29 @@ export async function POST(req: Request) {
     body.palette?.length ? `Keep the room's palette close to ${body.palette.join(", ")}.` : "",
     body.lightingNote ? `Lighting: ${body.lightingNote}` : "Natural daylight from one window, warm and even.",
     "",
-    "Shoot it like an interiors magazine: eye-level camera in a corner showing two walls,",
-    "wide lens, natural light, soft shadows, wood floor, no people, no text, no watermarks."
+    "Shoot it like an interiors magazine: natural light through the window, soft contact shadows",
+    "under every piece, real fabric weave and wood grain, subtle depth of field, no people, no text,",
+    "no watermarks. Photographic, not a render: no CGI sheen, no plastic surfaces, no perfect symmetry."
   ]
     .filter(Boolean)
     .join("\n");
 
   const parts: Part[] = [{ text: prompt }];
+
+  // The strongest thing we can hand an image model is the geometry we already
+  // solved. Described in words it reinvents the room; given the actual frame it
+  // re-renders that room, so the photo matches the plan the shopper is buying
+  // against instead of being a nice picture of somewhere else.
+  const frame = body.layoutImage?.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
+  if (frame) {
+    parts.push({
+      text:
+        "The image that follows is a 3D view of this exact room, to scale. Match it: same camera, " +
+        "same room proportions, same piece in the same place at the same size, facing the same way. " +
+        "Keep the geometry and replace the rendering with a photograph."
+    });
+    parts.push({ inlineData: { mimeType: frame[1], data: frame[2] } });
+  }
   withPhotos.forEach((p, i) => {
     const ref = references[i];
     if (!ref) return;
