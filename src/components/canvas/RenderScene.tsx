@@ -291,9 +291,6 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
       roomType: room.roomType,
       palette: detected?.palette,
       lightingNote: detected?.lightingNote,
-      // The picture this room was copied from, so the render styles itself on
-      // the actual room rather than on a list of hex codes.
-      inspirationImage: (room as { inspirationImage?: string }).inspirationImage,
       pieces
     });
 

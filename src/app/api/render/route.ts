@@ -75,8 +75,6 @@ interface Body {
   pieces: Piece[];
   /** A data URL of the current 3D view, used as the layout to match. */
   layoutImage?: string;
-  /** The inspiration photograph this room is copied from, as a style reference. */
-  inspirationImage?: string;
   /** Fast trades rendering quality for a much shorter wait. */
   speed?: "fast" | "best";
   /** Stream partial images back as they form, rather than waiting for the last one. */
@@ -163,18 +161,10 @@ export async function POST(req: Request) {
     Boolean
   ) as Reference[];
 
-  // The picture the room is being copied from. It goes in as an image because
-  // a wall treatment, a light quality and a mood do not survive being reduced
-  // to a list of hex codes, which is all the renderer used to get.
-  const inspiration = body.inspirationImage
-    ? await fetchImage(body.inspirationImage, origin, "inspiration")
-    : null;
-  if (inspiration) references.unshift(inspiration);
-
   const frame = body.layoutImage?.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
   const layout: Reference | null = frame ? { label: "layout", mimeType: frame[1], bytes: Buffer.from(frame[2], "base64") } : null;
 
-  const prompt = buildPrompt(body, references, Boolean(layout), Boolean(inspiration));
+  const prompt = buildPrompt(body, references, Boolean(layout));
 
   const gathered = Date.now();
 
@@ -223,7 +213,7 @@ export async function POST(req: Request) {
   }
 }
 
-function buildPrompt(body: Body, references: Reference[], hasLayout: boolean, hasInspiration = false) {
+function buildPrompt(body: Body, references: Reference[], hasLayout: boolean) {
   return [
     `A photograph of a ${body.style?.replace("-", " ") || "warm minimal"} ${ROOM_NOUN[body.roomType || ""] || "room"}.`,
     `The room is ${body.widthFt.toFixed(1)} feet wide by ${body.depthFt.toFixed(1)} feet deep with 9 foot ceilings.`,
@@ -231,9 +221,6 @@ function buildPrompt(body: Body, references: Reference[], hasLayout: boolean, ha
     "It contains exactly these pieces, at these positions and at this scale, and nothing else:",
     ...body.pieces.map((p) => describe(p, body)),
     "",
-    hasInspiration
-      ? "One supplied image is labelled 'inspiration'. That is the room this one is being modelled on: copy its wall treatment and colour, its flooring, its light and its mood. It is a style reference ONLY — do not copy the furniture in it, and do not treat the pieces in it as pieces in this room."
-      : "",
     references.length
       ? `The product photographs supplied are the actual pieces (${references
           .map((r) => r.label)

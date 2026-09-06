@@ -225,10 +225,7 @@ export function LookLightbox({
       searchTerms: vibe?.searchTerms,
       detected,
       lookProducts: chosen,
-      lookPlan,
-      // Carried so the realistic view can style itself on the actual picture
-      // rather than on a handful of hex codes.
-      inspirationImage: pin.srcLarge || pin.src
+      lookPlan
     };
 
     try {
