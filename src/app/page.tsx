@@ -1,9 +1,15 @@
 import { Nav } from "@/components/Nav";
-import { Hero } from "@/components/Hero";
-import { Marquee } from "@/components/Marquee";
-import { Steps } from "@/components/Steps";
-import { PrinciplesSection } from "@/components/PrinciplesSection";
-import { Gallery } from "@/components/Gallery";
+import { Hero } from "@/components/site/Hero";
+import { ShopMarquee } from "@/components/site/ShopMarquee";
+import { Statement } from "@/components/site/Statement";
+import { BlockStrip } from "@/components/site/BlockStrip";
+import { FeatureRows } from "@/components/site/FeatureRows";
+import { AllInOne } from "@/components/site/AllInOne";
+import { SwapShowcase } from "@/components/site/SwapShowcase";
+import { RoomsRow } from "@/components/site/RoomsRow";
+import { SpecShowcase } from "@/components/site/SpecShowcase";
+import { DuoCards } from "@/components/site/DuoCards";
+import { Testimonials } from "@/components/site/Testimonials";
 import { Footer } from "@/components/Footer";
 
 export default function Home() {
@@ -11,10 +17,16 @@ export default function Home() {
     <main>
       <Nav />
       <Hero />
-      <Marquee />
-      <Steps />
-      <PrinciplesSection />
-      <Gallery />
+      <ShopMarquee />
+      <Statement />
+      <BlockStrip />
+      <FeatureRows />
+      <AllInOne />
+      <SwapShowcase />
+      <RoomsRow />
+      <SpecShowcase />
+      <DuoCards />
+      <Testimonials />
       <Footer />
     </main>
   );

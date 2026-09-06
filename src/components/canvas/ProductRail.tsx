@@ -5,7 +5,7 @@ import { money } from "@/lib/utils";
 
 const SOURCE_LABEL: Record<string, string> = { amazon: "Amazon", facebook: "Facebook Marketplace", target: "Target", wayfair: "Wayfair", ikea: "IKEA", westelm: "West Elm", cb2: "CB2", article: "Article" };
 const FIT_LABEL = { fits: "Fits", tight: "Tight fit", conflict: "Conflict", unverified: "Unverified" };
-const FIT_STYLE = { fits: "text-brass border-brass/40", tight: "text-amber-300 border-amber-300/40", conflict: "text-red-400 border-red-400/40", unverified: "text-ash border-ash/40" };
+const FIT_STYLE = { fits: "text-brass border-brass/40", tight: "text-amber-600 border-amber-500/50", conflict: "text-red-600 border-red-500/50", unverified: "text-ash border-ash/40" };
 
 export function ProductRail({ placed, products, selectedId, onSelect, total, budget, onSwap }: {
   placed: PlacedItem[]; products: Product[]; selectedId: string | null;
@@ -14,7 +14,7 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
   const byId = Object.fromEntries(products.map((p) => [p.id, p]));
   return (
     <div className="card">
-      <div className="border-b border-rule/30 px-4 py-4">
+      <div className="border-b border-rule px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Shopping list</div>
@@ -22,20 +22,20 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
           </div>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Total / Budget</div>
-            <div className={`font-display text-2xl ${total > budget ? "text-red-400" : ""}`}>
+            <div className={`font-display text-2xl ${total > budget ? "text-red-600" : ""}`}>
               {money(total)} <span className="text-base text-ash/60">/ {money(budget)}</span>
             </div>
           </div>
         </div>
       </div>
-      <ul className="max-h-[560px] divide-y divide-rule/20 overflow-auto">
+      <ul className="max-h-[560px] divide-y divide-rule overflow-auto">
         {placed.map((p) => {
           const prod = byId[p.productId];
           if (!prod) return null;
           const sel = selectedId === p.productId;
           return (
             <li key={p.productId}>
-              <button onClick={() => onSelect(p.productId)} className={`flex w-full items-start gap-3 p-3 text-left transition ${sel ? "bg-brass/5" : "hover:bg-white/[0.02]"}`}>
+              <button onClick={() => onSelect(p.productId)} className={`flex w-full items-start gap-3 p-3 text-left transition ${sel ? "bg-butter/20" : "hover:bg-ink/[0.03]"}`}>
                 <img src={prod.image} alt="" className="h-16 w-16 flex-shrink-0 rounded-md object-cover" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">

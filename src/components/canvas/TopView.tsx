@@ -41,7 +41,7 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
 
   return (
     <div className="card">
-      <div className="flex items-center justify-between border-b border-rule/30 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-rule px-4 py-3">
         <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-ash">
           <span>Top view</span><span>·</span><span>Drag to move · click to select · double-click to rotate</span>
         </div>
@@ -54,8 +54,8 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
           onMouseUp={() => setDragging(null)}
           onMouseLeave={() => setDragging(null)}
           onClick={(e) => e.target === wrap.current && onSelect(null)}
-          className="relative mx-auto rounded-md border border-rule/40 bg-[repeating-linear-gradient(0deg,rgba(184,180,170,0.06)_0_1px,transparent_1px_30px),repeating-linear-gradient(90deg,rgba(184,180,170,0.06)_0_1px,transparent_1px_30px)]"
-          style={{ width: W, height: D, background: "#0d0e10" }}
+          className="relative mx-auto rounded-xl border border-rule bg-[repeating-linear-gradient(0deg,rgba(12,12,13,0.07)_0_1px,transparent_1px_30px),repeating-linear-gradient(90deg,rgba(12,12,13,0.07)_0_1px,transparent_1px_30px)]"
+          style={{ width: W, height: D, background: "#FFFFFF" }}
         >
           {/* door swing */}
           {doorPos && (
@@ -68,11 +68,11 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
             <div className="absolute rounded-sm bg-brass" style={{ left: doorPos.x * PX - (door!.widthFt * PX) / 2, top: doorPos.y * PX - 2, width: door!.widthFt * PX, height: 4 }} />
           )}
           {windowPos && (
-            <div className="absolute rounded-sm bg-paper/70" style={{ left: windowPos.x * PX - (window!.widthFt * PX) / 2, top: windowPos.y * PX - 2, width: window!.widthFt * PX, height: 4 }} title="Window" />
+            <div className="absolute rounded-sm bg-ocean" style={{ left: windowPos.x * PX - (window!.widthFt * PX) / 2, top: windowPos.y * PX - 2, width: window!.widthFt * PX, height: 4 }} title="Window" />
           )}
           {/* existing furniture (dashed) */}
           {(detected?.existing || []).map((e, i) => (
-            <div key={i} className="absolute rounded-md border border-dashed border-ash/40" style={{
+            <div key={i} className="absolute rounded-md border border-dashed border-ash/50" style={{
               left: e.x * PX - (e.widthFt * PX) / 2, top: e.y * PX - (e.depthFt * PX) / 2,
               width: e.widthFt * PX, height: e.depthFt * PX
             }}>
@@ -85,19 +85,19 @@ export function TopView({ room, detected, products, placed, selectedId, onSelect
             if (!prod) return null;
             const w = prod.width * PX, h = prod.depth * PX;
             const selected = selectedId === p.productId;
-            const border = p.fit === "conflict" ? "#ef4444" : p.fit === "tight" ? "#f59e0b" : selected ? "#C89F5A" : "rgba(184,180,170,0.35)";
+            const border = p.fit === "conflict" ? "#ef4444" : p.fit === "tight" ? "#f59e0b" : selected ? "#0C0C0D" : "rgba(12,12,13,0.28)";
             return (
               <div
                 key={p.productId}
                 onMouseDown={() => { setDragging(p.productId); onSelect(p.productId); }}
                 onDoubleClick={() => rotate(p.productId)}
-                className="group absolute cursor-grab select-none rounded-md shadow-[0_10px_25px_-15px_rgba(0,0,0,0.9)] active:cursor-grabbing"
+                className="group absolute cursor-grab select-none rounded-md shadow-[0_10px_22px_-16px_rgba(12,12,13,0.7)] active:cursor-grabbing"
                 style={{
                   left: p.x * PX - w / 2, top: p.y * PX - h / 2, width: w, height: h,
                   background: prod.color, border: `1.5px solid ${border}`,
                   transform: `rotate(${p.rotation}deg)`
                 }}
-                title={`${prod.title} — ${p.fit}`}
+                title={`${prod.title} · ${p.fit}`}
               >
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-medium text-black/70">
                   {prod.category}

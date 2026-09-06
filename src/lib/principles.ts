@@ -75,7 +75,7 @@ export const PRINCIPLES: Principle[] = [
     key: "verticality",
     tradition: "compositional",
     title: "One tall thing per zone",
-    body: "Every zone needs a vertical accent — a shelf, a plant, a lamp — to keep the eye from falling."
+    body: "Every zone needs a vertical accent, a shelf or a plant or a lamp, to keep the eye from falling."
   },
   {
     key: "triangulation",

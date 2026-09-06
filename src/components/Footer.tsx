@@ -1,54 +1,91 @@
 import Link from "next/link";
 
-export function Footer() {
-  return (
-    <footer className="border-t border-rule/40 py-14">
-      <div className="mx-auto grid max-w-7xl gap-8 px-6 md:grid-cols-[2fr_1fr_1fr_1fr]">
-        <div>
-          <div className="font-display text-3xl">Sightline</div>
-          <div className="mt-2 max-w-sm text-[13px] text-ash">A camera-first room editor for people who would rather make one confident decision than scroll a thousand listings.</div>
-        </div>
-        <FooterCol title="Product" items={["Capture", "Canvas", "Saved rooms"]} />
-        <FooterCol title="Library" items={["Principles", "Feng shui", "Ergonomics"]} />
-        <FooterCol
-          title="Company"
-          items={[
-            { label: "Privacy", href: "/privacy" },
-            { label: "Terms", href: "/terms" },
-            "Contact"
-          ]}
-        />
-      </div>
-      <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between px-6 text-[11px] uppercase tracking-[0.2em] text-ash">
-        <span>© {new Date().getFullYear()} Sightline</span>
-        <span>Not affiliated with any retailer</span>
-      </div>
-    </footer>
-  );
-}
-
 type FooterItem = string | { label: string; href: string };
 
-function FooterCol({ title, items }: { title: string; items: FooterItem[] }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{title}</div>
-      <ul className="mt-3 space-y-2 text-[13px] text-ash">
-        {items.map((item) => {
-          const label = typeof item === "string" ? item : item.label;
-          const href = typeof item === "string" ? "#" : item.href;
+const COLUMNS: { title: string; items: FooterItem[] }[] = [
+  {
+    title: "Product",
+    items: [
+      { label: "Capture a room", href: "/capture" },
+      { label: "Room canvas", href: "/canvas?demo=1" },
+      "Saved rooms",
+      "Pricing"
+    ]
+  },
+  {
+    title: "Shops",
+    items: ["Amazon", "Target", "Walmart", "Facebook Marketplace", "Wayfair"]
+  },
+  {
+    title: "Library",
+    items: ["Placement principles", "Clearances", "Feng shui", "Ergonomics"]
+  },
+  {
+    title: "Company",
+    items: ["About", "Journal", "Contact"]
+  }
+];
 
-          return (
-            <li key={label}>
-              {href.startsWith("/") ? (
-                <Link href={href} className="hover:text-paper">{label}</Link>
-              ) : (
-                <a href={href} className="hover:text-paper">{label}</a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+export function Footer() {
+  return (
+    <footer className="relative overflow-hidden border-t border-rule pt-16">
+      <div className="mx-auto max-w-[1320px] px-5">
+        <div className="grid gap-10 md:grid-cols-[1.3fr_repeat(4,1fr)]">
+          <div className="max-w-xs">
+            <p className="text-[14px] leading-relaxed text-ash">
+              A camera-first room editor for people who would rather make one confident decision
+              than scroll a thousand listings.
+            </p>
+            <div className="mt-6 flex gap-2">
+              <Link href="/capture" className="btn btn-primary px-5 py-2.5 text-[13px]">Map your room</Link>
+              <Link href="/canvas?demo=1" className="btn btn-light px-5 py-2.5 text-[13px]">Demo room</Link>
+            </div>
+          </div>
+
+          {COLUMNS.map((col) => (
+            <div key={col.title}>
+              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink">{col.title}</div>
+              <ul className="mt-4 space-y-2.5">
+                {col.items.map((item) => {
+                  const label = typeof item === "string" ? item : item.label;
+                  const href = typeof item === "string" ? "#" : item.href;
+                  return (
+                    <li key={label}>
+                      {href.startsWith("/") ? (
+                        <Link href={href} className="text-[13px] text-ash transition-colors hover:text-ink">{label}</Link>
+                      ) : (
+                        <a href={href} className="text-[13px] text-ash transition-colors hover:text-ink">{label}</a>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-6 text-[12px] text-ash">
+          <span>Prices and availability are checked at listing time. Verify before you buy.</span>
+          <div className="flex gap-5">
+            <Link href="/privacy" className="link-underline hover:text-ink">Privacy Policy</Link>
+            <Link href="/terms" className="link-underline hover:text-ink">Terms</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* the oversized holographic wordmark, Butter-style */}
+      <div className="select-none px-3 pt-10">
+        <div className="chrome display-xl text-center text-[clamp(72px,20.5vw,320px)] italic leading-[0.78]">
+          Sightline
+        </div>
+      </div>
+
+      <div className="border-t border-rule">
+        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-2 px-5 py-5 text-[12px] text-ash">
+          <span>© {new Date().getFullYear()} Sightline</span>
+          <span>Not affiliated with any retailer</span>
+        </div>
+      </div>
+    </footer>
   );
 }

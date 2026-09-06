@@ -90,7 +90,7 @@ export default function CapturePage() {
   return (
     <main className="min-h-screen">
       <Nav />
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <Stepper step={step} />
         <AnimatePresence mode="wait">
           {step === "frame" && (
@@ -119,15 +119,15 @@ export default function CapturePage() {
                 <div>
                   <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
                     {shots.map((s) => (
-                      <div key={s.id} className={`group relative aspect-square overflow-hidden rounded-md border ${s.ok ? "border-rule/60" : "border-red-500/60"}`}>
+                      <div key={s.id} className={`group relative aspect-square overflow-hidden rounded-md border ${s.ok ? "border-rule" : "border-red-500/60"}`}>
                         <img src={s.url} alt="" className="h-full w-full object-cover" />
-                        <button onClick={() => setShots((p) => p.filter((x) => x.id !== s.id))} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-ink/70"><X className="h-3 w-3" /></button>
+                        <button onClick={() => setShots((p) => p.filter((x) => x.id !== s.id))} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-ink/75 text-paper"><X className="h-3 w-3" /></button>
                         {!s.ok && <div className="absolute inset-x-0 bottom-0 bg-red-500/90 p-1 text-[10px]">{s.reason}</div>}
-                        {s.ok && <div className="absolute right-1 bottom-1 grid h-5 w-5 place-items-center rounded-full bg-brass text-ink"><Check className="h-3 w-3" /></div>}
+                        {s.ok && <div className="absolute right-1 bottom-1 grid h-5 w-5 place-items-center rounded-full bg-ink text-paper"><Check className="h-3 w-3" /></div>}
                       </div>
                     ))}
                     {shots.length < 12 && (
-                      <label className="grid aspect-square cursor-pointer place-items-center rounded-md border border-dashed border-rule/60 text-ash hover:border-brass hover:text-brass">
+                      <label className="grid aspect-square cursor-pointer place-items-center rounded-md border border-dashed border-rule text-ash hover:border-brass hover:text-brass">
                         <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
                         <ImagePlus className="h-6 w-6" />
                       </label>
@@ -159,7 +159,7 @@ export default function CapturePage() {
           )}
 
           {step === "confirm" && detected && (
-            <Section key="confirm" title="Confirm the room" subtitle={`Confidence ${(detected.confidence * 100).toFixed(0)}%. Edit anything that looks off — the canvas will use these values.`}>
+            <Section key="confirm" title="Confirm the room" subtitle={`Confidence ${(detected.confidence * 100).toFixed(0)}%. Edit anything that looks off. The canvas will use these values.`}>
               <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
                 <div className="card p-5">
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Room</div>
@@ -171,7 +171,7 @@ export default function CapturePage() {
                   <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Openings</div>
                   <ul className="mt-3 space-y-2 text-[13px]">
                     {detected.openings.map((o, i) => (
-                      <li key={i} className="flex items-center justify-between rounded-md border border-rule/40 px-3 py-2">
+                      <li key={i} className="flex items-center justify-between rounded-md border border-rule px-3 py-2">
                         <span>{o.kind === "door" ? "Door" : "Window"} · {o.widthFt} ft · wall {o.wall}</span>
                         <button className="text-[11px] text-ash hover:text-brass" onClick={() => setDetected({ ...detected, openings: detected.openings.filter((_, j) => j !== i) })}>remove</button>
                       </li>
@@ -217,8 +217,8 @@ export default function CapturePage() {
                     <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Style</div>
                     <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
                       {STYLE_PRESETS.map((s) => (
-                        <button key={s.key} onClick={() => setStyle(s.key)} className={`rounded-md border p-3 text-left transition ${style === s.key ? "border-brass" : "border-rule/40 hover:border-ash/40"}`}>
-                          <div className="flex gap-1">{s.palette.slice(0, 4).map((c) => <span key={c} className="h-4 w-4 rounded-full border border-rule/40" style={{ background: c }} />)}</div>
+                        <button key={s.key} onClick={() => setStyle(s.key)} className={`rounded-md border p-3 text-left transition ${style === s.key ? "border-brass" : "border-rule hover:border-ash/40"}`}>
+                          <div className="flex gap-1">{s.palette.slice(0, 4).map((c) => <span key={c} className="h-4 w-4 rounded-full border border-rule" style={{ background: c }} />)}</div>
                           <div className="mt-2 font-display text-lg">{s.label}</div>
                           <div className="text-[11px] text-ash">{s.vibe.join(" · ")}</div>
                         </button>
@@ -232,7 +232,7 @@ export default function CapturePage() {
                       {(["sofa", "chair", "table", "rug", "lamp", "shelf", "plant", "art", "bed", "desk", "dresser", "mirror"] as Category[]).map((c) => {
                         const on = mustHave.includes(c);
                         return (
-                          <button key={c} onClick={() => setMustHave((m) => on ? m.filter((x) => x !== c) : [...m, c])} className={`rounded-md border px-3 py-2 text-xs uppercase tracking-widest transition ${on ? "border-brass bg-brass text-ink" : "border-rule/40 text-ash hover:border-ash"}`}>{c}</button>
+                          <button key={c} onClick={() => setMustHave((m) => on ? m.filter((x) => x !== c) : [...m, c])} className={`rounded-md border px-3 py-2 text-xs uppercase tracking-widest transition ${on ? "border-ink bg-ink text-paper" : "border-rule text-ash hover:border-ash"}`}>{c}</button>
                         );
                       })}
                     </div>
@@ -247,7 +247,7 @@ export default function CapturePage() {
                     </div>
                     <p className="mt-2 text-[12px] text-ash">Paste a Pinterest link or upload a screenshot. We read the palette and vibe.</p>
                     <div className="mt-4 flex gap-2">
-                      <div className="flex flex-1 items-center rounded-md border border-rule/40 px-3">
+                      <div className="flex flex-1 items-center rounded-md border border-rule px-3">
                         <LinkIcon className="h-3.5 w-3.5 text-ash" />
                         <input value={pinUrl} onChange={(e) => setPinUrl(e.target.value)} placeholder="https://pinterest.com/pin/…" className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-ash/60" />
                       </div>
@@ -261,14 +261,14 @@ export default function CapturePage() {
                       </label>
                     </div>
                     {pinImage && (
-                      <div className="mt-4 overflow-hidden rounded-md border border-rule/40">
+                      <div className="mt-4 overflow-hidden rounded-md border border-rule">
                         <img src={pinImage} alt="" className="max-h-64 w-full object-cover" />
                       </div>
                     )}
                     {vibe && (
                       <div className="mt-4">
                         <div className="text-[10px] uppercase tracking-[0.2em] text-ash">Extracted palette</div>
-                        <div className="mt-2 flex gap-1.5">{vibe.palette.map((c) => <span key={c} className="h-6 w-6 rounded-full border border-rule/40" style={{ background: c }} />)}</div>
+                        <div className="mt-2 flex gap-1.5">{vibe.palette.map((c) => <span key={c} className="h-6 w-6 rounded-full border border-rule" style={{ background: c }} />)}</div>
                         <div className="mt-3 flex flex-wrap gap-1.5">{vibe.tags.map((t) => <span key={t} className="chip">{t}</span>)}</div>
                       </div>
                     )}
@@ -293,7 +293,7 @@ function Stepper({ step }: { step: Step }) {
     <div className="mb-8 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em]">
       {steps.map((s, i) => (
         <div key={s} className="flex items-center gap-3">
-          <span className={i <= idx ? "text-paper" : "text-ash/60"}>{String(i + 1).padStart(2, "0")} · {labels[s]}</span>
+          <span className={i <= idx ? "text-ink" : "text-ash/60"}>{String(i + 1).padStart(2, "0")} · {labels[s]}</span>
           {i < steps.length - 1 && <span className="h-px w-8 bg-rule/60" />}
         </div>
       ))}
@@ -317,7 +317,7 @@ function PanelGroup<T extends string>({ label, items, value, onChange }: { label
       <div className="text-[10px] uppercase tracking-[0.2em] text-brass">{label}</div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {items.map((it) => (
-          <button key={it.k} onClick={() => onChange(it.k)} className={`rounded-md border px-3 py-3 text-left text-sm transition ${value === it.k ? "border-brass bg-brass/5" : "border-rule/40 hover:border-ash/40"}`}>
+          <button key={it.k} onClick={() => onChange(it.k)} className={`rounded-md border px-3 py-3 text-left text-sm transition ${value === it.k ? "border-brass bg-brass/5" : "border-rule hover:border-ash/40"}`}>
             {it.l}
           </button>
         ))}
@@ -330,7 +330,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
   return (
     <label className="block">
       <div className="text-[10px] uppercase tracking-[0.2em] text-ash">{label}</div>
-      <input type="number" value={value} onChange={(e) => onChange(+e.target.value)} className="mt-1 w-full rounded-md border border-rule/40 bg-transparent px-3 py-2 text-lg outline-none focus:border-brass" />
+      <input type="number" value={value} onChange={(e) => onChange(+e.target.value)} className="mt-1 w-full rounded-md border border-rule bg-transparent px-3 py-2 text-lg outline-none focus:border-brass" />
     </label>
   );
 }
