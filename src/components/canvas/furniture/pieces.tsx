@@ -736,6 +736,56 @@ function Plant({ product }: PieceProps) {
   );
 }
 
+
+/** A panel on a pedestal, screen facing +z like every other front. */
+function Television({ product }: PieceProps) {
+  const { width: w, depth: d, height: h } = product;
+  const { lightsOn } = useContext(SceneMode);
+  const body = product.color;
+  const standH = Math.min(0.5, h * 0.18);
+  const panelH = h - standH;
+  const bezel = 0.05;
+
+  return (
+    <group>
+      {/* base plate and neck */}
+      <mesh position={[0, 0.035, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[Math.min(d, w * 0.22), Math.min(d, w * 0.24), 0.07, SEG]} />
+        <meshStandardMaterial color={shade(body, 0.1)} roughness={0.4} metalness={0.7} />
+      </mesh>
+      <mesh position={[0, standH / 2, 0]} castShadow>
+        <boxGeometry args={[w * 0.09, standH, Math.max(0.12, d * 0.2)]} />
+        <meshStandardMaterial color={shade(body, 0.06)} roughness={0.4} metalness={0.7} />
+      </mesh>
+
+      {/* panel */}
+      <RoundedBox
+        args={[w, panelH, 0.1]}
+        radius={safeRadius(0.02, w, panelH, 0.1)}
+        smoothness={2}
+        position={[0, standH + panelH / 2, 0]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial color={body} roughness={0.45} metalness={0.5} />
+      </RoundedBox>
+
+      {/* screen: dark and reflective by day, lit in the evening */}
+      <mesh position={[0, standH + panelH / 2, 0.052]}>
+        <planeGeometry args={[w - bezel * 2, panelH - bezel * 2]} />
+        <meshStandardMaterial
+          color={lightsOn ? "#20344E" : "#0B0C10"}
+          roughness={0.08}
+          metalness={0.85}
+          envMapIntensity={1.6}
+          emissive={lightsOn ? "#22405F" : "#000000"}
+          emissiveIntensity={lightsOn ? 0.55 : 0}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 /* --------------------------------------------------------------- fallback */
 
 function Block({ product }: PieceProps) {
@@ -782,6 +832,8 @@ export function FurnitureModel({ product }: PieceProps) {
       return <Art product={product} />;
     case "mirror":
       return <Mirror product={product} />;
+    case "tv":
+      return <Television product={product} />;
     case "plant":
       return <Plant product={product} />;
     default:

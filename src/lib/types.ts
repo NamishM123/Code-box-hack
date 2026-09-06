@@ -1,7 +1,7 @@
 export type Source = "amazon" | "facebook" | "target" | "wayfair" | "ikea" | "westelm" | "cb2" | "article" | "other";
 
 export type Category =
-  | "sofa" | "chair" | "table" | "bed" | "rug" | "lamp" | "shelf" | "plant" | "art" | "desk" | "dresser" | "nightstand" | "mirror";
+  | "sofa" | "chair" | "table" | "bed" | "rug" | "lamp" | "shelf" | "plant" | "art" | "desk" | "dresser" | "nightstand" | "mirror" | "tv";
 
 export type RoomType = "living" | "bedroom" | "office" | "studio";
 

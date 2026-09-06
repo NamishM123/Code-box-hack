@@ -11,7 +11,7 @@ import { ProductRail } from "@/components/canvas/ProductRail";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
-import { generateLayouts } from "@/lib/layout";
+import { generateLayouts, reseat } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
@@ -214,14 +214,22 @@ export default function CanvasPage() {
     setSelectedId(null);
   }
 
+  /**
+   * The layout already decided where this piece belongs. Swapping the product
+   * keeps that slot and only re-seats the new one to its own depth, then
+   * re-runs the fit check so the verdict on screen is about the piece actually
+   * standing there.
+   */
   function pickAlternative(a: Product) {
-    if (!swap) return;
-    setProducts((prev) => {
-      const next = prev.map((p) => (p.id === swap.id ? a : p));
-      return next.some((p) => p.id === a.id && p !== a) ? prev.filter((p) => p.id !== swap.id).concat(a) : next;
-    });
-    setPlaced((prev) => prev.map((p) => (p.productId === swap.id ? { ...p, productId: a.id, rationale: ["Swapped in. Matches your palette closer."] } : p)));
+    if (!swap || !brief) return;
+    const replaced = products.map((p) => (p.id === swap.id ? a : p));
+    const nextProducts = replaced.filter((p, i) => replaced.findIndex((q) => q.id === p.id) === i);
+    const nextPlaced = placed.map((p) => (p.productId === swap.id ? { ...p, productId: a.id } : p));
+
+    setProducts(nextProducts);
+    setPlaced(reseat(nextPlaced, nextProducts, brief, brief.detected || undefined, a.id));
     setTotal((t) => t - swap.price + a.price);
+    setSelectedId(a.id);
     setSwapId(null);
   }
 

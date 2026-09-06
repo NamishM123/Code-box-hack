@@ -73,6 +73,7 @@ const CATEGORY_FINISH: Partial<Record<Category, Finish>> = {
   dresser: { kind: "wood", roughness: 0.62, metalness: 0.02 },
   nightstand: { kind: "wood", roughness: 0.62, metalness: 0.02 },
   lamp: { kind: "metal", roughness: 0.3, metalness: 0.8 },
+  tv: { kind: "metal", roughness: 0.35, metalness: 0.6 },
   art: { kind: "wood", roughness: 0.5, metalness: 0.02 }
 };
 

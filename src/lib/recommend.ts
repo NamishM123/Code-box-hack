@@ -2,10 +2,10 @@ import { SAMPLE_CATALOG } from "./catalog";
 import type { Product, RoomSpec, Category } from "./types";
 
 const DEFAULT_MIX: Record<string, Category[]> = {
-  living: ["sofa", "chair", "table", "rug", "lamp", "shelf", "plant", "art"],
+  living: ["sofa", "chair", "table", "tv", "rug", "lamp", "shelf", "plant", "art"],
   bedroom: ["bed", "nightstand", "dresser", "rug", "lamp", "mirror", "art"],
   office: ["desk", "chair", "shelf", "lamp", "plant", "art"],
-  studio: ["sofa", "bed", "table", "rug", "lamp", "shelf", "plant"]
+  studio: ["sofa", "bed", "table", "tv", "rug", "lamp", "shelf", "plant"]
 };
 
 export function recommend(spec: RoomSpec): Product[] {
