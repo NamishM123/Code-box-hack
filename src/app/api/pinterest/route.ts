@@ -44,11 +44,11 @@ export async function POST(req: Request) {
     // readLook, not readVibe: the caller needs the inventory of what is
     // actually in the picture, not just its palette, or it goes back to
     // shopping a fixed category mix.
-    const vibe = await readLook(images);
+    const read = await readLook(images);
     return NextResponse.json({
-      vibe,
+      vibe: read.look,
       images: images.slice(0, 3).map(toDataUrl),
-      source: visionProvider()
+      source: read.provider
     });
   } catch (e) {
     return NextResponse.json(
