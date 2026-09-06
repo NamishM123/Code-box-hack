@@ -8,8 +8,10 @@ import { NextResponse } from "next/server";
  * so the room comes back containing the exact products the shopper picked
  * rather than a model's idea of "a sofa".
  *
- * Set GEMINI_API_KEY to enable. GEMINI_IMAGE_MODEL overrides the model and
- * GEMINI_API_BASE the host, for a proxy or a self-hosted gateway.
+ * Set OPENAI_API_KEY or a Google key to enable. GOOGLE_AI_API_KEY is the name
+ * the rest of this app already uses for Google, so it is the one to set;
+ * GEMINI_API_KEY is accepted as an alias. GEMINI_IMAGE_MODEL and
+ * GEMINI_API_BASE override the model and host.
  */
 
 export const runtime = "nodejs";
@@ -23,15 +25,24 @@ const MAX_REFERENCE_IMAGES = 6;
 const MAX_IMAGE_BYTES = 4_000_000;
 
 /**
+ * The Google key, under whichever name it was set. GOOGLE_AI_API_KEY is what
+ * the capture flow and the live catalog already read, so a key set for those
+ * has to work here too rather than silently reporting no key at all.
+ */
+function googleKey() {
+  return process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
+}
+
+/**
  * Which image model renders the room. Set RENDER_PROVIDER to pin one;
  * otherwise whichever key is configured wins, OpenAI first.
  */
 function chooseProvider(): "openai" | "gemini" | null {
   const pinned = process.env.RENDER_PROVIDER?.toLowerCase();
   if (pinned === "openai") return process.env.OPENAI_API_KEY ? "openai" : null;
-  if (pinned === "gemini") return process.env.GEMINI_API_KEY ? "gemini" : null;
+  if (pinned === "gemini") return googleKey() ? "gemini" : null;
   if (process.env.OPENAI_API_KEY) return "openai";
-  if (process.env.GEMINI_API_KEY) return "gemini";
+  if (googleKey()) return "gemini";
   return null;
 }
 
@@ -109,8 +120,11 @@ export async function POST(req: Request) {
   if (!provider) {
     return NextResponse.json(
       {
+        // Name every variable checked: the last time this fired, the key was
+        // set under a name this route did not look at.
         error:
-          "Photoreal rendering needs an image key. Set OPENAI_API_KEY (or GEMINI_API_KEY) in the environment, then try again. RENDER_PROVIDER pins which one is used."
+          "No image key found. This looked for OPENAI_API_KEY, GOOGLE_AI_API_KEY and GEMINI_API_KEY and found none of them set. Add one in the environment and redeploy. RENDER_PROVIDER=openai|gemini pins which is used.",
+        checked: ["OPENAI_API_KEY", "GOOGLE_AI_API_KEY", "GEMINI_API_KEY"]
       },
       { status: 501 }
     );
@@ -197,7 +211,7 @@ function buildPrompt(body: Body, references: Reference[], hasLayout: boolean) {
 
 /** Google: everything goes in one multimodal request. */
 async function renderWithGemini(prompt: string, layout: Reference | null, references: Reference[]) {
-  const key = process.env.GEMINI_API_KEY as string;
+  const key = googleKey();
   const parts: Part[] = [{ text: prompt }];
   if (layout) {
     parts.push({ text: "The 3D view of the room to match:" });
