@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 
+import { AuthButton } from "@/components/AuthButton";
+
 const LINKS = [
-  { label: "Product", href: "/#product" },
+  { label: "Product", href: "/product" },
   { label: "Pieces", href: "/#pieces" },
-  { label: "Shops", href: "/#shops" },
-  { label: "How it works", href: "/#workflow" },
-  { label: "Rooms", href: "/#rooms" }
+  { label: "Shops", href: "/shops" },
+  { label: "How it works", href: "/how-it-works" },
+  { label: "Rooms", href: "/rooms" }
 ];
 
 export function Nav() {
@@ -56,6 +58,7 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <AuthButton />
           <Link href="/canvas?demo=1" className="hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ash transition-colors hover:text-ink sm:block">
             See a demo room
           </Link>

@@ -6,23 +6,27 @@ const COLUMNS: { title: string; items: FooterItem[] }[] = [
   {
     title: "Product",
     items: [
+      { label: "Overview", href: "/product" },
+      { label: "Pieces", href: "/pieces" },
+      { label: "How it works", href: "/how-it-works" }
+    ]
+  },
+  {
+    title: "Workspace",
+    items: [
       { label: "Capture a room", href: "/capture" },
       { label: "Room canvas", href: "/canvas?demo=1" },
-      "Saved rooms",
-      "Pricing"
+      { label: "Demo rooms", href: "/rooms" },
+      { label: "Saved rooms", href: "/saved" }
     ]
   },
   {
     title: "Shops",
-    items: ["Amazon", "Target", "Walmart", "Facebook Marketplace", "Wayfair"]
-  },
-  {
-    title: "Library",
-    items: ["Placement principles", "Clearances", "Feng shui", "Ergonomics"]
+    items: [{ label: "Browse shops", href: "/shops" }, "Amazon", "Target", "Facebook Marketplace", "Wayfair"]
   },
   {
     title: "Company",
-    items: ["About", "Journal", "Contact"]
+    items: [{ label: "Pricing", href: "/pricing" }, { label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }]
   }
 ];
 

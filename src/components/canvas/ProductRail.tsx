@@ -1,5 +1,5 @@
 "use client";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Star } from "lucide-react";
 import type { PlacedItem, Product } from "@/lib/types";
 import { money } from "@/lib/utils";
 
@@ -50,6 +50,15 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
                   </div>
                   {p.rationale?.[0] && (
                     <div className="mt-2 border-l-2 border-brass/40 pl-2 text-[11px] leading-relaxed text-ash">{p.rationale[0]}</div>
+                  )}
+                  <div className="mt-2 flex items-center gap-3 text-[11px]">
+                    <span className="inline-flex items-center gap-1 text-ash"><Star className="h-3 w-3 fill-brass text-brass" /> {prod.rating?.toFixed(1) ?? "—"}</span>
+                    <span className="text-ash">{prod.width}′ W × {prod.depth}′ D × {prod.height}′ H</span>
+                  </div>
+                  {(prod.availability || prod.summary) && (
+                    <div className="mt-2 text-[11px] leading-relaxed text-ash">
+                      {prod.availability && <span className="text-brass">{prod.availability}. </span>}{prod.summary}
+                    </div>
                   )}
                   <div className="mt-2 flex items-center gap-3 text-[11px]">
                     <a href={prod.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ash hover:text-brass"><ExternalLink className="h-3 w-3" /> source</a>

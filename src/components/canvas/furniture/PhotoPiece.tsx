@@ -72,12 +72,14 @@ export function PhotoPiece({ item, product, room, cutout, onSelect }: Props) {
     }
   };
 
-  // A rug is seen from above, so it lies on the floor at its full size.
+  // A rug is seen from above, so it lies flat at its measured size. It uses the
+  // cut-out weave rather than the whole photo, or the shot's backdrop would
+  // land on the floor as a white border around the rug.
   if (product.category === "rug") {
     return (
       <mesh position={[x, 0.05, z]} rotation={[-Math.PI / 2, 0, -yaw]} receiveShadow {...handlers}>
         <planeGeometry args={[product.width, product.depth]} />
-        <meshBasicMaterial map={cutout.full} color={tint} />
+        <meshBasicMaterial map={cutout.texture} color={tint} transparent alphaTest={0.35} />
       </mesh>
     );
   }
@@ -95,9 +97,17 @@ export function PhotoPiece({ item, product, room, cutout, onSelect }: Props) {
     );
   }
 
-  // Fit the photo inside the measured box without distorting the product.
-  const height = Math.min(product.height, product.width / cutout.aspect);
-  const width = height * cutout.aspect;
+  // Fit the photo inside the measured box, then let it grow back toward the
+  // real footprint. A listing photo is square-cropped and padded, so its
+  // silhouette rarely matches the listed width-to-height ratio exactly; fitting
+  // alone can leave a 6ft sofa drawn at 3ft. The stretch is capped so a piece
+  // is never visibly deformed, and the floor shadow always carries the true
+  // footprint whatever the photo does.
+  const MAX_STRETCH = 1.25;
+  const fitHeight = Math.min(product.height, product.width / cutout.aspect);
+  const fitWidth = fitHeight * cutout.aspect;
+  const width = fitWidth * Math.min(MAX_STRETCH, product.width / fitWidth);
+  const height = fitHeight * Math.min(MAX_STRETCH, product.height / fitHeight);
 
   return (
     <group>
