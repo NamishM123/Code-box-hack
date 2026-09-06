@@ -1,7 +1,7 @@
 export type Source = "amazon" | "facebook" | "target" | "wayfair" | "ikea" | "westelm" | "cb2" | "article" | "other";
 
 export type Category =
-  | "sofa" | "chair" | "table" | "bed" | "rug" | "lamp" | "shelf" | "plant" | "art" | "desk" | "dresser" | "nightstand" | "mirror";
+  | "sofa" | "chair" | "table" | "bed" | "rug" | "lamp" | "shelf" | "plant" | "art" | "desk" | "dresser" | "nightstand" | "mirror" | "tv";
 
 export type RoomType = "living" | "bedroom" | "office" | "studio";
 
@@ -26,6 +26,14 @@ export interface Product {
   vibe?: string[];
   /** False when dimensions were inferred from the category rather than the listing. */
   dimensionsVerified?: boolean;
+  /**
+   * True when `image` is known to show this exact product. Only a verified
+   * photo is cut out and stood up in the room; an unverified one is decoration
+   * and the room uses the built model instead. The seed catalog's stock URLs
+   * were never checked against their own titles, which is how a listing called
+   * "Fiddle Leaf Fig" put a cactus in every render.
+   */
+  photoVerified?: boolean;
   location?: string;
 }
 

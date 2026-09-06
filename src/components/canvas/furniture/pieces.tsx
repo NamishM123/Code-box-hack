@@ -736,6 +736,46 @@ function Plant({ product }: PieceProps) {
   );
 }
 
+
+/**
+ * A wall-mounted panel, screen facing +z like every other front. Mounted rather
+ * than stood on a stand because a screen belongs at seated eye level, which no
+ * pedestal short enough to sit under it can reach.
+ */
+function Television({ product }: PieceProps) {
+  const { width: w, height: h } = product;
+  const { lightsOn } = useContext(SceneMode);
+  const body = product.color;
+  const bezel = 0.05;
+
+  return (
+    <group>
+      {/* wall bracket, just visible behind the panel */}
+      <mesh position={[0, 0, -0.09]} castShadow>
+        <boxGeometry args={[w * 0.28, h * 0.42, 0.12]} />
+        <meshStandardMaterial color="#2A2B2E" roughness={0.6} metalness={0.3} />
+      </mesh>
+
+      <RoundedBox args={[w, h, 0.1]} radius={safeRadius(0.02, w, h, 0.1)} smoothness={2} castShadow receiveShadow>
+        <meshStandardMaterial color={body} roughness={0.45} metalness={0.5} />
+      </RoundedBox>
+
+      {/* screen: dark and reflective by day, lit in the evening */}
+      <mesh position={[0, 0, 0.052]}>
+        <planeGeometry args={[w - bezel * 2, h - bezel * 2]} />
+        <meshStandardMaterial
+          color={lightsOn ? "#20344E" : "#0B0C10"}
+          roughness={0.08}
+          metalness={0.85}
+          envMapIntensity={1.6}
+          emissive={lightsOn ? "#22405F" : "#000000"}
+          emissiveIntensity={lightsOn ? 0.55 : 0}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 /* --------------------------------------------------------------- fallback */
 
 function Block({ product }: PieceProps) {
@@ -782,6 +822,8 @@ export function FurnitureModel({ product }: PieceProps) {
       return <Art product={product} />;
     case "mirror":
       return <Mirror product={product} />;
+    case "tv":
+      return <Television product={product} />;
     case "plant":
       return <Plant product={product} />;
     default:

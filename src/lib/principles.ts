@@ -94,6 +94,30 @@ export const PRINCIPLES: Principle[] = [
     tradition: "ergonomic",
     title: "Honor the door swing",
     body: "No furniture within the arc of a door plus one hand-width. This is the most common invisible mistake."
+  },
+  {
+    key: "focal-alignment",
+    tradition: "compositional",
+    title: "One subject, and face it",
+    body: "A room needs a single thing the seating addresses: the screen, the daylight, the fireplace. Seats angled at nothing read as furniture that happened to land there."
+  },
+  {
+    key: "architectural-alignment",
+    tradition: "compositional",
+    title: "Run with the architecture",
+    body: "Square pieces to the walls unless the angle is doing work. A rug or table a few degrees off parallel reads as a mistake rather than a decision, so free angles are snapped."
+  },
+  {
+    key: "no-back-to-entry",
+    tradition: "feng-shui",
+    title: "No back to the door",
+    body: "A seat that shows its back to the entry keeps the body braced. Turn it, or move it, so whoever sits there sees who comes in."
+  },
+  {
+    key: "coffin-position",
+    tradition: "feng-shui",
+    title: "Not the coffin position",
+    body: "A bed whose foot points straight out of the doorway is the one orientation the tradition says to move the bed for. Off the line, or turned across it."
   }
 ];
 
