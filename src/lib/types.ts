@@ -1,4 +1,4 @@
-export type Source = "amazon" | "facebook" | "target" | "wayfair" | "ikea" | "westelm" | "cb2" | "article";
+export type Source = "amazon" | "facebook" | "target" | "wayfair" | "ikea" | "westelm" | "cb2" | "article" | "other";
 
 export type Category =
   | "sofa" | "chair" | "table" | "bed" | "rug" | "lamp" | "shelf" | "plant" | "art" | "desk" | "dresser" | "nightstand" | "mirror";
@@ -20,8 +20,13 @@ export interface Product {
   depth: number;
   height: number;
   rating?: number;
+  availability?: string;
+  summary?: string;
   material?: string;
   vibe?: string[];
+  /** False when dimensions were inferred from the category rather than the listing. */
+  dimensionsVerified?: boolean;
+  location?: string;
 }
 
 export interface RoomSpec {
