@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Line drawing of a seating group beneath a ring pendant, with a tall window and shelving">
+  <rect width="800" height="1000" fill="#FBFAF8"/>
+  <g fill="none" stroke="#14110E" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- graphite washes -->
+    <g fill="#14110E" stroke="none" opacity="0.09">
+      <path d="M430 250 L560 240 L566 470 L436 480 Z"/>
+      <path d="M600 300 L718 292 L722 470 L604 478 Z"/>
+      <path d="M120 640 L470 616 L474 700 L124 722 Z"/>
+      <path d="M300 806 L620 786 L626 838 L306 858 Z"/>
+    </g>
+
+    <!-- ceiling and cornice, doubled the way a sketch overshoots -->
+    <path d="M70 176 L730 148" stroke-width="3"/>
+    <path d="M62 196 L740 166" stroke-width="2"/>
+    <path d="M96 214 L708 186" stroke-width="2"/>
+    <path d="M70 150 L96 214 M730 122 L708 186" stroke-width="2"/>
+
+    <!-- wall corners, overshot past the ceiling -->
+    <path d="M154 132 L154 764" stroke-width="2"/>
+    <path d="M596 120 L596 700" stroke-width="2"/>
+
+    <!-- ring pendant on a long drop -->
+    <path d="M400 0 L400 268" stroke-width="2"/>
+    <ellipse cx="400" cy="292" rx="118" ry="30" stroke-width="4"/>
+    <ellipse cx="400" cy="304" rx="118" ry="30" stroke-width="2"/>
+    <path d="M400 304 L400 344" stroke-width="2"/>
+    <circle cx="400" cy="356" r="12" stroke-width="2"/>
+
+    <!-- tall window, left -->
+    <path d="M176 236 L176 700 L316 684 L316 220 Z" stroke-width="3"/>
+    <path d="M176 330 L316 316" stroke-width="2"/>
+    <path d="M246 228 L246 692" stroke-width="2"/>
+    <path d="M150 214 Q158 460 152 716" stroke-width="2"/>
+    <path d="M330 210 Q340 456 334 700" stroke-width="2"/>
+    <circle cx="238" cy="470" r="7" stroke-width="2"/>
+
+    <!-- shelving unit, right of the corner -->
+    <path d="M430 386 L566 376 L566 664 L430 674 Z" stroke-width="3"/>
+    <path d="M430 468 L566 458 M430 552 L566 542" stroke-width="2"/>
+    <path d="M498 386 L498 674" stroke-width="2"/>
+    <!-- a small figure on the middle shelf -->
+    <path d="M452 500 Q462 480 472 500 L470 542 L454 542 Z" stroke-width="2"/>
+    <path d="M456 484 Q462 472 468 484" stroke-width="2"/>
+
+    <!-- framed panel, far right -->
+    <path d="M606 300 L722 292 L722 470 L606 478 Z" stroke-width="3"/>
+    <path d="M626 430 Q660 356 676 420 Q690 366 706 424" stroke-width="2"/>
+
+    <!-- sofa, left foreground -->
+    <path d="M96 660 L104 588 L360 566 L366 636" stroke-width="3"/>
+    <path d="M104 616 L360 594" stroke-width="2"/>
+    <path d="M84 660 L376 636 L380 748 L88 772 Z" stroke-width="4"/>
+    <path d="M88 706 L378 682" stroke-width="2"/>
+    <path d="M96 772 L96 800 M368 748 L368 776" stroke-width="3"/>
+    <!-- cushions -->
+    <path d="M136 592 L200 586 L206 632 L142 638 Z" stroke-width="2"/>
+    <path d="M226 584 L290 578 L296 624 L232 630 Z" stroke-width="2"/>
+
+    <!-- round coffee table -->
+    <ellipse cx="418" cy="778" rx="150" ry="46" stroke-width="4"/>
+    <ellipse cx="418" cy="790" rx="150" ry="46" stroke-width="2"/>
+    <path d="M310 806 Q332 872 366 900" stroke-width="3"/>
+    <path d="M526 800 Q506 868 472 898" stroke-width="3"/>
+    <path d="M366 900 L472 894" stroke-width="3"/>
+    <!-- a tray and a cup on the top -->
+    <ellipse cx="452" cy="772" rx="52" ry="16" stroke-width="2"/>
+    <path d="M362 742 L390 740 L388 772 L364 774 Z" stroke-width="2"/>
+
+    <!-- armchair, right foreground, seen from behind -->
+    <path d="M596 700 L604 596 L780 584 L788 688" stroke-width="4"/>
+    <path d="M604 640 L784 628" stroke-width="2"/>
+    <path d="M586 700 L792 686 L796 812 L590 828 Z" stroke-width="4"/>
+    <path d="M590 764 L794 750" stroke-width="2"/>
+    <path d="M598 828 L598 866 M786 812 L786 850" stroke-width="3"/>
+
+    <!-- floor plane and its drag lines -->
+    <path d="M70 700 L730 668" stroke-width="2"/>
+    <g stroke-width="2" opacity="0.5">
+      <path d="M96 830 L318 814"/>
+      <path d="M110 858 L286 844"/>
+      <path d="M300 906 L560 890"/>
+      <path d="M330 934 L520 920"/>
+      <path d="M560 862 L740 848"/>
+      <path d="M136 896 L262 886"/>
+    </g>
+  </g>
+</svg>

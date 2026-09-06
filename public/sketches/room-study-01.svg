@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000" role="img" aria-label="Ink study of a room corner with a tall window, pendant lamp and fireplace">
+  <rect width="800" height="1000" fill="#F6F4EF"/>
+  <g fill="none" stroke="#14110E" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- wash blocks, laid down before the line so the ink reads on top -->
+    <g fill="#14110E" stroke="none" opacity="0.10">
+      <path d="M120 190 L300 176 L306 214 L124 226 Z"/>
+      <path d="M470 168 L668 156 L672 196 L474 208 Z"/>
+      <path d="M92 640 L250 628 L262 690 L96 700 Z"/>
+      <path d="M560 660 L716 650 L722 700 L566 710 Z"/>
+      <path d="M120 792 L392 770 L400 806 L124 828 Z"/>
+    </g>
+    <g fill="#E8B23C" stroke="none" opacity="0.55">
+      <path d="M262 300 L296 296 L300 590 L266 594 Z"/>
+      <path d="M486 560 L640 552 L644 596 L490 604 Z"/>
+    </g>
+
+    <!-- ceiling line and the wire crossing it -->
+    <path d="M60 150 Q220 132 352 148" stroke-width="3"/>
+    <path d="M352 148 Q520 128 742 140" stroke-width="3"/>
+    <path d="M60 128 L346 150" stroke-width="2"/>
+
+    <!-- back corner -->
+    <path d="M352 148 L352 700" stroke-width="3"/>
+
+    <!-- tall window, left wall -->
+    <path d="M236 224 L236 612 L316 604 L316 236 Z" stroke-width="5"/>
+    <path d="M236 300 L316 294" stroke-width="2"/>
+    <path d="M276 232 L276 608" stroke-width="2"/>
+
+    <!-- fireplace breast, right wall -->
+    <path d="M448 180 L448 700" stroke-width="3"/>
+    <path d="M668 168 L668 700" stroke-width="3"/>
+    <path d="M448 540 L668 528" stroke-width="4"/>
+    <path d="M478 552 L640 542 L640 620 L478 628 Z" stroke-width="5"/>
+    <!-- the fire, drawn as a torn edge -->
+    <path d="M486 604 L500 578 L512 600 L526 570 L540 598 L556 574 L570 600 L586 576 L600 602 L616 580 L630 604" stroke-width="3"/>
+
+    <!-- pendant lamp on its long flex -->
+    <path d="M540 60 L540 244" stroke-width="2"/>
+    <path d="M508 244 L572 244 L560 292 L520 292 Z" stroke-width="5"/>
+    <path d="M520 292 L560 292" stroke-width="7"/>
+
+    <!-- standing lamp, far left -->
+    <path d="M126 300 L150 288 L176 320" stroke-width="3"/>
+    <path d="M176 320 L176 356" stroke-width="3"/>
+    <path d="M158 356 L196 352 L192 386 L162 388 Z" stroke-width="4"/>
+    <path d="M176 388 L176 452" stroke-width="3"/>
+    <path d="M148 452 L206 448" stroke-width="4"/>
+
+    <!-- low bench under the window -->
+    <path d="M330 520 L470 510 L470 552 L330 562 Z" stroke-width="4"/>
+    <path d="M336 562 L336 596 M462 552 L462 588" stroke-width="3"/>
+
+    <!-- slatted chair, left of centre -->
+    <path d="M150 596 L268 588 L268 664 L150 672 Z" stroke-width="4"/>
+    <g stroke-width="3">
+      <path d="M170 592 L170 668"/>
+      <path d="M194 590 L194 666"/>
+      <path d="M218 589 L218 665"/>
+      <path d="M242 588 L242 664"/>
+    </g>
+    <path d="M156 672 L156 726 M262 664 L262 718" stroke-width="3"/>
+
+    <!-- round side table -->
+    <path d="M92 616 L162 610 L158 664 L96 668 Z" stroke-width="4"/>
+    <path d="M100 668 L104 720 M152 664 L150 716" stroke-width="3"/>
+
+    <!-- low table, centre -->
+    <path d="M336 596 L466 586 L466 606 L336 616 Z" stroke-width="4"/>
+    <path d="M350 616 L342 682 M452 606 L458 672" stroke-width="3"/>
+    <path d="M342 646 L458 638" stroke-width="2"/>
+
+    <!-- wire chair, centre right -->
+    <path d="M452 604 L556 596 L552 640 L456 648 Z" stroke-width="4"/>
+    <path d="M462 648 L456 712 M544 640 L550 702" stroke-width="3"/>
+    <path d="M470 620 L540 614" stroke-width="2"/>
+
+    <!-- woven floor sphere -->
+    <ellipse cx="556" cy="806" rx="104" ry="72" stroke-width="5"/>
+    <path d="M462 792 Q556 742 650 790" stroke-width="2"/>
+    <path d="M466 820 Q556 866 648 818" stroke-width="2"/>
+    <path d="M520 738 Q498 806 524 872" stroke-width="2"/>
+    <path d="M594 738 Q616 806 590 872" stroke-width="2"/>
+
+    <!-- floor: long dragged shadows -->
+    <g stroke-width="2" opacity="0.55">
+      <path d="M60 700 L318 686"/>
+      <path d="M64 726 L286 712"/>
+      <path d="M70 752 L242 740"/>
+      <path d="M300 742 L470 730"/>
+      <path d="M330 768 L446 760"/>
+      <path d="M448 862 L700 846"/>
+      <path d="M470 888 L676 874"/>
+      <path d="M120 856 L332 842"/>
+      <path d="M140 884 L300 872"/>
+    </g>
+    <path d="M60 700 L742 668" stroke-width="3"/>
+  </g>
+</svg>
