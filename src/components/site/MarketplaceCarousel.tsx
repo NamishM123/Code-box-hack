@@ -25,7 +25,7 @@ export function MarketplaceCarousel() {
             rel="noopener noreferrer"
             aria-hidden={i >= shops.length}
             tabIndex={i >= shops.length ? -1 : undefined}
-            className={`flex shrink-0 items-center gap-2 whitespace-nowrap text-[17px] text-white/55 transition-colors duration-300 hover:text-white md:text-[20px] ${s.style}`}
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap text-[17px] text-white/85 transition-colors duration-300 hover:text-white md:text-[20px] ${s.style}`}
           >
             {s.mark}
             {s.name}
