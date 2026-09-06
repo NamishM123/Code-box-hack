@@ -4,8 +4,8 @@ import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Camera, Download, Gauge, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
-import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { WALL_HEIGHT_FT, isWallHung, mountCenterY, roomTones, yawFor } from "@/lib/furniture";
+import type { DetectedRoom, PlacedItem, Product, RoomSpec, Viewpoint } from "@/lib/types";
+import { WALL_HEIGHT_FT, establishingShot, isWallHung, mountCenterY, roomTones, yawFor } from "@/lib/furniture";
 import { FurnitureModel, SceneMode } from "./furniture/pieces";
 import { PhotoPiece, useCutout } from "./furniture/PhotoPiece";
 import { RoomShell } from "./furniture/RoomShell";
@@ -153,16 +153,39 @@ function Snapshot({ bind, bindReference }: { bind: (fn: () => string) => void; b
     bindReference(() => {
       const source = draw();
       const scale = Math.min(1, REFERENCE_EDGE / Math.max(source.width, source.height));
-      if (scale >= 1) return source.toDataURL("image/jpeg", 0.85);
-      const small = document.createElement("canvas");
-      small.width = Math.round(source.width * scale);
-      small.height = Math.round(source.height * scale);
-      const ctx = small.getContext("2d");
-      if (!ctx) return source.toDataURL("image/jpeg", 0.85);
-      ctx.drawImage(source, 0, 0, small.width, small.height);
-      return small.toDataURL("image/jpeg", 0.85);
+      const shrunk = scale < 1 ? document.createElement("canvas") : null;
+      const ctx = shrunk?.getContext("2d");
+      if (shrunk && ctx) {
+        shrunk.width = Math.round(source.width * scale);
+        shrunk.height = Math.round(source.height * scale);
+        ctx.drawImage(source, 0, 0, shrunk.width, shrunk.height);
+      }
+      return (shrunk && ctx ? shrunk : source).toDataURL("image/jpeg", 0.85);
     });
   }, [gl, scene, camera, bind, bindReference]);
+  return null;
+}
+
+/**
+ * Points the live camera at the establishing shot.
+ *
+ * Inside the Canvas because the fit depends on the real aspect of the drawn
+ * frame. It deliberately does not re-run on resize: once the shopper has
+ * orbited, the view is theirs, and the render follows whatever they are
+ * looking at.
+ */
+function Frame({ room, viewpoint }: { room: RoomSpec; viewpoint?: Viewpoint | null }) {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const shot = establishingShot(room.widthFt, room.depthFt, size.width / size.height, viewpoint);
+    camera.position.set(...shot.position);
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = shot.fov;
+      camera.updateProjectionMatrix();
+    }
+    camera.lookAt(...shot.target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera, room.widthFt, room.depthFt, viewpoint?.x, viewpoint?.y, viewpoint?.heightFt]);
   return null;
 }
 
@@ -215,6 +238,12 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
   // The same surfaces the block view draws, so the photograph generated from
   // this frame is of the room the shopper was just looking at.
   const tones = useMemo(() => roomTones(detected), [detected]);
+  // A first guess at the framing, refined inside the Canvas once the drawn
+  // frame's real aspect is known.
+  const opening = useMemo(
+    () => establishingShot(room.widthFt, room.depthFt, 16 / 9, detected?.viewpoint),
+    [room.widthFt, room.depthFt, detected?.viewpoint]
+  );
 
   const reach = Math.max(room.widthFt, room.depthFt);
   const bind = useCallback((fn: () => string) => {
@@ -484,11 +513,12 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
           onCreated={({ gl }) => {
             gl.toneMappingExposure = 0.95;
           }}
-          camera={{ position: [reach * 0.85, WALL_HEIGHT_FT * 0.72, room.depthFt * 1.15], fov: 42 }}
+          camera={{ position: opening.position, fov: opening.fov }}
           onPointerMissed={() => onSelect?.(null)}
         >
           <color attach="background" args={[lightsOn ? "#0B0B0D" : "#141416"]} />
           <fog attach="fog" args={[lightsOn ? "#0B0B0D" : "#141416", reach * 3.4, reach * 7]} />
+          <Frame room={room} viewpoint={detected?.viewpoint} />
           <Rig room={room} lightsOn={lightsOn} />
 
           <SceneMode.Provider value={mode}>
@@ -533,7 +563,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             minDistance={3.5}
             maxDistance={reach * 4}
             maxPolarAngle={Math.PI / 2 - 0.04}
-            target={[0, 2.2, 0]}
+            target={opening.target}
           />
           <Snapshot bind={bind} bindReference={bindReference} />
         </Canvas>

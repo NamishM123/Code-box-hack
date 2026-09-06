@@ -1,4 +1,4 @@
-import type { Category, PlacedItem, Product, RoomSpec } from "./types";
+import type { Category, PlacedItem, Product, RoomSpec, Viewpoint } from "./types";
 
 /** Standard interior wall height used by the rendered view, in feet. */
 export const WALL_HEIGHT_FT = 9;
@@ -175,17 +175,6 @@ function wallDistance(x: number, y: number, dx: number, dz: number, room: RoomSp
   return best;
 }
 
-/**
- * A wall color that keeps the room's palette but stays wall-like. A detected
- * palette is sampled from the whole photo, so its first swatch can be a dark
- * sofa or a shadow; painting the walls with it would sink the room.
- */
-export function wallToneFrom(palette?: string[]) {
-  const base = palette?.[0];
-  if (!base) return "#EBE5D9";
-  const tinted = mix(base, "#F0EBE0", 0.68);
-  return luminance(tinted) < 0.72 ? mix(tinted, "#F4F0E7", 0.55) : tinted;
-}
 
 /**
  * The colours of the room's own surfaces.
@@ -215,6 +204,57 @@ export function roomTones(detected?: { palette?: string[]; wallColor?: string; f
     read.floor ||
     [...palette].sort((a, b) => Math.abs(luminance(b) - luminance(wall)) - Math.abs(luminance(a) - luminance(wall)))[0];
   return { wallColor: wall, floorColor: floor === wall ? "#B58F62" : floor };
+}
+
+/** A wide lens, because the subject is a room rather than a piece of furniture. */
+const SHOT_FOV = 60;
+/** The room and a third again, so nothing sits on the edge of the frame. */
+const SHOT_MARGIN = 1.3;
+/**
+ * The corner an interior is shot from when the picture doesn't say. Matches the
+ * direction the rendered view has always opened at, so a room with no
+ * inspiration picture behind it looks the way it always did.
+ */
+const DEFAULT_EYE: [number, number] = [0.85, 1.15];
+
+/**
+ * The one shot the room is seen through -- on screen and in the frame handed to
+ * the image model.
+ *
+ * There used to be two. The view opened at a 42-degree lens 19.6ft out while the
+ * frame sent for rendering was taken through a 60-degree lens 12.1ft out, so the
+ * photograph that came back was of a different vantage than the one the shopper
+ * had been looking at. They are the same camera now, which is the only way the
+ * two can be made to agree.
+ *
+ * With a viewpoint read off the inspiration picture, the room is seen from where
+ * that photographer stood, so the render answers the picture it came from.
+ */
+export function establishingShot(widthFt: number, depthFt: number, aspect: number, viewpoint?: Viewpoint | null) {
+  const tanY = Math.tan((SHOT_FOV * Math.PI) / 360);
+  const tanX = tanY * Math.max(0.6, aspect);
+
+  // From a corner a room is as wide as its plan diagonal and as tall as its
+  // walls. Whichever needs more of the frame decides how far back to stand.
+  const back = Math.max(
+    (Math.hypot(widthFt, depthFt) / 2) * SHOT_MARGIN / tanX,
+    ((WALL_HEIGHT_FT / 2) * SHOT_MARGIN) / tanY
+  );
+
+  // The scene puts the room's centre at the origin, so a plan point is an
+  // offset from it. Only the direction is taken from the viewpoint: how far
+  // back to stand is what keeps the whole room in frame.
+  const dx = viewpoint ? viewpoint.x - widthFt / 2 : Math.max(widthFt, depthFt) * DEFAULT_EYE[0];
+  const dz = viewpoint ? viewpoint.y - depthFt / 2 : depthFt * DEFAULT_EYE[1];
+  const reach = Math.hypot(dx, dz) || 1;
+
+  const eye = Math.min(WALL_HEIGHT_FT - 0.7, Math.max(2.2, viewpoint?.heightFt ?? WALL_HEIGHT_FT * 0.68));
+
+  return {
+    position: [(dx / reach) * back, eye, (dz / reach) * back] as [number, number, number],
+    target: [0, WALL_HEIGHT_FT * 0.42, 0] as [number, number, number],
+    fov: SHOT_FOV
+  };
 }
 
 /** Center height for a framed piece hung on a wall, gallery convention. */

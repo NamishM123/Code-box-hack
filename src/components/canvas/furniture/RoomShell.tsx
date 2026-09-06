@@ -171,6 +171,31 @@ function Wall({
   );
 }
 
+/**
+ * The ceiling, which hides itself the moment the camera rises above it -- the
+ * same rule the walls follow, so the room can still be orbited from overhead.
+ *
+ * It exists because the view is now a wide shot from standing height, and
+ * without a ceiling that shot sees straight over the wall tops into the
+ * background. That void used to be a cosmetic gap; it is now part of the frame
+ * handed to the image model, which is asked to reproduce what it is given.
+ *
+ * It never casts a shadow, so the daylight rig above the room still reaches the
+ * floor and nothing goes dark.
+ */
+function Ceiling({ widthFt, depthFt, height, color }: { widthFt: number; depthFt: number; height: number; color: string }) {
+  const mesh = useRef<THREE.Mesh>(null);
+  useFrame(({ camera }) => {
+    if (mesh.current) mesh.current.visible = camera.position.y < height;
+  });
+  return (
+    <mesh ref={mesh} position={[0, height, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[widthFt, depthFt]} />
+      <meshStandardMaterial color={shade(color, 0.14)} roughness={1} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
 export function RoomShell({ widthFt, depthFt, openings = [], floorColor = "#B58F62", wallColor = "#E8E2D6", lightsOn = false }: Props) {
   const height = WALL_HEIGHT_FT;
   const floorMap = useMemo(() => tiled(woodFloorTexture(floorColor), Math.max(1, widthFt / 6), Math.max(1, depthFt / 6)), [floorColor, widthFt, depthFt]);
@@ -183,6 +208,8 @@ export function RoomShell({ widthFt, depthFt, openings = [], floorColor = "#B58F
         <planeGeometry args={[widthFt, depthFt]} />
         <meshStandardMaterial map={floorMap || undefined} color={floorMap ? "#ffffff" : floorColor} roughness={0.55} metalness={0.02} />
       </mesh>
+
+      <Ceiling widthFt={widthFt} depthFt={depthFt} height={height} color={wallColor} />
 
       {(["N", "S", "E", "W"] as Side[]).map((side) => (
         <Wall

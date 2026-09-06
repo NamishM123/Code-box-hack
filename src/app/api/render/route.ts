@@ -215,7 +215,7 @@ export async function POST(req: Request) {
 
 function buildPrompt(body: Body, references: Reference[], hasLayout: boolean) {
   return [
-    `A photograph of a ${body.style?.replace("-", " ") || "warm minimal"} ${ROOM_NOUN[body.roomType || ""] || "room"}.`,
+    `A wide-angle photograph of a ${body.style?.replace("-", " ") || "warm minimal"} ${ROOM_NOUN[body.roomType || ""] || "room"}, shot from a corner with the whole room in frame.`,
     `The room is ${body.widthFt.toFixed(1)} feet wide by ${body.depthFt.toFixed(1)} feet deep with 9 foot ceilings.`,
     "",
     "It contains exactly these pieces, at these positions and at this scale, and nothing else:",
@@ -226,9 +226,19 @@ function buildPrompt(body: Body, references: Reference[], hasLayout: boolean) {
           .map((r) => r.label)
           .join("; ")}). Reproduce each one exactly: same shape, same upholstery or wood, same colour, same proportions. Do not substitute a similar-looking piece and do not add furniture that is not listed.`
       : "",
+    // The frame, when there is one, is now the same wide establishing shot the
+    // shopper is looking at on screen -- so it is something to reproduce, not a
+    // starting point to improve on. Telling the model it could stand further
+    // back was what let the two drift apart.
     hasLayout
-      ? "One supplied image is a 3D view of this exact room, to scale. Match it: same camera, same room proportions, same piece in the same place at the same size, facing the same way. Keep that geometry and replace the rendering with a photograph."
+      ? "One supplied image is a 3D view of this exact room, to scale, taken from the exact vantage this photograph is to be taken from. Reproduce that frame: same camera position, same angle, same lens, same distance, same room proportions, same piece in the same place at the same size, facing the same way. Do not re-compose it, do not crop in, do not pull back. Keep that framing and geometry and replace the rendering with a photograph."
       : "",
+    // With no frame to match, the framing has to be described instead, or the
+    // model composes to fill it -- which on a room means a close crop on the sofa.
+    !hasLayout
+      ? "Frame it as an establishing shot of the whole room: a 24mm lens on a full-frame camera at standing eye height, backed into a corner so both side walls, the far wall meeting the floor, and every piece listed above sit inside the frame with air around them. The subject is the room, not its furniture — do not crop in on any one piece, and keep the ceiling line and a good stretch of open floor visible."
+      : "",
+    "",
     body.palette?.length ? `Keep the room's palette close to ${body.palette.join(", ")}.` : "",
     body.lightingNote ? `Lighting: ${body.lightingNote}` : "Natural daylight from one window, warm and even.",
     "",
@@ -244,7 +254,12 @@ function openaiForm(prompt: string, layout: Reference | null, references: Refere
   const form = new FormData();
   form.append("model", OPENAI_MODEL);
   form.append("prompt", prompt);
-  form.append("size", process.env.OPENAI_IMAGE_SIZE || (fast ? "1024x1024" : "1536x1024"));
+  // A room is a landscape subject and the layout frame it has to match is a
+  // landscape frame, so both speeds ask for the wide one: a square crop of a
+  // 16:9 view is the sides of the room thrown away. Quality is the dial that
+  // moves the wait, so that is what fast lowers. Env vars still win, for
+  // pinning a deployment to one setting.
+  form.append("size", process.env.OPENAI_IMAGE_SIZE || "1536x1024");
   form.append("quality", process.env.OPENAI_IMAGE_QUALITY || (fast ? "medium" : "high"));
 
   const files = [layout, ...references].filter(Boolean) as Reference[];
@@ -382,23 +397,7 @@ async function renderWithGemini(prompt: string, layout: Reference | null, refere
  */
 async function renderWithOpenAI(prompt: string, layout: Reference | null, references: Reference[], fast: boolean) {
   const key = process.env.OPENAI_API_KEY as string;
-  const form = new FormData();
-  form.append("model", OPENAI_MODEL);
-  form.append("prompt", prompt);
-  // A room is a landscape subject, and this is the deliverable rather than a
-  // thumbnail, so ask for the wide frame at the top quality tier.
-  // Quality and pixel count are what a GPT image call spends its time on, so
-  // this is the dial that actually moves the wait. Env vars still win, for
-  // pinning a deployment to one setting.
-  form.append("size", process.env.OPENAI_IMAGE_SIZE || (fast ? "1024x1024" : "1536x1024"));
-  form.append("quality", process.env.OPENAI_IMAGE_QUALITY || (fast ? "medium" : "high"));
-
-  const files = [layout, ...references].filter(Boolean) as Reference[];
-  if (!files.length) throw new Error("Nothing to render from: no layout frame and no product photos.");
-  files.forEach((ref, i) => {
-    const ext = ref.mimeType.includes("png") ? "png" : ref.mimeType.includes("webp") ? "webp" : "jpg";
-    form.append("image[]", new Blob([new Uint8Array(ref.bytes)], { type: ref.mimeType }), `${i === 0 && layout ? "layout" : "product"}-${i}.${ext}`);
-  });
+  const form = openaiForm(prompt, layout, references, fast);
 
   const res = await fetch(`${OPENAI_BASE}/v1/images/edits`, {
     method: "POST",

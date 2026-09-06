@@ -59,10 +59,20 @@ export interface Opening {
   swingFt?: number;
 }
 
+/** Where a photograph was taken from, in the room's own plan, in feet. */
+export interface Viewpoint {
+  x: number;
+  y: number;
+  /** Lens height off the floor. */
+  heightFt: number;
+}
+
 export interface DetectedRoom {
   /** Surface colours read off an inspiration picture, when there was one. */
   wallColor?: string;
   floorColor?: string;
+  /** Where the inspiration picture was shot from, so the room can be seen the same way. */
+  viewpoint?: Viewpoint;
   widthFt: number;
   depthFt: number;
   openings: Opening[];

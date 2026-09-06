@@ -1,4 +1,4 @@
-import type { Category, DetectedRoom, Opening, RoomType } from "../types";
+import type { Category, DetectedRoom, Opening, RoomType, Viewpoint } from "../types";
 
 /**
  * Gemini vision adapter.
@@ -177,6 +177,9 @@ const LOOK_SCHEMA = {
     depthFt: { type: "number" },
     wallColor: { type: "string" },
     floorColor: { type: "string" },
+    cameraX: { type: "number" },
+    cameraY: { type: "number" },
+    cameraHeightFt: { type: "number" },
     openings: {
       type: "array",
       items: {
@@ -239,6 +242,8 @@ export interface GeminiLook extends GeminiVibe {
   floorColor?: string;
   openings: Opening[];
   items: LookItem[];
+  /** Where the photograph was taken from, so the room can be shown the same way. */
+  camera?: Viewpoint;
 }
 
 /** Eight is already a full room; beyond that the plan stops resembling the photo. */
@@ -268,6 +273,10 @@ Also return the room shell so a floor plan can be rebuilt from it:
 - "floorColor": the FLOOR colour as a hex string.
 - "widthFt"/"depthFt": the room's approximate footprint in FEET. Set scale from an interior door (about 2.6-3 ft wide, 6.7 ft tall) or a queen bed (5 x 6.7 ft).
 - "openings": doors and windows you can see. Wall N is y=0, S is y=depth, W is x=0, E is x=width. "positionFt" is the distance along that wall to the opening's near edge. An empty array is valid — do not invent openings.
+
+And say where the photograph was taken from, in that same plan:
+- "cameraX"/"cameraY": where the photographer was standing. Work it out from which walls are visible and how the furniture is foreshortened. An interior is normally shot from a corner or with the photographer's back near a wall, so these often land at or just past the room's edge — a value below 0, or above the width or depth, is expected and correct in that case.
+- "cameraHeightFt": how high the lens was, usually between 4 and 5.5 ft.
 
 And the look itself:
 - "palette": 4-5 hex colors, most dominant first.
@@ -330,6 +339,18 @@ export function normalizeLook(json: any): GeminiLook {
       backsTo: ["N", "E", "S", "W", "none"].includes(i.backsTo) ? i.backsTo : undefined
     }));
 
+  // Where the picture was shot from. Allowed well outside the room: a
+  // photographer standing in a doorway is behind the wall, and clamping that
+  // onto the wall itself would turn the shot round to face the wrong way.
+  const camera: Viewpoint | undefined =
+    json.cameraX != null && json.cameraY != null
+      ? {
+          x: clamp(num(json.cameraX, widthFt), -widthFt, widthFt * 2),
+          y: clamp(num(json.cameraY, depthFt * 1.5), -depthFt, depthFt * 2),
+          heightFt: clamp(num(json.cameraHeightFt, 4.8), 1.5, 8)
+        }
+      : undefined;
+
   return {
     palette: (json.palette || []).filter(isHex).slice(0, 5),
     tags: (json.tags || []).map((t: any) => String(t).toLowerCase()).slice(0, 5),
@@ -342,7 +363,8 @@ export function normalizeLook(json: any): GeminiLook {
     wallColor: isHex(json.wallColor) ? json.wallColor : undefined,
     floorColor: isHex(json.floorColor) ? json.floorColor : undefined,
     openings,
-    items
+    items,
+    camera
   };
 }
 

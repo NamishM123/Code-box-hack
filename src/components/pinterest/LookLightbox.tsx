@@ -178,9 +178,21 @@ export function LookLightbox({
       vibe?.depthFt != null &&
       Math.abs(widthFt / depthFt - vibe.widthFt / vibe.depthFt) < 0.08;
 
+    // The vantage is carried across as a proportion of each axis, the same way
+    // the pieces are, so the room is seen from where the photographer stood
+    // even when the shopper's room is a different size.
+    const viewpoint = vibe?.camera
+      ? {
+          x: vibe.camera.x * (widthFt / (vibe.widthFt || widthFt)),
+          y: vibe.camera.y * (depthFt / (vibe.depthFt || depthFt)),
+          heightFt: vibe.camera.heightFt
+        }
+      : undefined;
+
     const detected: DetectedRoom = {
       widthFt,
       depthFt,
+      viewpoint,
       confidence: 0.6,
       openings: sameShape ? (vibe?.openings ?? []) : [],
       existing: [],
