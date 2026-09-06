@@ -49,6 +49,8 @@ export interface RichVibe extends Vibe {
   depthFt?: number;
   wallColor?: string;
   floorColor?: string;
+  /** Where the picture was taken from, in the picture's own plan. */
+  camera?: { x: number; y: number; heightFt: number };
   openings?: { kind: "door" | "window"; wall: "N" | "S" | "E" | "W"; positionFt: number; widthFt: number; swingFt?: number }[];
 }
 

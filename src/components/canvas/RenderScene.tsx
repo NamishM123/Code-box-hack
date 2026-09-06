@@ -4,8 +4,8 @@ import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Camera, Download, Gauge, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
-import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { WALL_HEIGHT_FT, isWallHung, mountCenterY, roomTones, yawFor } from "@/lib/furniture";
+import type { DetectedRoom, PlacedItem, Product, RoomSpec, Viewpoint } from "@/lib/types";
+import { WALL_HEIGHT_FT, establishingShot, isWallHung, mountCenterY, roomTones, yawFor } from "@/lib/furniture";
 import { FurnitureModel, SceneMode } from "./furniture/pieces";
 import { PhotoPiece, useCutout } from "./furniture/PhotoPiece";
 import { RoomShell } from "./furniture/RoomShell";
@@ -134,39 +134,6 @@ function Piece({
 const REFERENCE_EDGE = 1280;
 
 /**
- * The lens the reference frame is shot through: wide, and far enough back that
- * the whole room is inside it.
- *
- * Deliberately not the camera the shopper is looking through. The image model
- * is told to match this frame, so a 3D view orbited in close came back as a
- * photograph of one chair rather than of the room. A fixed establishing shot
- * means the render is always of the room, whatever the canvas happens to be
- * showing when the frame is taken.
- */
-const REFERENCE_FOV = 60;
-/** The room and a third again, so nothing sits on the edge of the frame. */
-const REFERENCE_MARGIN = 1.3;
-/** The corner the default view looks from, so the same two walls stand open. */
-const REFERENCE_YAW = (36 * Math.PI) / 180;
-
-function referenceCamera(room: RoomSpec, aspect: number) {
-  const camera = new THREE.PerspectiveCamera(REFERENCE_FOV, aspect, 0.1, 500);
-  const tanY = Math.tan((REFERENCE_FOV * Math.PI) / 360);
-  const tanX = tanY * Math.max(0.6, aspect);
-
-  // Seen from a corner a room is as wide as its plan diagonal and as tall as
-  // its walls. Whichever needs more of the frame sets how far back to stand.
-  const halfWide = (Math.hypot(room.widthFt, room.depthFt) / 2) * REFERENCE_MARGIN;
-  const halfTall = (WALL_HEIGHT_FT / 2) * REFERENCE_MARGIN;
-  const back = Math.max(halfWide / tanX, halfTall / tanY);
-
-  camera.position.set(Math.sin(REFERENCE_YAW) * back, WALL_HEIGHT_FT * 0.62, Math.cos(REFERENCE_YAW) * back);
-  camera.lookAt(0, WALL_HEIGHT_FT * 0.42, 0);
-  camera.updateProjectionMatrix();
-  return camera;
-}
-
-/**
  * Hands two grabs back out of the canvas: a lossless PNG for the shopper's own
  * export, and a smaller JPEG for the image model.
  *
@@ -175,17 +142,16 @@ function referenceCamera(room: RoomSpec, aspect: number) {
  * the browser to us and from us to the provider, for structure a fraction of
  * the size carries just as well.
  */
-function Snapshot({ room, bind, bindReference }: { room: RoomSpec; bind: (fn: () => string) => void; bindReference: (fn: () => string) => void }) {
-  const { gl, scene, camera, size } = useThree();
+function Snapshot({ bind, bindReference }: { bind: (fn: () => string) => void; bindReference: (fn: () => string) => void }) {
+  const { gl, scene, camera } = useThree();
   useEffect(() => {
-    const draw = (through: THREE.Camera) => {
-      gl.render(scene, through);
+    const draw = () => {
+      gl.render(scene, camera);
       return gl.domElement;
     };
-    // The export is the shopper's own view: they framed it, they get it.
-    bind(() => draw(camera).toDataURL("image/png"));
+    bind(() => draw().toDataURL("image/png"));
     bindReference(() => {
-      const source = draw(referenceCamera(room, size.width / size.height));
+      const source = draw();
       const scale = Math.min(1, REFERENCE_EDGE / Math.max(source.width, source.height));
       const shrunk = scale < 1 ? document.createElement("canvas") : null;
       const ctx = shrunk?.getContext("2d");
@@ -194,13 +160,32 @@ function Snapshot({ room, bind, bindReference }: { room: RoomSpec; bind: (fn: ()
         shrunk.height = Math.round(source.height * scale);
         ctx.drawImage(source, 0, 0, shrunk.width, shrunk.height);
       }
-      const url = (shrunk && ctx ? shrunk : source).toDataURL("image/jpeg", 0.85);
-      // Put the shopper's view back. The grab renders through a different lens,
-      // and the canvas would otherwise sit on that frame until the next tick.
-      gl.render(scene, camera);
-      return url;
+      return (shrunk && ctx ? shrunk : source).toDataURL("image/jpeg", 0.85);
     });
-  }, [gl, scene, camera, size.width, size.height, room.widthFt, room.depthFt, bind, bindReference]);
+  }, [gl, scene, camera, bind, bindReference]);
+  return null;
+}
+
+/**
+ * Points the live camera at the establishing shot.
+ *
+ * Inside the Canvas because the fit depends on the real aspect of the drawn
+ * frame. It deliberately does not re-run on resize: once the shopper has
+ * orbited, the view is theirs, and the render follows whatever they are
+ * looking at.
+ */
+function Frame({ room, viewpoint }: { room: RoomSpec; viewpoint?: Viewpoint | null }) {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const shot = establishingShot(room.widthFt, room.depthFt, size.width / size.height, viewpoint);
+    camera.position.set(...shot.position);
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = shot.fov;
+      camera.updateProjectionMatrix();
+    }
+    camera.lookAt(...shot.target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera, room.widthFt, room.depthFt, viewpoint?.x, viewpoint?.y, viewpoint?.heightFt]);
   return null;
 }
 
@@ -253,6 +238,12 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
   // The same surfaces the block view draws, so the photograph generated from
   // this frame is of the room the shopper was just looking at.
   const tones = useMemo(() => roomTones(detected), [detected]);
+  // A first guess at the framing, refined inside the Canvas once the drawn
+  // frame's real aspect is known.
+  const opening = useMemo(
+    () => establishingShot(room.widthFt, room.depthFt, 16 / 9, detected?.viewpoint),
+    [room.widthFt, room.depthFt, detected?.viewpoint]
+  );
 
   const reach = Math.max(room.widthFt, room.depthFt);
   const bind = useCallback((fn: () => string) => {
@@ -522,11 +513,12 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
           onCreated={({ gl }) => {
             gl.toneMappingExposure = 0.95;
           }}
-          camera={{ position: [reach * 0.85, WALL_HEIGHT_FT * 0.72, room.depthFt * 1.15], fov: 42 }}
+          camera={{ position: opening.position, fov: opening.fov }}
           onPointerMissed={() => onSelect?.(null)}
         >
           <color attach="background" args={[lightsOn ? "#0B0B0D" : "#141416"]} />
           <fog attach="fog" args={[lightsOn ? "#0B0B0D" : "#141416", reach * 3.4, reach * 7]} />
+          <Frame room={room} viewpoint={detected?.viewpoint} />
           <Rig room={room} lightsOn={lightsOn} />
 
           <SceneMode.Provider value={mode}>
@@ -571,9 +563,9 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             minDistance={3.5}
             maxDistance={reach * 4}
             maxPolarAngle={Math.PI / 2 - 0.04}
-            target={[0, 2.2, 0]}
+            target={opening.target}
           />
-          <Snapshot room={room} bind={bind} bindReference={bindReference} />
+          <Snapshot bind={bind} bindReference={bindReference} />
         </Canvas>
 
         {photoreal.status !== "idle" && (
