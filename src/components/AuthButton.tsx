@@ -19,7 +19,7 @@ export function AuthButton({ light = false }: { light?: boolean }) {
   return (
     <Link
       href={signedIn ? "/capture" : "/login"}
-      className={`hidden text-xs uppercase tracking-[0.18em] transition-colors sm:inline ${
+      className={`wordmark hidden text-[12px] uppercase tracking-[0.16em] transition-colors sm:inline ${
         light ? "text-white/70 hover:text-white" : "text-ash hover:text-ink"
       }`}
     >

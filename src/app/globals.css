@@ -39,30 +39,36 @@ html, body {
 @layer components {
   /* ---------------------------------------------------------------- type ---- */
 
+  /* Headings across the site run in the wordmark's face, the way the header
+     does. Serif wants air rather than the negative tracking a grotesque takes,
+     so the display sizes sit near zero instead of pulling tight. */
   .font-display {
-    font-family: var(--font-sans), "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.035em;
-    line-height: 0.98;
+    font-family: var(--font-wordmark), "HK Venetian", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.005em;
+    line-height: 1.05;
   }
 
-  /* The oversized statement type used for hero + section leads. */
+  /* The oversized statement type used for section leads. */
   .display-xl {
-    font-weight: 700;
-    letter-spacing: -0.045em;
-    line-height: 0.9;
+    font-family: var(--font-wordmark), "HK Venetian", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1;
   }
 
   .display-lg {
-    font-weight: 600;
-    letter-spacing: -0.04em;
-    line-height: 0.95;
+    font-family: var(--font-wordmark), "HK Venetian", Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.02;
   }
 
   .eyebrow {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.16em;
+    font-family: var(--font-wordmark), "HK Venetian", Georgia, serif;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--ash);
   }
@@ -89,7 +95,7 @@ html, body {
   /* ------------------------------------------------------------- surfaces ---- */
 
   .card {
-    @apply relative overflow-hidden rounded-2xl;
+    @apply relative overflow-hidden rounded-none;
     background: var(--paper-2);
     border: 1px solid var(--rule);
     box-shadow: 0 1px 2px rgba(12, 12, 13, 0.04), 0 12px 32px -24px rgba(12, 12, 13, 0.35);
@@ -104,7 +110,7 @@ html, body {
 
   /* dark product panels, the way Butter frames its app screenshots */
   .panel {
-    @apply relative overflow-hidden rounded-[28px];
+    @apply relative overflow-hidden rounded-none;
     background: var(--panel);
     border: 1px solid rgba(255,255,255,0.08);
     color: #F4F3F0;
@@ -145,9 +151,14 @@ html, body {
     box-shadow: 0 2px 6px rgba(12,12,13,0.16);
   }
 
+  /* Squared and letterspaced, matching the header's single action rather than
+     the rounded pill the site used before. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-5 py-3 text-sm font-medium;
-    transition: transform .25s cubic-bezier(.2,.8,.2,1), background-color .25s ease, color .25s ease, border-color .25s ease;
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap px-6 py-3 text-[11px] uppercase;
+    font-family: var(--font-wordmark), "HK Venetian", Georgia, serif;
+    letter-spacing: 0.2em;
+    border-radius: 0;
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), background-color .25s ease, color .25s ease, border-color .25s ease, opacity .25s ease;
   }
   .btn:active { transform: scale(0.97); }
   .btn-primary { background: var(--ink); color: var(--paper); }
@@ -184,19 +195,6 @@ html, body {
 @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 .bob { animation: bob 5s ease-in-out infinite; }
 
-@keyframes shine { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
-
-/* the holographic wordmark treatment in the footer */
-.chrome {
-  background-image: linear-gradient(100deg,
-    #8FD9FF 0%, #C9BBFF 14%, #FFC7E6 28%, #FFE7A8 42%,
-    #A7F0C6 56%, #8FD9FF 70%, #C9BBFF 84%, #FFC7E6 100%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
-  animation: shine 9s linear infinite;
-}
-
 /* barely-there paper grain, kept light so the UI stays clean */
 .grain::before {
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 60;
@@ -231,6 +229,6 @@ html, body {
 input[type="file"]::file-selector-button { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .charm, .bob, .marquee-track, .chrome { animation: none !important; }
+  .charm, .bob, .marquee-track { animation: none !important; }
   html { scroll-behavior: auto; }
 }

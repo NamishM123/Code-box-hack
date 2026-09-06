@@ -64,7 +64,7 @@ export function Nav({
           boxShadow: scrolled ? "0 12px 32px -26px rgba(12,12,13,0.6)" : "0 0px 0px rgba(12,12,13,0)"
         }}
         transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
-        className="mx-auto flex max-w-[1320px] items-center justify-between rounded-full border px-3 py-2 backdrop-blur-xl md:px-4"
+        className="mx-auto flex max-w-[1320px] items-center justify-between rounded-none border px-3 py-2 backdrop-blur-xl md:px-4"
       >
         <Link
           href="/"
@@ -78,10 +78,8 @@ export function Nav({
             <Link
               key={l.label}
               href={l.href}
-              className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
-                light
-                  ? "text-white/75 hover:bg-white/10 hover:text-white"
-                  : "text-ash hover:bg-ink/[0.05] hover:text-ink"
+              className={`wordmark rounded-none px-3.5 py-1.5 text-[12px] uppercase tracking-[0.16em] transition-colors ${
+                light ? "text-white/75 hover:text-white" : "text-ash hover:text-ink"
               }`}
             >
               {l.label}
@@ -93,7 +91,7 @@ export function Nav({
           <AuthButton light={light} />
           <Link
             href="/canvas?demo=1"
-            className={`hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors sm:block ${
+            className={`wordmark hidden rounded-none px-3.5 py-1.5 text-[12px] uppercase tracking-[0.16em] transition-colors sm:block ${
               light ? "text-white/75 hover:text-white" : "text-ash hover:text-ink"
             }`}
           >
@@ -108,7 +106,7 @@ export function Nav({
           <button
             onClick={() => setOpen((v) => !v)}
             aria-label="Menu"
-            className={`grid h-9 w-9 place-items-center rounded-full border transition-colors lg:hidden ${
+            className={`grid h-9 w-9 place-items-center rounded-none border transition-colors lg:hidden ${
               light ? "border-white/30 bg-white/10 text-white" : "border-rule bg-white/60 text-ink"
             }`}
           >
@@ -123,14 +121,14 @@ export function Nav({
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="mx-auto mt-2 max-w-[1320px] overflow-hidden rounded-3xl border border-rule bg-white/95 p-2 backdrop-blur-xl lg:hidden"
+            className="mx-auto mt-2 max-w-[1320px] overflow-hidden border border-rule bg-white/95 p-2 backdrop-blur-xl lg:hidden"
           >
             {LINKS.map((l) => (
               <Link
                 key={l.label}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-2xl px-4 py-3 text-[15px] font-medium text-ink hover:bg-ink/[0.04]"
+                className="wordmark block px-4 py-3 text-[14px] uppercase tracking-[0.16em] text-ink hover:bg-ink/[0.04]"
               >
                 {l.label}
               </Link>
@@ -142,11 +140,11 @@ export function Nav({
   );
 }
 
-export function Wordmark({ className = "text-[23px]" }: { className?: string }) {
+export function Wordmark({ className = "text-[19px]" }: { className?: string }) {
   return (
-    <span className={`relative select-none font-black italic leading-none tracking-[-0.055em] ${className}`}>
+    <span className={`wordmark relative select-none uppercase leading-none tracking-[0.06em] ${className}`}>
       Sightline
-      <span className="absolute -right-2.5 top-0 text-[0.4em] font-semibold not-italic tracking-normal">®</span>
+      <span className="absolute -right-2.5 top-0 text-[0.4em] tracking-normal">®</span>
     </span>
   );
 }

@@ -77,9 +77,9 @@ export function Footer() {
         </div>
       </div>
 
-      {/* the oversized holographic wordmark, Butter-style */}
+      {/* the oversized wordmark, set to match the header */}
       <div className="select-none px-3 pt-10">
-        <div className="chrome display-xl text-center text-[clamp(72px,20.5vw,320px)] italic leading-[0.78]">
+        <div className="wordmark text-center text-[clamp(64px,18vw,280px)] uppercase leading-[0.9] tracking-[0.03em] text-ink/10">
           Sightline
         </div>
       </div>
