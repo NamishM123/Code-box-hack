@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { InkGardenBackdrop } from "@/components/site/InkGarden";
 
 /**
  * HK Venetian — the face the hero wordmark, the page links and every button on
@@ -29,7 +30,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={hkVenetian.variable}>
-      <body className="grain min-h-screen antialiased">{children}</body>
+      <body className="grain min-h-screen antialiased">
+        {/* public/ink-rose.png is a screenshot of a dither rather than the
+            photograph behind it, so it is blurred by about a dot pitch before
+            being sampled — laying our own grid straight over the one baked into
+            those pixels moires. Swap in the original photo and drop sourceBlur
+            to 0; a missing file falls back to the painted garden. */}
+        <InkGardenBackdrop sourceUrl="/ink-rose.png" sourceBlur={9} />
+        <div className="relative z-10">{children}</div>
+      </body>
     </html>
   );
 }

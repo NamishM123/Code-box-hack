@@ -203,8 +203,7 @@ export default function CapturePage() {
 
   return (
     <main className="min-h-screen">
-      <Nav />
-      <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
+      <div className="mx-auto max-w-5xl px-6 pb-20 pt-12">
         <Stepper step={step} />
         <AnimatePresence mode="wait">
           {step === "frame" && (
