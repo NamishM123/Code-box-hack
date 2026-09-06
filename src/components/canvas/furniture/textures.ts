@@ -181,3 +181,20 @@ export function tiled(tex: THREE.Texture | null, repeatX: number, repeatY: numbe
   clone.repeat.set(repeatX, repeatY);
   return clone;
 }
+
+/** Soft elliptical blob used as a grounding shadow under a photo cutout. */
+export function shadowBlobTexture() {
+  return draw(
+    "shadowblob",
+    128,
+    (ctx, size) => {
+      const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      g.addColorStop(0, "rgba(0,0,0,0.85)");
+      g.addColorStop(0.55, "rgba(0,0,0,0.35)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+    },
+    false
+  );
+}
