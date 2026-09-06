@@ -11,7 +11,7 @@ import { ProductRail } from "@/components/canvas/ProductRail";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
-import { generateLayouts, reseat } from "@/lib/layout";
+import { generateLayouts, previewFit, reseat } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
@@ -65,6 +65,7 @@ function liveProduct(item: LiveListing): Product | null {
     width: width / 12,
     depth: depth / 12,
     height: height / 12,
+    photoVerified: true,
     material: "Live public listing",
     vibe: ["warm", "editorial"]
   };
@@ -396,7 +397,15 @@ export default function CanvasPage() {
         </div>
       </div>
 
-      {swap && <SwapDrawer current={swap} alternatives={swapAlts} onClose={() => setSwapId(null)} onPick={pickAlternative} />}
+      {swap && (
+        <SwapDrawer
+          current={swap}
+          alternatives={swapAlts}
+          onClose={() => setSwapId(null)}
+          onPick={pickAlternative}
+          fitOf={(candidate) => (brief ? previewFit(placed, products, brief, brief.detected || undefined, swap.id, candidate) : "unverified")}
+        />
+      )}
       {saveOpen && <SaveDialog defaultName={roomName} shareUrl={shareUrl} onSave={persist} onClose={() => setSaveOpen(false)} />}
 
       <Footer />

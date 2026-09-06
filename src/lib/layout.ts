@@ -55,7 +55,9 @@ interface Weights {
 
 const DOOR_SWING_FT = 3.2;
 const TV_DIAGONAL_RATIO = 1.1478; // 16:9 panel: diagonal from width
-const TV_VIEW_MULTIPLE = 1.9;
+// 4K sets are watched closer than the old 1.5-2.5x rule of thumb: roughly 1 to
+// 1.5 times the diagonal, so a 65in sits about 5.5-8ft from the seat.
+const TV_VIEW_MULTIPLE = 1.25;
 
 /* ------------------------------------------------------------------ scene */
 
@@ -414,29 +416,76 @@ function placeRug(scene: Scene, rug: Product, anchors: Rect[]) {
   return rect;
 }
 
-function placeSeatRing(scene: Scene, chairs: Product[], center: Vec, w: Weights) {
-  const radius = Math.min(7.5, CLEARANCES.walkwayFt + 2.4);
+/**
+ * Where the other seats go.
+ *
+ * With a focal point, every seat has to address it. The sofa takes the base and
+ * the chairs flank the axis running from it to the screen, turned to face the
+ * screen too: the L or U that every arrangement guide describes. Facing them at
+ * the middle of the group instead, which is what this did, leaves a chair
+ * staring at the sofa's flank while the sofa watches something else, and the
+ * room reads as pieces that happened to land near each other.
+ *
+ * With no focal point there is nothing to address, and a conversation ring
+ * facing the middle is the right answer.
+ */
+function placeSeating(scene: Scene, chairs: Product[], seat: Rect | null, focal: Vec | null, center: Vec, w: Weights) {
+  const addressing = Boolean(seat && focal);
+
   chairs.forEach((chair, i) => {
+    const side = i % 2 === 0 ? 1 : -1;
     const candidates: Rect[] = [];
-    for (let a = 0; a < 360; a += 10) {
-      for (const r of [radius, radius - 1, radius + 1]) {
-        const rad = (a * Math.PI) / 180;
-        const x = center[0] + Math.cos(rad) * r;
-        const y = center[1] + Math.sin(rad) * r;
-        // turned to look back at the middle of the group
-        const rot = snapAngle((Math.atan2(center[1] - y, center[0] - x) * 180) / Math.PI - 90);
-        candidates.push({ x, y, w: chair.width, d: chair.depth, rot });
+
+    if (addressing && seat && focal) {
+      const axis: Vec = [focal[0] - seat.x, focal[1] - seat.y];
+      const len = Math.hypot(axis[0], axis[1]) || 1;
+      const unit: Vec = [axis[0] / len, axis[1] / len];
+      const perp: Vec = [-unit[1], unit[0]];
+
+      // out along the axis, off to one side: the arms of the U
+      for (let forward = 1; forward <= len * 0.7; forward += 0.5) {
+        for (let out = 2.5; out <= 7; out += 0.5) {
+          const x = seat.x + unit[0] * forward + perp[0] * out * side;
+          const y = seat.y + unit[1] * forward + perp[1] * out * side;
+          const rot = snapAngle((Math.atan2(focal[1] - y, focal[0] - x) * 180) / Math.PI - 90);
+          candidates.push({ x, y, w: chair.width, d: chair.depth, rot });
+        }
+      }
+    } else {
+      const radius = Math.min(7.5, CLEARANCES.walkwayFt + 2.4);
+      for (let a = 0; a < 360; a += 10) {
+        for (const r of [radius, radius - 1, radius + 1]) {
+          const rad = (a * Math.PI) / 180;
+          const x = center[0] + Math.cos(rad) * r;
+          const y = center[1] + Math.sin(rad) * r;
+          const rot = snapAngle((Math.atan2(center[1] - y, center[0] - x) * 180) / Math.PI - 90);
+          candidates.push({ x, y, w: chair.width, d: chair.depth, rot });
+        }
       }
     }
+
     const rect = best(candidates, scene, (r) => {
+      if (addressing && seat && focal) {
+        const axis: Vec = [focal[0] - seat.x, focal[1] - seat.y];
+        const blocking = lateralOffset([seat.x, seat.y], axis, [r.x, r.y]);
+        const view = distance([r.x, r.y], focal);
+        const fromSeat = distance([r.x, r.y], [seat.x, seat.y]);
+        return (
+          blocking * 1.4 - // stay out of the sofa's own sightline
+          Math.abs(view - distance([seat.x, seat.y], focal)) * 0.8 - // level with the sofa, not miles behind it
+          // an arm of the group, set off the sofa rather than shoved against it
+          Math.abs(fromSeat - 5) * 1.1
+        );
+      }
       const d = distance([r.x, r.y], center);
-      return -Math.abs(d - radius) * 2 * w.gather - distance([r.x, r.y], scene.entry.at) * -0.1;
+      return -Math.abs(d - Math.min(7.5, CLEARANCES.walkwayFt + 2.4)) * 2 * w.gather;
     });
+
     if (rect) {
       commit(scene, chair, rect, [
-        i === 0
-          ? "Closes the conversation ring inside the 8′ where talk stays easy."
-          : "Mirrors the opposite seat so the group reads balanced."
+        addressing
+          ? "Set on the arm of the group, turned to the same focal point as the sofa rather than at the sofa itself."
+          : "Closes the conversation ring inside the 8′ where talk stays easy."
       ]);
     } else {
       unplaceable(scene, chair);
@@ -551,7 +600,7 @@ function solve(room: RoomSpec, products: Product[], detected: DetectedRoom | und
   const seat = primary ? placePrimary(scene, primary, w, viewIdeal, focal) : null;
   if (primary && !seat) unplaceable(scene, primary);
 
-  if (screen) placeTv(scene, screen, seat, w);
+  const screenRect = screen ? placeTv(scene, screen, seat, w) : null;
 
   const table = pick("table");
   const tableRect = table ? placeTable(scene, table, seat) : null;
@@ -563,8 +612,11 @@ function solve(room: RoomSpec, products: Product[], detected: DetectedRoom | und
       ? [seat.x + facing(seat.rot)[0] * 3, seat.y + facing(seat.rot)[1] * 3]
       : [scene.W / 2, scene.D / 2];
 
+  // Once the screen is on a wall it, not the coffee table, is what the seats
+  // address.
+  const addressed: Vec | null = screenRect ? [screenRect.x, screenRect.y] : null;
   const chairs = all("chair");
-  if (chairs.length) placeSeatRing(scene, chairs, groupCenter, w);
+  if (chairs.length) placeSeating(scene, chairs, seat, addressed, groupCenter, w);
 
   for (const shelf of all("shelf")) placeAgainstFreeWall(scene, shelf, "Storage lines a solid wall, out of the main walkway.", w);
   for (const dresser of all("dresser")) placeAgainstFreeWall(scene, dresser, "Kept off the entry wall so the room opens as you come in.", w);
@@ -680,20 +732,37 @@ export function generateLayouts(room: RoomSpec, products: Product[], detected?: 
  * its own size changes, so it is pushed back against its wall at its new depth
  * and re-checked, rather than left on the old centre with a stale verdict.
  */
-export function reseat(
+/**
+ * Seats one product in the slot another currently holds.
+ *
+ * The slot the layout chose is the decision worth keeping, so a replacement
+ * inherits it: same wall, same facing, same relation to everything else. Only
+ * its own size changes, so it is pushed back against its wall at its new depth
+ * and re-checked, rather than left on the old centre with a stale verdict.
+ */
+function seatInSlot(
   placed: PlacedItem[],
   products: Product[],
   room: RoomSpec,
   detected: DetectedRoom | undefined,
-  swappedId: string
-): PlacedItem[] {
-  const incoming = products.find((p) => p.id === swappedId);
-  const current = placed.find((p) => p.productId === swappedId);
-  if (!incoming || !current) return placed;
+  slotId: string,
+  incoming: Product
+): { rect: Rect; fit: FitVerdict } | null {
+  const current = placed.find((p) => p.productId === slotId);
+  if (!current) return null;
 
   const scene = buildScene(room, detected);
+
+  // A rug lies under the furniture and a screen or a frame hangs above it, so
+  // neither collides with anything on the floor. Only the room's own walls
+  // constrain them.
+  const underfootOrMounted = ["rug", "art", "tv", "mirror"].includes(incoming.category);
+  if (underfootOrMounted) {
+    const rect: Rect = { x: current.x, y: current.y, w: incoming.width, d: incoming.depth, rot: current.rotation };
+    return { rect, fit: insideRoom(rect, room.widthFt, room.depthFt, 0) ? "fits" : "conflict" };
+  }
   for (const item of placed) {
-    if (item.productId === swappedId) continue;
+    if (item.productId === slotId) continue;
     const product = products.find((p) => p.id === item.productId);
     if (product) scene.slots.push({ rect: { x: item.x, y: item.y, w: product.width, d: product.depth, rot: item.rotation }, product });
   }
@@ -707,18 +776,45 @@ export function reseat(
   }
 
   const kept = best(candidates, scene, (r) => -distance([r.x, r.y], [current.x, current.y]));
-  const rect = kept || { x: current.x, y: current.y, w: incoming.width, d: incoming.depth, rot };
-  const fit = kept ? verdict(rect, scene) : "conflict";
+  if (!kept) return null;
+  return { rect: kept, fit: verdict(kept, scene) };
+}
+
+/** Whether a candidate could take a slot, for showing before the shopper commits. */
+export function previewFit(
+  placed: PlacedItem[],
+  products: Product[],
+  room: RoomSpec,
+  detected: DetectedRoom | undefined,
+  slotId: string,
+  candidate: Product
+): FitVerdict {
+  return seatInSlot(placed, products, room, detected, slotId, candidate)?.fit ?? "conflict";
+}
+
+/** Re-seats one piece after the shopper swaps in a different product. */
+export function reseat(
+  placed: PlacedItem[],
+  products: Product[],
+  room: RoomSpec,
+  detected: DetectedRoom | undefined,
+  swappedId: string
+): PlacedItem[] {
+  const incoming = products.find((p) => p.id === swappedId);
+  const current = placed.find((p) => p.productId === swappedId);
+  if (!incoming || !current) return placed;
+
+  const seated = seatInSlot(placed, products, room, detected, swappedId, incoming);
 
   return placed.map((item) =>
     item.productId === swappedId
       ? {
           ...item,
-          x: round(rect.x),
-          y: round(rect.y),
-          rotation: rot,
-          fit,
-          rationale: kept
+          x: round(seated ? seated.rect.x : current.x),
+          y: round(seated ? seated.rect.y : current.y),
+          rotation: current.rotation,
+          fit: seated ? seated.fit : "conflict",
+          rationale: seated
             ? [`Dropped into the same slot at ${incoming.width.toFixed(1)}′ × ${incoming.depth.toFixed(1)}′, re-seated against its wall.`]
             : ["This one does not fit the slot the layout chose. Try a smaller version."]
         }

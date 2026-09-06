@@ -3,7 +3,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import type { PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { hangCenterY, yawFor } from "@/lib/furniture";
+import { mountCenterY, yawFor } from "@/lib/furniture";
 import { loadCutout, type CutoutState } from "./cutout";
 import { SceneMode } from "./pieces";
 import { shadowBlobTexture } from "./textures";
@@ -85,12 +85,12 @@ export function PhotoPiece({ item, product, room, cutout, onSelect }: Props) {
   }
 
   // Framed pieces stay flat on their wall rather than turning to the camera.
-  if (product.category === "art" || product.category === "mirror") {
-    const hung = product.category === "art";
+  if (product.category === "art" || product.category === "mirror" || product.category === "tv") {
+    const hung = product.category !== "mirror";
     const h = product.height;
     const w = Math.min(product.width, h * cutout.aspect);
     return (
-      <mesh position={[x, hung ? hangCenterY(h) : h / 2, z]} rotation={[0, yaw, 0]} {...handlers}>
+      <mesh position={[x, hung ? mountCenterY(product) : h / 2, z]} rotation={[0, yaw, 0]} {...handlers}>
         <planeGeometry args={[w, h]} />
         <meshBasicMaterial map={cutout.texture} color={tint} {...PHOTO_MATERIAL} />
       </mesh>

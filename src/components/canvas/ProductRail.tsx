@@ -62,7 +62,7 @@ export function ProductRail({ placed, products, selectedId, onSelect, total, bud
                   )}
                   <div className="mt-2 flex items-center gap-3 text-[11px]">
                     <a href={prod.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ash hover:text-brass"><ExternalLink className="h-3 w-3" /> source</a>
-                    <button onClick={(e) => { e.stopPropagation(); onSwap(p.productId); }} className="text-brass hover:underline">swap</button>
+                    <button onClick={(e) => { e.stopPropagation(); onSwap(p.productId); }} className="text-brass hover:underline">change piece</button>
                   </div>
                 </div>
               </button>

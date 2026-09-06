@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Camera, Download, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
 import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { WALL_HEIGHT_FT, hangCenterY, isWallHung, wallToneFrom, yawFor } from "@/lib/furniture";
+import { WALL_HEIGHT_FT, isWallHung, mountCenterY, wallToneFrom, yawFor } from "@/lib/furniture";
 import { FurnitureModel, SceneMode } from "./furniture/pieces";
 import { PhotoPiece, useCutout } from "./furniture/PhotoPiece";
 import { RoomShell } from "./furniture/RoomShell";
@@ -55,12 +55,15 @@ function Piece({
   onSelect?: (id: string | null) => void;
 }) {
   const holder = useRef<THREE.Group>(null);
-  const cutout = useCutout(look === "photo" ? product.image : "");
+  // An unverified stock image is decoration, not evidence of what the product
+  // looks like, so it never gets stood up in the room.
+  const trusted = product.photoVerified || product.image?.startsWith("/");
+  const cutout = useCutout(look === "photo" && trusted ? product.image : "");
   const x = item.x - room.widthFt / 2;
   const z = item.y - room.depthFt / 2;
   const yaw = yawFor(item, product, room);
   const hung = isWallHung(product);
-  const y = hung ? hangCenterY(product.height) : 0;
+  const y = hung ? mountCenterY(product) : 0;
   const ring = Math.max(product.width, product.depth) / 2;
   const showRing = selected || item.fit === "conflict" || item.fit === "tight";
   const asPhoto = look === "photo" && cutout.status === "ready";

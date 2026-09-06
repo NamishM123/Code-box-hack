@@ -128,7 +128,18 @@ const HAS_FRONT: Category[] = ["sofa", "chair", "bed", "desk", "shelf", "dresser
 
 /** Pieces that hang on a wall rather than stand on the floor. */
 export function isWallHung(product: Product) {
-  return product.category === "art";
+  return product.category === "art" || product.category === "tv";
+}
+
+/** Screen centre for a wall-mounted television: 44in, seated eye level. */
+export const TV_CENTER_FT = 44 / 12;
+
+/** Where a wall-mounted piece's centre sits above the floor. */
+export function mountCenterY(product: Product, wallHeight = WALL_HEIGHT_FT) {
+  if (product.category === "tv") {
+    return Math.min(Math.max(TV_CENTER_FT, product.height / 2 + 0.6), wallHeight - 0.6 - product.height / 2);
+  }
+  return hangCenterY(product.height, wallHeight);
 }
 
 /**
