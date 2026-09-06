@@ -14,9 +14,15 @@ const LINKS = [
   { label: "Rooms", href: "/rooms" }
 ];
 
-export function Nav() {
+/**
+ * `overDark` marks pages whose header sits on a dark full-bleed image — the bar
+ * then renders in white until the first scroll lifts the paper backdrop in.
+ */
+export function Nav({ overDark = false }: { overDark?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const light = overDark && !scrolled;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -41,7 +47,10 @@ export function Nav() {
         transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
         className="mx-auto flex max-w-[1320px] items-center justify-between rounded-full border px-3 py-2 backdrop-blur-xl md:px-4"
       >
-        <Link href="/" className="flex items-center gap-2 pl-1.5 pr-3">
+        <Link
+          href="/"
+          className={`flex items-center gap-2 pl-1.5 pr-3 transition-colors ${light ? "text-white" : "text-ink"}`}
+        >
           <Wordmark />
         </Link>
 
@@ -50,7 +59,11 @@ export function Nav() {
             <Link
               key={l.label}
               href={l.href}
-              className="rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ash transition-colors hover:bg-ink/[0.05] hover:text-ink"
+              className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+                light
+                  ? "text-white/75 hover:bg-white/10 hover:text-white"
+                  : "text-ash hover:bg-ink/[0.05] hover:text-ink"
+              }`}
             >
               {l.label}
             </Link>
@@ -58,17 +71,27 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <AuthButton />
-          <Link href="/canvas?demo=1" className="hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ash transition-colors hover:text-ink sm:block">
+          <AuthButton light={light} />
+          <Link
+            href="/canvas?demo=1"
+            className={`hidden rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors sm:block ${
+              light ? "text-white/75 hover:text-white" : "text-ash hover:text-ink"
+            }`}
+          >
             See a demo room
           </Link>
-          <Link href="/capture" className="btn btn-primary px-4 py-2 text-[13px]">
+          <Link
+            href="/capture"
+            className={`btn px-4 py-2 text-[13px] ${light ? "bg-white text-ink hover:bg-white/90" : "btn-primary"}`}
+          >
             Map your room
           </Link>
           <button
             onClick={() => setOpen((v) => !v)}
             aria-label="Menu"
-            className="grid h-9 w-9 place-items-center rounded-full border border-rule bg-white/60 lg:hidden"
+            className={`grid h-9 w-9 place-items-center rounded-full border transition-colors lg:hidden ${
+              light ? "border-white/30 bg-white/10 text-white" : "border-rule bg-white/60 text-ink"
+            }`}
           >
             {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>

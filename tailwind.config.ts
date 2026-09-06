@@ -22,9 +22,11 @@ const config: Config = {
         clay: "#C9603F"
       },
       fontFamily: {
-        display: ['"Inter Tight"', "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        sans: ['"Inter Tight"', "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
+        display: ["var(--font-sans)", '"Inter Tight"', "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", '"Inter Tight"', "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", '"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        script: ["var(--font-script)", '"Snell Roundhand"', "cursive"],
+        serif: ["var(--font-serif)", "Georgia", "serif"]
       },
       borderRadius: {
         "4xl": "28px",

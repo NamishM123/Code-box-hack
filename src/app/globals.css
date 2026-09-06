@@ -1,4 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,800;1,900&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@1,400;1,500;1,600&display=swap");
+/* Typefaces are self-hosted via next/font in src/app/layout.tsx, which exposes
+   them as --font-sans / --font-mono / --font-serif / --font-script. */
 
 @tailwind base;
 @tailwind components;
@@ -29,7 +30,7 @@ html {
 html, body {
   background: var(--paper);
   color: var(--ink);
-  font-family: "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans), "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "ss01", "cv11";
 }
 
@@ -39,7 +40,7 @@ html, body {
   /* ---------------------------------------------------------------- type ---- */
 
   .font-display {
-    font-family: "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans), "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif;
     font-weight: 600;
     letter-spacing: -0.035em;
     line-height: 0.98;
@@ -67,7 +68,29 @@ html, body {
   }
 
   .mono {
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* the handwritten signature wordmark laid over the hero photograph */
+  .script {
+    font-family: var(--font-script), "Snell Roundhand", "Brush Script MT", cursive;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  /* the light italic serif used for the hero's one-line story caption */
+  .caption-serif {
+    font-family: var(--font-serif), Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* Tiny uppercase mono set flush to both margins — every line, last one
+     included — which is what gives the reference its blocked-out corners. */
+  .justify-block {
+    text-align: justify;
+    text-align-last: justify;
+    -moz-text-align-last: justify;
   }
 
   /* ------------------------------------------------------------- surfaces ---- */

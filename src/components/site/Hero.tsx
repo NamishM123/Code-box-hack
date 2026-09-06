@@ -4,205 +4,105 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
-const PRODUCTS = [
-  {
-    src: "/demo-products/linen-sofa.png",
-    label: "Linen Sofa",
-    spec: '84" W × 36" D × 32" H\nFrom the Essentials Collection\nEdition No. 04/50\nDesigned by Sightline Studio',
-    num: "01",
-  },
-  {
-    src: "/demo-products/camel-chair.png",
-    label: "Camel Lounge Chair",
-    spec: '30" W × 32" D × 33" H\nSaddle leather, walnut frame\nFrom the Essentials Collection\nEdition No. 11/30',
-    num: "02",
-  },
-  {
-    src: "/demo-products/brass-lamp.png",
-    label: "Brass Floor Lamp",
-    spec: '62" H, 12" shade diameter\nSolid brass, linen shade\nFrom the Essentials Collection\nDesigned by Sightline Studio',
-    num: "03",
-  },
-];
+/**
+ * Homepage header, built to the Cabinet reference: one full-bleed photograph
+ * with every piece of type laid over it — the story caption up top, and along
+ * the bottom edge a blocked-out mono paragraph, the signature wordmark, and
+ * the same paragraph mirrored on the right.
+ *
+ * The photograph lives at /public/hero/interior.jpg — swap that file to change
+ * the image; nothing here needs to change with it.
+ */
+
+const BRAND_BLURB =
+  "Sightline is a room editor of curated one-of-a-kind pieces that preserves stories of art and craft for contemporary interiors.";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      {/* ───────────────────── top bar ───────────────────── */}
-      <div className="flex items-center justify-between px-6 py-4 md:px-10 md:py-5">
-        <span className="mono text-[11px] font-medium uppercase tracking-[0.2em]">
-          Room Editor
-        </span>
-        <span className="mono text-[11px] font-medium uppercase tracking-[0.2em]">
-          Sightline
-        </span>
-      </div>
+    <section className="relative bg-ink">
+      {/* ─────────────────────── the photograph ─────────────────────── */}
+      <div className="relative h-[78vh] min-h-[520px] w-full overflow-hidden md:h-[88vh]">
+        <Image
+          src="/hero/interior.jpg"
+          alt="A curated contemporary interior opening onto a garden"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+        />
 
-      {/* ───────────────── main editorial grid ───────────── */}
-      <div className="mx-auto max-w-[1400px] px-5 pb-10 pt-4 md:px-10 md:pb-16">
-        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          {/* left: headline */}
-          <div className="flex flex-col justify-between gap-10">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
-              className="mono text-[clamp(28px,4.2vw,52px)] font-medium uppercase leading-[1.15] tracking-tight"
+        {/* Warmth + top and bottom falloff so the white type holds up over
+            whatever part of the photograph sits behind it. */}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(12,10,8,0.55)_0%,rgba(12,10,8,0.12)_28%,rgba(12,10,8,0.10)_55%,rgba(12,10,8,0.72)_100%)]" />
+
+        {/* ───────────────── story caption, top centre ───────────────── */}
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: [0.2, 0.8, 0.2, 1] }}
+          className="caption-serif absolute inset-x-0 top-[14%] text-center text-[clamp(15px,1.5vw,22px)] leading-[1.45] text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)]"
+        >
+          Each piece carries a story
+          <br />
+          of rarity and timeless design.
+        </motion.p>
+
+        {/* ───────────── bottom edge: blurb · wordmark · blurb ───────────── */}
+        <div className="absolute inset-x-0 bottom-0 px-5 pb-6 md:px-10 md:pb-9">
+          <div className="mx-auto grid max-w-[1500px] grid-cols-1 items-end gap-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-10">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.35 }}
+              className="mono justify-block hidden text-[clamp(8px,0.72vw,11px)] uppercase leading-[1.75] tracking-[0.06em] text-white/85 md:block"
             >
-              // Sightline.
-              <br />
-              Introducing:
-              <br />
-              Rare and unique
-              <br />
-              pieces curated
-              <br />
-              for modern living.
-            </motion.h1>
+              {BRAND_BLURB}
+            </motion.p>
 
-            {/* product specs row */}
-            <div className="hidden grid-cols-3 gap-4 lg:grid">
-              {PRODUCTS.map((p) => (
-                <div key={p.num} className="mono text-[10px] leading-relaxed text-ash">
-                  <p className="mb-1 text-[11px] font-medium text-ink">{p.label}</p>
-                  {p.spec.split("\n").map((line, i) => (
-                    <span key={i} className="block">{line}</span>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
+            <motion.span
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.2 }}
+              className="script select-none text-center text-[clamp(52px,6.5vw,92px)] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.5)]"
+            >
+              Sightline
+            </motion.span>
 
-          {/* right: editorial image cluster */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            className="relative flex items-start justify-end gap-3"
-          >
-            {/* main room image */}
-            <div className="relative aspect-[4/5] w-[60%] overflow-hidden rounded-sm bg-panel">
-              <Image
-                src="/demo-capture/empty-room-01.png"
-                alt="Curated living space"
-                fill
-                className="object-cover"
-                priority
-              />
-              <span className="mono absolute bottom-3 left-3 text-[11px] font-medium text-white/80">
-                (01)
-              </span>
-            </div>
-
-            {/* stacked secondary images */}
-            <div className="flex w-[36%] flex-col gap-3">
-              <div className="relative aspect-square overflow-hidden rounded-sm bg-panel">
-                <Image
-                  src="/demo-products/camel-chair.png"
-                  alt="Camel lounge chair"
-                  fill
-                  className="object-cover"
-                />
-                <span className="mono absolute bottom-2 right-2 text-[11px] font-medium text-white/80">
-                  (02)
-                </span>
-              </div>
-              <div className="relative aspect-square overflow-hidden rounded-sm bg-panel">
-                <Image
-                  src="/demo-products/brass-lamp.png"
-                  alt="Brass floor lamp"
-                  fill
-                  className="object-cover"
-                />
-                <span className="mono absolute bottom-2 right-2 text-[11px] font-medium text-white/80">
-                  (03)
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* ──────────────── dark editorial band ──────────────── */}
-      <div className="relative bg-ink px-5 py-16 text-white md:px-10 md:py-24">
-        <div className="mx-auto max-w-[1400px]">
-          {/* handwritten tagline */}
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mb-10 text-center text-[clamp(18px,2.8vw,32px)] italic leading-snug text-white/60 md:mb-14"
-            style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
-          >
-            Each piece carries a story
-            <br />
-            of rarity and timeless design.
-          </motion.p>
-
-          {/* featured product image */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.9, delay: 0.3 }}
-            className="relative mx-auto aspect-[16/9] max-w-[900px] overflow-hidden rounded-sm"
-          >
-            <Image
-              src="/demo-capture/empty-room-03.png"
-              alt="Featured interior"
-              fill
-              className="object-cover"
-            />
-          </motion.div>
-
-          {/* bottom columns: brand + script wordmark + brand */}
-          <div className="mt-12 grid gap-8 md:mt-16 md:grid-cols-3 md:items-end">
-            <p className="mono text-[10px] font-medium uppercase leading-relaxed tracking-[0.12em] text-white/50">
-              Sightline is a platform of curated one-of-a-kind pieces that preserves
-              stories of art and craft for contemporary interiors.
-            </p>
-
-            <div className="flex justify-center">
-              <span
-                className="text-[clamp(42px,6vw,72px)] text-white/90"
-                style={{ fontFamily: '"Playfair Display", Georgia, serif', fontStyle: 'italic' }}
-              >
-                Sightline
-              </span>
-            </div>
-
-            <p className="mono text-right text-[10px] font-medium uppercase leading-relaxed tracking-[0.12em] text-white/50">
-              Sightline is a platform of curated one-of-a-kind pieces that preserves
-              stories of art and craft for contemporary interiors.
-            </p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.35 }}
+              className="mono justify-block hidden text-[clamp(8px,0.72vw,11px)] uppercase leading-[1.75] tracking-[0.06em] text-white/85 md:block"
+            >
+              {BRAND_BLURB}
+            </motion.p>
           </div>
         </div>
       </div>
 
-      {/* ────────────── identity footer bar ────────────── */}
-      <div className="flex items-center justify-between border-t border-rule px-6 py-3 md:px-10">
-        <span className="mono text-[11px] font-medium uppercase tracking-[0.2em] text-ash">
+      {/* ──────────────────── identity rule beneath ──────────────────── */}
+      <div className="flex items-center justify-between border-t border-white/10 px-6 py-3 md:px-10">
+        <span className="mono text-[11px] uppercase tracking-[0.22em] text-white/45">
           Identity
         </span>
-        <span className="mono text-[11px] font-medium text-ash">
-          2025
-        </span>
+        <span className="mono text-[11px] tracking-[0.1em] text-white/45">2025</span>
       </div>
 
-      {/* ──────────── CTA overlay (keep existing actions) ──────────── */}
-      <div className="relative bg-paper px-5 py-12 text-center md:py-16">
-        <motion.h2
+      {/* ─────────────────────────── the ask ─────────────────────────── */}
+      <div className="bg-paper px-5 py-14 text-center md:py-20">
+        <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15 }}
-          className="display-lg mx-auto text-[clamp(32px,6vw,64px)]"
+          transition={{ duration: 0.7 }}
+          className="display-lg mx-auto text-[clamp(34px,6vw,68px)]"
         >
           Engineered for Living
-        </motion.h2>
+        </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.25 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
           className="mx-auto mt-5 max-w-lg text-[15px] leading-relaxed text-ash"
         >
           Explore the first room editor you can furnish from. Photograph a space, place
@@ -212,7 +112,7 @@ export function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.32 }}
+          transition={{ duration: 0.7, delay: 0.18 }}
           className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
         >
           <Link href="/capture" className="btn btn-primary group px-6 py-3.5">
@@ -227,7 +127,7 @@ export function Hero() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.3 }}
           className="mt-5 text-[12px] text-ash"
         >
           No credit card. No measuring tape. Six photos is enough.
