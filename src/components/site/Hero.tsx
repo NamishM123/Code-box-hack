@@ -1,27 +1,27 @@
 "use client";
 import Link from "next/link";
+import { MarketplaceCarousel } from "./MarketplaceCarousel";
 
 /**
- * Homepage header: the interior footage running full-bleed, minimal page
- * buttons along the top, and the wordmark set in Latin Modern Roman down in
- * the bottom-left corner.
+ * The landing page, and the whole of it: the interior footage full-bleed,
+ * borderless page links across the top, the wordmark and its one action
+ * centred, and the marketplace carousel along the bottom edge.
  *
- * The clip lives at /public/hero/hero.mp4 — already trimmed past its title
- * card and cropped clear of the corner logo, so it needs no masking here.
+ * The clip at /public/hero/hero.mp4 already has its title card trimmed off and
+ * its corner logo painted out, so nothing here needs to mask it.
  */
 
 const PAGES = [
   { label: "Product", href: "/product" },
-  { label: "Pieces", href: "/#pieces" },
   { label: "Shops", href: "/shops" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Rooms", href: "/rooms" }
+  { label: "Rooms", href: "/rooms" },
+  { label: "Pricing", href: "/pricing" }
 ];
 
 export function Hero() {
   return (
-    <section className="relative h-[100svh] min-h-[560px] w-full overflow-hidden bg-ink">
-      {/* ─────────────────────────── footage ─────────────────────────── */}
+    <section className="relative flex h-[100svh] min-h-[560px] w-full flex-col overflow-hidden bg-ink">
       <video
         className="absolute inset-0 h-full w-full object-cover"
         poster="/hero/hero-poster.jpg"
@@ -38,18 +38,16 @@ export function Hero() {
         <source src="/hero/hero.mp4" type="video/mp4" />
       </video>
 
-      {/* Falloff top and bottom so the buttons and the wordmark keep their
-          contrast wherever the footage happens to be bright. */}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,9,8,0.55)_0%,rgba(10,9,8,0.05)_26%,rgba(10,9,8,0.10)_58%,rgba(10,9,8,0.78)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,9,8,0.5)_0%,rgba(10,9,8,0.06)_24%,rgba(10,9,8,0.22)_62%,rgba(10,9,8,0.8)_100%)]" />
 
-      {/* ──────────────────── page buttons, top ──────────────────── */}
-      <header className="absolute inset-x-0 top-0 z-20 px-5 pt-6 md:pt-8">
-        <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
+      {/* ───────────────────── page links, top ───────────────────── */}
+      <header className="relative z-20 px-5 pt-7 md:pt-9">
+        <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 md:gap-x-10">
           {PAGES.map((p) => (
             <Link
               key={p.label}
               href={p.href}
-              className="rounded-full border border-white/30 px-4 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white transition-colors duration-300 hover:border-white/80"
+              className="text-[11px] uppercase tracking-[0.2em] text-white/70 transition-colors duration-300 hover:text-white"
             >
               {p.label}
             </Link>
@@ -57,11 +55,23 @@ export function Hero() {
         </nav>
       </header>
 
-      {/* ──────────────── wordmark, bottom left ──────────────── */}
-      <div className="absolute inset-x-0 bottom-0 z-20 px-5 pb-7 md:px-9 md:pb-9">
-        <h1 className="wordmark select-none text-[clamp(20px,2.2vw,32px)] uppercase tracking-[0.06em] text-white">
+      {/* ─────────────────── wordmark and its action ─────────────────── */}
+      <div className="relative z-20 flex flex-1 flex-col items-center justify-center px-5 text-center">
+        <h1 className="wordmark select-none text-[clamp(52px,12vw,190px)] uppercase leading-[0.95] tracking-[0.04em] text-white">
           Sightline
         </h1>
+
+        <Link
+          href="/capture"
+          className="mt-9 rounded-full bg-white px-7 py-3 text-[11px] uppercase tracking-[0.2em] text-ink transition-opacity duration-300 hover:opacity-85 md:mt-11"
+        >
+          Map your room
+        </Link>
+      </div>
+
+      {/* ─────────────────── marketplaces, bottom ─────────────────── */}
+      <div className="relative z-20 pb-7 md:pb-9">
+        <MarketplaceCarousel />
       </div>
     </section>
   );

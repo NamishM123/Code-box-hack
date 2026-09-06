@@ -73,11 +73,9 @@ html, body {
 
   /* Latin Modern Roman, the wordmark set over the hero footage */
   .wordmark {
-    font-family: var(--font-wordmark), "Latin Modern Roman", Georgia, serif;
-    font-weight: 700;
-    /* room for the descender on the g — anything tighter and the strapline
-       below it collides with the tail */
-    line-height: 1.02;
+    font-family: var(--font-wordmark), "HK Venetian", Georgia, serif;
+    font-weight: 400;
+    line-height: 1;
   }
 
   /* Tiny uppercase mono set flush to both margins — every line, last one

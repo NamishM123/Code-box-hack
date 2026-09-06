@@ -144,9 +144,10 @@ export function Glyph({ name, className = "h-6 w-6", strokeWidth = 1.5 }: { name
  * Store wordmarks for the trust row. Set as type rather than uploaded brand
  * assets, drawn in a single ink weight so the row reads as one strip.
  */
-export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
+export const SHOPS: { name: string; style: string; href?: string; mark?: JSX.Element }[] = [
   {
     name: "amazon",
+    href: "https://www.amazon.com/",
     style: "lowercase font-semibold tracking-[-0.04em]",
     mark: (
       <svg viewBox="0 0 40 12" className="mt-0.5 h-2.5 w-9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -156,6 +157,7 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
   },
   {
     name: "TARGET",
+    href: "https://www.target.com/",
     style: "font-bold tracking-[0.02em]",
     mark: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -166,6 +168,7 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
   },
   {
     name: "Walmart",
+    href: "https://www.walmart.com/",
     style: "font-semibold tracking-[-0.02em]",
     mark: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -175,6 +178,7 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
   },
   {
     name: "Facebook Marketplace",
+    href: "https://www.facebook.com/marketplace/",
     style: "font-medium tracking-[-0.02em]",
     mark: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
@@ -184,12 +188,20 @@ export const SHOPS: { name: string; style: string; mark?: JSX.Element }[] = [
       </svg>
     )
   },
-  { name: "WAYFAIR", style: "font-semibold tracking-[0.06em]" },
-  { name: "IKEA", style: "font-extrabold tracking-[0.04em]" },
-  { name: "West Elm", style: "font-normal tracking-[0.12em] uppercase" },
-  { name: "CB2", style: "font-bold tracking-[0.08em]" },
-  { name: "Article", style: "font-medium tracking-[-0.01em]" },
-  { name: "OfferUp", style: "font-semibold tracking-[-0.02em]" },
-  { name: "Craigslist", style: "font-normal tracking-[-0.01em]" },
-  { name: "Overstock", style: "font-medium tracking-[0.02em]" }
+  { name: "WAYFAIR",
+    href: "https://www.wayfair.com/", style: "font-semibold tracking-[0.06em]" },
+  { name: "IKEA",
+    href: "https://www.ikea.com/", style: "font-extrabold tracking-[0.04em]" },
+  { name: "West Elm",
+    href: "https://www.westelm.com/", style: "font-normal tracking-[0.12em] uppercase" },
+  { name: "CB2",
+    href: "https://www.cb2.com/", style: "font-bold tracking-[0.08em]" },
+  { name: "Article",
+    href: "https://www.article.com/", style: "font-medium tracking-[-0.01em]" },
+  { name: "OfferUp",
+    href: "https://offerup.com/", style: "font-semibold tracking-[-0.02em]" },
+  { name: "Craigslist",
+    href: "https://www.craigslist.org/", style: "font-normal tracking-[-0.01em]" },
+  { name: "Overstock",
+    href: "https://www.overstock.com/", style: "font-medium tracking-[0.02em]" }
 ];

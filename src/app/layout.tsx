@@ -23,10 +23,10 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap"
 });
 
-/** Latin Modern Roman 5 Bold — the hero wordmark. */
-const lmRoman = localFont({
-  src: "./fonts/lmroman5-bold.otf",
-  weight: "700",
+/** HK Venetian — the hero wordmark. */
+const hkVenetian = localFont({
+  src: "./fonts/hk-venetian-regular.ttf",
+  weight: "400",
   style: "normal",
   variable: "--font-wordmark",
   display: "swap"
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${interTight.variable} ${jetBrainsMono.variable} ${lmRoman.variable}`}
+      className={`${interTight.variable} ${jetBrainsMono.variable} ${hkVenetian.variable}`}
     >
       <body className="grain min-h-screen antialiased">{children}</body>
     </html>
