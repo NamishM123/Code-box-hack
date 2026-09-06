@@ -167,8 +167,8 @@ export default function CapturePage() {
   const isDemoCapture = shots.length > 0 && shots.every((s) => s.demo);
 
   return (
-    <main className="min-h-screen">
-      <Nav />
+    <main className="on-dark min-h-screen">
+      <Nav overDark />
       <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <Stepper step={step} />
         <AnimatePresence mode="wait">
@@ -327,8 +327,10 @@ export default function CapturePage() {
                 <div className="space-y-5">
                   <div className="card p-5">
                     <div className="flex items-center justify-between">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Inspiration</div>
-                      <Sparkles className="h-4 w-4 text-brass" />
+                      <div className="wordmark text-[20px] uppercase tracking-[0.14em] text-white md:text-[24px]">
+                        Curated collection
+                      </div>
+                      <Sparkles className="h-4 w-4 text-white/70" />
                     </div>
                     <p className="mt-2 text-[12px] text-ash">Paste a Pinterest link or upload a screenshot. We read the palette and vibe.</p>
                     <div className="mt-4 flex gap-2">

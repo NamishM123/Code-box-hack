@@ -228,6 +228,63 @@ html, body {
 
 input[type="file"]::file-selector-button { display: none; }
 
+/* ----------------------------------------------------------- dark pages ----
+   Pages that run on ink reuse every component the light pages do, so the
+   surface colours are re-pointed inside this scope instead of forking each
+   class. Two-class selectors outrank the single-class utilities they cover,
+   so no !important is needed. */
+
+.on-dark { background: var(--ink); color: #F4F3F0; }
+
+.on-dark .text-ink { color: #F4F3F0; }
+.on-dark .text-ash { color: rgba(255, 255, 255, 0.55); }
+.on-dark .text-brass { color: rgba(255, 255, 255, 0.7); }
+.on-dark .border-rule { border-color: rgba(255, 255, 255, 0.14); }
+.on-dark .border-brass { border-color: rgba(255, 255, 255, 0.75); }
+.on-dark .bg-brass\/5 { background-color: rgba(255, 255, 255, 0.08); }
+.on-dark .accent-brass { accent-color: #F4F3F0; }
+
+.on-dark .card {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+.on-dark .card-lift:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+}
+
+.on-dark .chip,
+.on-dark .pill {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.on-dark .divider { background: rgba(255, 255, 255, 0.12); }
+.on-dark .hair { border-color: rgba(255, 255, 255, 0.12); }
+
+/* the selected state inverts on ink: paper fill, ink label */
+.on-dark .bg-ink { background-color: #F4F3F0; }
+.on-dark .border-ink { border-color: #F4F3F0; }
+.on-dark .text-paper { color: var(--ink); }
+
+.on-dark .btn-primary,
+.on-dark .btn-brass { background: #F4F3F0; color: var(--ink); }
+.on-dark .btn-primary:hover,
+.on-dark .btn-brass:hover { background: #fff; }
+.on-dark .btn-ghost,
+.on-dark .btn-light {
+  background: transparent;
+  color: #F4F3F0;
+  border-color: rgba(255, 255, 255, 0.32);
+}
+.on-dark .btn-ghost:hover,
+.on-dark .btn-light:hover { border-color: #fff; background: transparent; }
+
+/* the paper grain multiplies to mud over ink */
+.on-dark .grain::before { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .charm, .bob, .marquee-track { animation: none !important; }
   html { scroll-behavior: auto; }
