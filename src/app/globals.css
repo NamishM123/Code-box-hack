@@ -4,6 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "HK Venetian";
+  src: url("/fonts/HKVenetian-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* space-separated so Tailwind can apply opacity modifiers, e.g. bg-paper/40 */
   --paper: 240 239 236;

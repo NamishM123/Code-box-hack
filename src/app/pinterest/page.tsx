@@ -325,7 +325,10 @@ export default function PinterestPage() {
 
       {/* hero */}
       <section className="mx-auto max-w-[1120px] px-6 pb-8 pt-32 text-center md:pt-36">
-        <h1 className="font-display text-3xl uppercase tracking-[0.08em] text-white md:text-4xl lg:text-5xl">
+        <h1
+          className="text-3xl uppercase tracking-[0.08em] text-white md:text-4xl lg:text-5xl"
+          style={{ fontFamily: '"HK Venetian", "Inter Tight", serif' }}
+        >
           Curated Inspiration
         </h1>
       </section>
