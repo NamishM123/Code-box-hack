@@ -18,6 +18,7 @@ import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
 import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "@/lib/types";
 
 const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
+const RenderScene = dynamic(() => import("@/components/canvas/RenderScene").then((m) => m.RenderScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 
 /** 10.0833 -> 10′1″ */
 function feet(v: number): string {
@@ -28,7 +29,9 @@ function feet(v: number): string {
   return `${whole}′${inches}″`;
 }
 
-type View = "top" | "3d";
+type View = "top" | "3d" | "render";
+
+const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered" };
 
 interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
@@ -217,7 +220,7 @@ export default function CanvasPage() {
       const next = prev.map((p) => (p.id === swap.id ? a : p));
       return next.some((p) => p.id === a.id && p !== a) ? prev.filter((p) => p.id !== swap.id).concat(a) : next;
     });
-    setPlaced((prev) => prev.map((p) => (p.productId === swap.id ? { ...p, productId: a.id, rationale: ["Swapped in — matches your palette closer."] } : p)));
+    setPlaced((prev) => prev.map((p) => (p.productId === swap.id ? { ...p, productId: a.id, rationale: ["Swapped in. Matches your palette closer."] } : p)));
     setTotal((t) => t - swap.price + a.price);
     setSwapId(null);
   }
@@ -256,7 +259,7 @@ export default function CanvasPage() {
   }
 
   if (loading || !brief) return (
-    <main><Nav /><div className="mx-auto max-w-3xl px-6 py-24 text-center">
+    <main><Nav /><div className="mx-auto max-w-3xl px-6 pb-24 pt-40 text-center">
       <div className="mx-auto h-14 w-14 rounded-full border-2 border-brass border-t-transparent animate-spin" />
       <div className="mt-6 font-display text-3xl">Preparing the room…</div>
       <div className="mt-1 text-sm text-ash">Loading the editable plan and reference pieces.</div>
@@ -266,7 +269,7 @@ export default function CanvasPage() {
   return (
     <main className="min-h-screen">
       <Nav />
-      <div className="mx-auto max-w-[1400px] px-6 py-8">
+      <div className="mx-auto max-w-[1400px] px-6 pb-16 pt-28">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="pill">Canvas · Fig. 01</div>
@@ -289,10 +292,10 @@ export default function CanvasPage() {
                 : "Seed catalog. Dimensions are illustrative."}
             </div>
           </div>
-          <div className="flex rounded-full border border-rule/40 p-1 text-xs">
-            {(["top", "3d"] as const).map((v) => (
-              <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-paper text-ink" : "text-ash hover:text-paper"}`}>
-                {v === "top" ? "2D top" : "3D"}
+          <div className="flex rounded-full border border-rule p-1 text-xs">
+            {(["top", "3d", "render"] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
+                {VIEW_LABELS[v]}
               </button>
             ))}
           </div>
@@ -325,6 +328,9 @@ export default function CanvasPage() {
             {view === "3d" && (
               <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
             )}
+            {view === "render" && (
+              <RenderScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
             {brief.capturePhotoUrls?.length ? (
               <section className="card p-4" aria-label="Captured room reference views">
                 <div className="flex items-center justify-between gap-3">
@@ -336,7 +342,7 @@ export default function CanvasPage() {
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
                   {brief.capturePhotoUrls.map((url, index) => (
-                    <img key={`${url}-${index}`} src={url} alt={`Captured room view ${index + 1}`} className="aspect-square w-full rounded-md border border-rule/40 object-cover" />
+                    <img key={`${url}-${index}`} src={url} alt={`Captured room view ${index + 1}`} className="aspect-square w-full rounded-md border border-rule object-cover" />
                   ))}
                 </div>
               </section>
@@ -374,7 +380,7 @@ export default function CanvasPage() {
             {brief.vibePalette && (
               <div className="card p-4">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Your palette</div>
-                <div className="mt-3 flex gap-1.5">{brief.vibePalette.map((c) => <span key={c} className="h-8 w-8 rounded-full border border-rule/40" style={{ background: c }} />)}</div>
+                <div className="mt-3 flex gap-1.5">{brief.vibePalette.map((c) => <span key={c} className="h-8 w-8 rounded-full border border-rule" style={{ background: c }} />)}</div>
                 {brief.vibeTags && <div className="mt-3 flex flex-wrap gap-1.5">{brief.vibeTags.map((t) => <span key={t} className="chip">{t}</span>)}</div>}
               </div>
             )}

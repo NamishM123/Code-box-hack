@@ -16,5 +16,5 @@ export function AuthButton() {
   }, []);
 
   if (!isSupabaseConfigured) return null;
-  return <Link href={signedIn ? "/capture" : "/login"} className="hidden text-xs uppercase tracking-[0.18em] text-ash hover:text-paper sm:inline">{signedIn ? "My rooms" : "Sign in"}</Link>;
+  return <Link href={signedIn ? "/capture" : "/login"} className="hidden text-xs uppercase tracking-[0.18em] text-ash hover:text-ink sm:inline">{signedIn ? "My rooms" : "Sign in"}</Link>;
 }

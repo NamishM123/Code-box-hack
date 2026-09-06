@@ -128,7 +128,7 @@ function variantSalon(room: RoomSpec, products: Product[], detected?: DetectedRo
   if (table) place(placed, ctx, table, ctx.W / 2, ctx.D / 2, { note: "Centered inside the ring, within reach of every seat." });
 
   const lamp = products.find((p) => p.category === "lamp");
-  if (lamp) place(placed, ctx, lamp, 1.0, ctx.D - 1.2, { note: "Reading corner light — a room needs three light sources." });
+  if (lamp) place(placed, ctx, lamp, 1.0, ctx.D - 1.2, { note: "Reading corner light. A room needs three light sources." });
 
   const shelf = products.find((p) => p.category === "shelf");
   if (shelf) place(placed, ctx, shelf, ctx.W - 0.7, ctx.D / 2, { rotation: 90, note: "Storage lines the wall opposite the entry." });

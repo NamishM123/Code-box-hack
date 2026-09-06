@@ -5,7 +5,7 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen">
       <Nav />
-      <article className="mx-auto max-w-3xl px-6 py-16 md:py-24">
+      <article className="mx-auto max-w-3xl px-6 pb-20 pt-32 md:pb-28 md:pt-36">
         <p className="text-[10px] uppercase tracking-[0.2em] text-brass">Sightline</p>
         <h1 className="mt-4 font-display text-5xl md:text-6xl">Terms of use</h1>
         <p className="mt-5 text-sm text-ash">Last updated: September 5, 2026</p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="font-display text-2xl text-paper">{title}</h2>
+      <h2 className="font-display text-2xl text-ink">{title}</h2>
       <p className="mt-3">{children}</p>
     </section>
   );

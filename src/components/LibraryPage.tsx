@@ -20,7 +20,7 @@ export function LibraryPage({ title, intro, tradition = "all" }: { title: string
           {principles.map((principle) => (
             <article key={principle.key} className="card p-6">
               <p className="text-[10px] uppercase tracking-[0.2em] text-brass">{principle.tradition.replace("-", " ")}</p>
-              <h2 className="mt-3 font-display text-2xl text-paper">{principle.title}</h2>
+              <h2 className="mt-3 font-display text-2xl text-ink">{principle.title}</h2>
               <p className="mt-3 text-sm leading-6 text-ash">{principle.body}</p>
             </article>
           ))}
