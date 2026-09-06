@@ -30,6 +30,8 @@ interface Props {
   placed: PlacedItem[];
   selectedId: string | null;
   onSelect?: (id: string | null) => void;
+  /** Render the photograph straight away: this is the realistic view, not the 3D one. */
+  auto?: boolean;
 }
 
 const FIT_RING: Record<string, string> = {
@@ -166,10 +168,17 @@ function Rig({ room, lightsOn }: { room: RoomSpec; lightsOn: boolean }) {
 const TOOL_BUTTON =
   "inline-flex items-center gap-1.5 rounded-full border border-rule px-3 py-1 uppercase tracking-[0.16em] transition hover:border-ink hover:text-ink disabled:opacity-50";
 
-export function RenderScene({ room, detected, products, placed, selectedId, onSelect }: Props) {
+export function RenderScene({ room, detected, products, placed, selectedId, onSelect, auto = false }: Props) {
   const [lightsOn, setLightsOn] = useState(false);
   const [look, setLook] = useState<Look>("photo");
-  const [photoreal, setPhotoreal] = useState<{ status: "idle" | "working" | "done" | "error"; image?: string; error?: string }>({ status: "idle" });
+  const [photoreal, setPhotoreal] = useState<{
+    status: "idle" | "working" | "done" | "error";
+    image?: string;
+    error?: string;
+    provider?: string;
+    model?: string;
+    ms?: number;
+  }>({ status: "idle" });
   const grab = useRef<(() => string) | null>(null);
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
   const mode = useMemo(() => ({ lightsOn }), [lightsOn]);
@@ -229,8 +238,10 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         })
       });
       const json = await res.json();
-      if (!res.ok) return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).` });
-      setPhotoreal({ status: "done", image: json.image });
+      if (!res.ok) {
+        return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).`, provider: json?.provider, model: json?.model, ms: json?.ms });
+      }
+      setPhotoreal({ status: "done", image: json.image, provider: json.provider, model: json.model, ms: json.ms });
     } catch (err) {
       setPhotoreal({ status: "error", error: err instanceof Error ? err.message : "Render failed." });
     }
@@ -240,11 +251,26 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
     document.body.style.cursor = "auto";
   }, []);
 
+  // In the realistic view the photograph is the view, so it renders on arrival
+  // rather than waiting to be asked. It still needs a drawn frame to send, so
+  // this waits for the canvas to have painted one.
+  const kicked = useRef(false);
+  useEffect(() => {
+    if (!auto || kicked.current) return;
+    const timer = setTimeout(() => {
+      if (!grab.current) return;
+      kicked.current = true;
+      renderPhotoreal();
+    }, 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, placed]);
+
   return (
     <div className="card h-[560px]">
       <div className="flex items-center justify-between gap-3 border-b border-rule px-4 py-3 text-[10px] uppercase tracking-[0.16em] text-ash">
         <span className="flex items-center gap-2">
-          <Camera className="h-3 w-3" /> Rendered · drag to orbit · click a piece
+          <Camera className="h-3 w-3" /> {auto ? "Realistic · generated from your chosen products" : "Rendered · drag to orbit · click a piece"}
         </span>
         <div className="flex items-center gap-2">
           <button onClick={() => setLook((v) => (v === "photo" ? "model" : "photo"))} className={TOOL_BUTTON} title="Real listing photos, or the built furniture models">
@@ -332,7 +358,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
               <div className="text-center text-paper">
                 <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                 <div className="mt-4 font-display text-2xl">Rendering the room</div>
-                <div className="mt-1 text-[12px] opacity-70">Sending your dimensions and the real listing photos to Gemini.</div>
+                <div className="mt-1 text-[12px] opacity-70">Sending the layout and the photos of the pieces you chose.</div>
               </div>
             )}
             {photoreal.status === "error" && (
@@ -348,10 +374,20 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
               <div className="flex h-full w-full flex-col">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photoreal.image} alt="Photoreal render of the room" className="min-h-0 flex-1 rounded-xl object-contain" />
-                <div className="mt-3 flex shrink-0 items-center justify-center gap-2">
-                  <button onClick={() => setPhotoreal({ status: "idle" })} className="btn btn-light text-xs">
-                    <X className="h-3.5 w-3.5" /> Back to 3D
+                <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
+                  {photoreal.provider && (
+                    <span className="text-[11px] text-paper/60">
+                      {photoreal.provider} · {photoreal.model} · {((photoreal.ms || 0) / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  <button onClick={renderPhotoreal} className="btn btn-light text-xs">
+                    <Sparkles className="h-3.5 w-3.5" /> Render again
                   </button>
+                  {!auto && (
+                    <button onClick={() => setPhotoreal({ status: "idle" })} className="btn btn-light text-xs">
+                      <X className="h-3.5 w-3.5" /> Back to 3D
+                    </button>
+                  )}
                   <button onClick={() => download(photoreal.image as string, "sightline-photoreal.png")} className="btn btn-brass text-xs">
                     <Download className="h-3.5 w-3.5" /> Save
                   </button>

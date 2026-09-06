@@ -29,9 +29,9 @@ function feet(v: number): string {
   return `${whole}′${inches}″`;
 }
 
-type View = "top" | "3d" | "render";
+type View = "top" | "3d" | "render" | "realistic";
 
-const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered" };
+const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered", realistic: "Realistic" };
 
 interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
@@ -302,7 +302,7 @@ export default function CanvasPage() {
             </div>
           </div>
           <div className="flex rounded-full border border-rule p-1 text-xs">
-            {(["top", "3d", "render"] as const).map((v) => (
+            {(["top", "3d", "render", "realistic"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
                 {VIEW_LABELS[v]}
               </button>
@@ -339,6 +339,9 @@ export default function CanvasPage() {
             )}
             {view === "render" && (
               <RenderScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
+            {view === "realistic" && (
+              <RenderScene key="realistic" room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} auto />
             )}
             {brief.capturePhotoUrls?.length ? (
               <section className="card p-4" aria-label="Captured room reference views">
