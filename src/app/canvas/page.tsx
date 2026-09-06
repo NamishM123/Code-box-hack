@@ -18,7 +18,6 @@ import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
 import type { Category, DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "@/lib/types";
 
-const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 const RenderScene = dynamic(() => import("@/components/canvas/RenderScene").then((m) => m.RenderScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 
 /** 10.0833 -> 10′1″ */
@@ -30,9 +29,9 @@ function feet(v: number): string {
   return `${whole}′${inches}″`;
 }
 
-type View = "top" | "3d" | "render" | "realistic";
+type View = "top" | "render" | "realistic";
 
-const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered", realistic: "Realistic" };
+const VIEW_LABELS: Record<View, string> = { top: "2D plan", render: "3D rendered", realistic: "Realistic" };
 
 interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
@@ -388,7 +387,7 @@ export default function CanvasPage() {
             </div>
           </div>
           <div className="flex rounded-full border border-rule p-1 text-xs">
-            {(["top", "3d", "render", "realistic"] as const).map((v) => (
+            {(["top", "render", "realistic"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
                 {VIEW_LABELS[v]}
               </button>
@@ -445,9 +444,6 @@ export default function CanvasPage() {
           <div className="space-y-4">
             {view === "top" && (
               <TopView room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} onChange={setPlaced} />
-            )}
-            {view === "3d" && (
-              <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
             )}
             {view === "render" && (
               <RenderScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} />
