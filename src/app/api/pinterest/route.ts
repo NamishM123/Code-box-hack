@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasGemini, readVibe, type InlineImage } from "@/lib/sources/gemini";
+import { hasGemini, readLook, type InlineImage } from "@/lib/sources/gemini";
 import { hasApify, scrapePinterest } from "@/lib/sources/apify";
 
 export const runtime = "nodejs";
@@ -33,7 +33,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ images: images.map(toDataUrl), vibe: null, source: "images_only" });
     }
 
-    const vibe = await readVibe(images);
+    // readLook, not readVibe: the caller needs the inventory of what is
+    // actually in the picture, not just its palette, or it goes back to
+    // shopping a fixed category mix.
+    const vibe = await readLook(images);
     return NextResponse.json({ vibe, images: images.slice(0, 3).map(toDataUrl), source: "gemini" });
   } catch (e) {
     return NextResponse.json(

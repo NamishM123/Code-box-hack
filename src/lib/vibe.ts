@@ -30,10 +30,24 @@ export async function extractVibeFromUrl(url: string): Promise<Vibe> {
   return extractVibeFromImage(blob);
 }
 
+export interface LookItem {
+  category: string;
+  label: string;
+  searchTerm: string;
+  widthFt?: number;
+  depthFt?: number;
+}
+
 export interface RichVibe extends Vibe {
   styleLabel?: string;
   searchTerms?: string[];
   note?: string;
+  /** The pieces actually visible in the image, when Gemini read it. */
+  items?: LookItem[];
+  /** The room shell the image shows, so a plan can be built to its shape. */
+  widthFt?: number;
+  depthFt?: number;
+  openings?: { kind: "door" | "window"; wall: "N" | "S" | "E" | "W"; positionFt: number; widthFt: number; swingFt?: number }[];
 }
 
 export interface StolenLook {

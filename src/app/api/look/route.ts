@@ -1,161 +1,184 @@
 import { NextResponse } from "next/server";
 import { fetchCategory, hasAnyLiveSource } from "@/lib/sources/fanout";
-import { recommend } from "@/lib/recommend";
+import { SAMPLE_CATALOG } from "@/lib/catalog";
 import type { Category, Product } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Shop one inspiration image.
+ * Shop one inspiration image, piece by piece.
  *
- * /api/search furnishes a whole room: one product per category, inside a
- * budget. This is the other shape — a shoppable spread for a single Pinterest
- * pin, several options per category, ranked, so the reader can browse what the
- * picture is actually made of before committing to a room.
+ * The point is to match the picture, not to fill a room. If the photo shows a
+ * bed, two nightstands and a plant, this returns four groups and nothing else.
+ * It used to search a fixed category mix per room type and hand back four
+ * options across six categories — two dozen products for a photo containing
+ * four, which then all got crammed into the plan.
  *
- * The style words come from whatever read the image: Gemini's search terms
- * when GOOGLE_AI_API_KEY is set, otherwise the local palette reader's tags.
+ * Each group carries its own query, taken from what the vision pass saw in the
+ * picture ("black metal platform bed queen"), so the options are that piece
+ * rather than that category.
  */
+
+/** Two per piece: enough to choose, few enough to actually look at. */
+const PER_ITEM = 2;
+
+/** A photo with more than this in it stops being a room worth copying. */
+const MAX_ITEMS = 8;
 
 /**
- * Keyed by the Pinterest tab, not by RoomType — a bathroom has no sofa, and
- * the layout engine's four room types don't have a bathroom.
- *
- * Every mix is capped at six because each category costs two SerpAPI searches
- * (Google Shopping + Amazon). Six categories is twelve searches per look, and
- * a free SerpAPI plan is 100 searches a month.
+ * Only used when the vision pass could not read the image — no key, or a
+ * fetch that failed. Small on purpose: a wrong guess of three pieces is far
+ * less wrong than a right guess of twenty.
  */
-const ROOM_MIX: Record<string, Category[]> = {
-  any: ["sofa", "chair", "table", "rug", "lamp", "art"],
-  "living-room": ["sofa", "chair", "table", "rug", "lamp", "art"],
-  bedroom: ["bed", "nightstand", "dresser", "rug", "lamp", "mirror"],
-  bathroom: ["mirror", "shelf", "lamp", "art", "plant"],
-  office: ["desk", "chair", "shelf", "lamp", "plant", "art"],
-  studio: ["sofa", "bed", "table", "rug", "lamp", "shelf"]
+const FALLBACK_ITEMS: Record<string, { category: Category; label: string; searchTerm: string }[]> = {
+  bedroom: [
+    { category: "bed", label: "The bed", searchTerm: "platform bed queen" },
+    { category: "nightstand", label: "The nightstand", searchTerm: "wood nightstand" },
+    { category: "lamp", label: "The lamp", searchTerm: "table lamp" }
+  ],
+  bathroom: [
+    { category: "mirror", label: "The mirror", searchTerm: "arched bathroom mirror" },
+    { category: "shelf", label: "The shelving", searchTerm: "bathroom shelf unit" },
+    { category: "plant", label: "The plant", searchTerm: "potted plant indoor" }
+  ],
+  office: [
+    { category: "desk", label: "The desk", searchTerm: "wood writing desk" },
+    { category: "chair", label: "The chair", searchTerm: "office chair" },
+    { category: "shelf", label: "The shelving", searchTerm: "bookshelf" }
+  ],
+  "living-room": [
+    { category: "sofa", label: "The sofa", searchTerm: "fabric 3 seater sofa" },
+    { category: "table", label: "The coffee table", searchTerm: "wood coffee table" },
+    { category: "rug", label: "The rug", searchTerm: "area rug 8x10" }
+  ],
+  any: [
+    { category: "sofa", label: "The seating", searchTerm: "fabric sofa" },
+    { category: "table", label: "The table", searchTerm: "wood coffee table" },
+    { category: "lamp", label: "The lamp", searchTerm: "floor lamp" }
+  ]
 };
 
-/** Per category, so one crowded category can't swamp the spread. */
-const PER_CATEGORY = 4;
-const MAX_STYLE_WORDS = 12;
-
-interface LookBody {
-  searchTerms?: string[];
-  styleTags?: string[];
-  /** The Pinterest room tab: any | bedroom | bathroom | office | living-room. */
-  room?: string;
-  budget?: number;
-  /** When the reader already has a room, sized results are filtered to fit. */
+interface LookItemIn {
+  category?: string;
+  label?: string;
+  searchTerm?: string;
   widthFt?: number;
   depthFt?: number;
 }
 
+interface LookBody {
+  /** What the vision pass saw in the picture. The whole point. */
+  items?: LookItemIn[];
+  /** Words describing the overall look, folded into every per-piece query. */
+  styleWords?: string[];
+  room?: string;
+  budget?: number;
+  widthFt?: number;
+  depthFt?: number;
+}
+
+export interface LookGroup {
+  category: Category;
+  label: string;
+  query: string;
+  options: Product[];
+}
+
+const KNOWN: Category[] = [
+  "sofa", "chair", "table", "bed", "rug", "lamp", "shelf",
+  "plant", "art", "desk", "dresser", "nightstand", "mirror", "tv"
+];
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as LookBody;
 
-  const room = body.room && ROOM_MIX[body.room] ? body.room : "any";
-  const categories = ROOM_MIX[room];
+  const room = body.room && FALLBACK_ITEMS[body.room] ? body.room : "any";
   const budget = clampNum(body.budget, 2500, 100, 100000);
 
-  // Gemini's terms first, the local reader's tags as backup. Capped so a long
-  // tag list can't turn into an unusably specific query.
-  const styleWords = [...(body.searchTerms || []), ...(body.styleTags || [])]
+  const items = normalizeItems(body.items).length
+    ? normalizeItems(body.items)
+    : FALLBACK_ITEMS[room];
+
+  // Two or three words of overall style, folded into each per-piece query so a
+  // "platform bed" comes back in the picture's material and colour. Kept short
+  // because the piece's own description is already doing the work.
+  const style = (body.styleWords || [])
     .map((w) => String(w).replace(/[^\p{L}\p{N}\s&'-]/gu, " ").trim())
     .filter(Boolean)
-    .slice(0, MAX_STYLE_WORDS)
+    .slice(0, 3)
     .join(" ");
 
   if (!hasAnyLiveSource()) {
-    // No key: still show something shoppable from the seed catalog.
-    const seed = recommend({
-      widthFt: body.widthFt ?? 14,
-      depthFt: body.depthFt ?? 12,
-      budget,
-      style: "warm-minimal",
-      mustHave: categories
-    });
     return NextResponse.json({
-      products: seed,
+      groups: items.map((it) => ({
+        category: it.category,
+        label: it.label,
+        query: it.searchTerm,
+        options: SAMPLE_CATALOG.filter((p) => p.category === it.category).slice(0, PER_ITEM)
+      })),
       live: false,
-      styleWords,
       notes: ["Using the seed catalog. Add SERPAPI_KEY for live listings."]
     });
   }
 
-  const perItem = Math.round(budget / Math.max(1, categories.length));
+  const perItem = Math.round(budget / Math.max(1, items.length));
   const notes: string[] = [];
 
-  const batches = await Promise.allSettled(
-    categories.map((c) => fetchCategory(c, styleWords, perItem))
+  const settled = await Promise.allSettled(
+    items.map((it) => fetchCategory(it.category, `${style} ${it.searchTerm}`.trim(), perItem))
   );
 
-  const pool: Product[] = [];
-  batches.forEach((b, i) => {
-    if (b.status === "fulfilled") pool.push(...b.value);
-    else notes.push(`${categories[i]}: ${String(b.reason?.message || b.reason).slice(0, 120)}`);
+  const seenUrl = new Set<string>();
+  const groups: LookGroup[] = [];
+
+  settled.forEach((s, i) => {
+    const it = items[i];
+    if (s.status !== "fulfilled") {
+      notes.push(`${it.category}: ${String(s.reason?.message || s.reason).slice(0, 120)}`);
+      return;
+    }
+    const options = s.value
+      .filter((p) => p.url && p.image && !seenUrl.has(p.url))
+      .filter((p) => fitsRoom(p, body.widthFt, body.depthFt))
+      .sort((a, b) => score(b, perItem) - score(a, perItem))
+      .slice(0, PER_ITEM);
+
+    for (const p of options) seenUrl.add(p.url);
+    if (options.length) {
+      groups.push({ category: it.category, label: it.label, query: it.searchTerm, options });
+    }
   });
 
-  if (!pool.length) {
-    return NextResponse.json({
-      products: [],
-      live: true,
-      styleWords,
-      notes: notes.length ? notes : ["No live listings came back for this look."]
-    });
-  }
-
-  const products = rank(pool, categories, perItem, body.widthFt, body.depthFt);
-
   return NextResponse.json({
-    products,
+    groups,
     live: true,
-    styleWords,
-    poolSize: pool.length,
+    itemCount: items.length,
     notes
   });
 }
 
-/**
- * Ranked, deduped, and interleaved so the top of the spread reads as a room
- * rather than eight sofas. A listing whose dimensions were only inferred is
- * kept — it is still shoppable, and it carries dimensionsVerified:false so the
- * UI can badge it as an estimate — but a listing with real published
- * dimensions outranks one without at the same price.
- */
-function rank(
-  pool: Product[],
-  categories: Category[],
-  target: number,
-  widthFt?: number,
-  depthFt?: number
-): Product[] {
-  const byCat = new Map<Category, Product[]>();
-  const seenUrl = new Set<string>();
+function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string; searchTerm: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((i) => i?.category && i?.searchTerm)
+    .slice(0, MAX_ITEMS)
+    .map((i) => {
+      const c = String(i.category).toLowerCase().trim();
+      const category = (KNOWN.find((k) => k === c) || KNOWN.find((k) => c.includes(k)) || "table") as Category;
+      return {
+        category,
+        label: String(i.label || category).slice(0, 120),
+        searchTerm: String(i.searchTerm).replace(/[^\p{L}\p{N}\s&'-]/gu, " ").trim().slice(0, 80)
+      };
+    })
+    .filter((i) => i.searchTerm);
+}
 
-  for (const p of pool) {
-    if (!p.url || seenUrl.has(p.url)) continue;
-    seenUrl.add(p.url);
-    // Only exclude on size when we actually know the room.
-    if (widthFt && depthFt && p.width >= widthFt - 1) continue;
-    if (widthFt && depthFt && p.depth >= depthFt - 1) continue;
-    if (!byCat.has(p.category)) byCat.set(p.category, []);
-    byCat.get(p.category)!.push(p);
-  }
-
-  for (const [, list] of byCat) {
-    list.sort((a, b) => score(b, target) - score(a, target));
-    list.splice(PER_CATEGORY);
-  }
-
-  // Round-robin across categories: one of each, then the seconds, and so on.
-  const out: Product[] = [];
-  for (let i = 0; i < PER_CATEGORY; i++) {
-    for (const c of categories) {
-      const item = byCat.get(c)?.[i];
-      if (item) out.push(item);
-    }
-  }
-  return out;
+/** Only excludes on size when the room is actually known. */
+function fitsRoom(p: Product, widthFt?: number, depthFt?: number): boolean {
+  if (!widthFt || !depthFt) return true;
+  return p.width < widthFt - 1 && p.depth < depthFt - 1;
 }
 
 function score(p: Product, target: number): number {

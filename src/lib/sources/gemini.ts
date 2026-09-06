@@ -162,6 +162,147 @@ export async function readVibe(images: InlineImage[]): Promise<GeminiVibe> {
   };
 }
 
+/* ---------- reading one inspiration image as a shoppable room ---------- */
+
+const LOOK_SCHEMA = {
+  type: "object",
+  properties: {
+    palette: { type: "array", items: { type: "string" } },
+    tags: { type: "array", items: { type: "string" } },
+    materials: { type: "array", items: { type: "string" } },
+    styleLabel: { type: "string" },
+    searchTerms: { type: "array", items: { type: "string" } },
+    note: { type: "string" },
+    widthFt: { type: "number" },
+    depthFt: { type: "number" },
+    openings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["door", "window"] },
+          wall: { type: "string", enum: ["N", "S", "E", "W"] },
+          positionFt: { type: "number" },
+          widthFt: { type: "number" }
+        },
+        required: ["kind", "wall", "positionFt", "widthFt"]
+      }
+    },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          category: { type: "string" },
+          label: { type: "string" },
+          searchTerm: { type: "string" },
+          widthFt: { type: "number" },
+          depthFt: { type: "number" }
+        },
+        required: ["category", "label", "searchTerm"]
+      }
+    }
+  },
+  required: ["palette", "tags", "styleLabel", "items"]
+} as const;
+
+export interface LookItem {
+  category: Category;
+  /** What this piece is, in the picture: "dark green metal frame queen bed". */
+  label: string;
+  /** The query that would surface this exact piece at a retailer. */
+  searchTerm: string;
+  widthFt?: number;
+  depthFt?: number;
+}
+
+export interface GeminiLook extends GeminiVibe {
+  widthFt: number;
+  depthFt: number;
+  openings: Opening[];
+  items: LookItem[];
+}
+
+/** Eight is already a full room; beyond that the plan stops resembling the photo. */
+const MAX_ITEMS = 8;
+
+const LOOK_PROMPT = `You are an interior design editor and spatial analyst reading ONE inspiration photograph of a room.
+
+Return the look AND an inventory of what is actually in the picture.
+
+"items" is the important part. Rules:
+- One entry per DISTINCT piece of furniture you can actually see. If the photo shows a bed, one chair and a plant, return exactly three items — not a catalogue of what a bedroom usually has.
+- Do NOT invent pieces that are not visible. Do NOT pad the list. Fewer, accurate items is the correct answer.
+- Count duplicates separately only when they are clearly a pair, e.g. two matching nightstands.
+- "category" must be one of: sofa, chair, table, bed, rug, lamp, shelf, plant, art, desk, dresser, nightstand, mirror, tv.
+- "label" describes the piece as seen, e.g. "black metal frame queen bed with white linen".
+- "searchTerm" is how a person would search a retailer for THAT piece, e.g. "black metal platform bed queen". No brand names.
+- "widthFt"/"depthFt" are its rough footprint in feet.
+- Skip small decor: books, cushions, vases, candles, picture frames smaller than a laptop.
+- At most ${MAX_ITEMS} items.
+
+Also return the room shell so a floor plan can be rebuilt from it:
+- "widthFt"/"depthFt": the room's approximate footprint in FEET. Set scale from an interior door (about 2.6-3 ft wide, 6.7 ft tall) or a queen bed (5 x 6.7 ft).
+- "openings": doors and windows you can see. Wall N is y=0, S is y=depth, W is x=0, E is x=width. "positionFt" is the distance along that wall to the opening's near edge. An empty array is valid — do not invent openings.
+
+And the look itself:
+- "palette": 4-5 hex colors, most dominant first.
+- "tags": 3-5 single-word moods from: warm, cool, quiet, calm, spare, moody, intimate, bright, breezy, airy, layered, collected, earthy, minimal, restrained, editorial, grounded, rich, soft, functional.
+- "materials": visible materials, e.g. oak, bouclé, brass, travertine, linen.
+- "styleLabel": two or three words, e.g. "Warm Minimal".
+- "searchTerms": 4-6 shopping queries for the overall look.
+- "note": one sentence on what makes it work.`;
+
+/**
+ * Reads an inspiration image into a shoppable room: the look, the pieces that
+ * are genuinely in the picture, and the shell they sit in.
+ *
+ * This exists because searching a fixed category mix per room type returned a
+ * catalogue — two dozen pieces for a photo containing four — and a plan built
+ * from that could not resemble the photo. Shopping the actual inventory keeps
+ * the count honest.
+ */
+export async function readLook(images: InlineImage[]): Promise<GeminiLook> {
+  const json = await callGemini({ prompt: LOOK_PROMPT, images, schema: LOOK_SCHEMA });
+
+  const widthFt = clamp(num(json.widthFt, 13), 5, 40);
+  const depthFt = clamp(num(json.depthFt, 12), 5, 40);
+
+  const openings: Opening[] = (json.openings || [])
+    .filter((o: any) => o?.kind && o?.wall)
+    .map((o: any) => ({
+      kind: o.kind === "door" ? "door" : "window",
+      wall: (["N", "S", "E", "W"].includes(o.wall) ? o.wall : "N") as Opening["wall"],
+      positionFt: clamp(num(o.positionFt), 0, 40),
+      widthFt: clamp(num(o.widthFt, 3), 0.5, 12),
+      swingFt: o.kind === "door" ? 3.2 : undefined
+    }));
+
+  const items: LookItem[] = (json.items || [])
+    .filter((i: any) => i?.category && i?.searchTerm)
+    .slice(0, MAX_ITEMS)
+    .map((i: any) => ({
+      category: normalizeCategory(i.category),
+      label: String(i.label || i.category).slice(0, 120),
+      searchTerm: String(i.searchTerm).slice(0, 80),
+      widthFt: i.widthFt ? clamp(num(i.widthFt), 0.2, 20) : undefined,
+      depthFt: i.depthFt ? clamp(num(i.depthFt), 0.2, 20) : undefined
+    }));
+
+  return {
+    palette: (json.palette || []).filter(isHex).slice(0, 5),
+    tags: (json.tags || []).map((t: any) => String(t).toLowerCase()).slice(0, 5),
+    materials: (json.materials || []).map(String).slice(0, 6),
+    styleLabel: String(json.styleLabel || "Warm Minimal"),
+    searchTerms: (json.searchTerms || []).map(String).slice(0, 6),
+    note: String(json.note || ""),
+    widthFt,
+    depthFt,
+    openings,
+    items
+  };
+}
+
 /* ---------- transport ---------- */
 
 async function callGemini({ prompt, images, schema }: { prompt: string; images: InlineImage[]; schema: unknown }): Promise<any> {

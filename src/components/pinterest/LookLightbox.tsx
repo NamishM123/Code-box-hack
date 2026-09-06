@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Heart, Loader2, X, ExternalLink } from "lucide-react";
+import { Check, Heart, Loader2, X, ExternalLink } from "lucide-react";
 
 import { stealLook } from "@/lib/vibe";
 import { listRooms, saveStolenLook } from "@/lib/storage";
 import type { RichVibe } from "@/lib/vibe";
-import type { Category, Product, RoomType } from "@/lib/types";
+import type { Category, DetectedRoom, Product, RoomType } from "@/lib/types";
 
 export interface Pin {
   id: string;
@@ -19,6 +19,13 @@ export interface Pin {
   title: string;
   subtitle: string;
   photographer?: string;
+}
+
+interface LookGroup {
+  category: Category;
+  label: string;
+  query: string;
+  options: Product[];
 }
 
 /** The Pinterest tab has a bathroom; the layout engine does not. */
@@ -46,22 +53,19 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 /** 2.75 -> 33″ */
-function inches(ft: number): number {
-  return Math.round(ft * 12);
-}
+const inches = (ft: number) => Math.round(ft * 12);
 
 /**
  * The lightbox, and the shop.
  *
- * Opening a pin shows the picture. "Steal this Look" reads it — Gemini when
- * GOOGLE_AI_API_KEY is set, a local palette pass otherwise — and turns what it
- * finds into a live search across Amazon, Target, Home Depot, Wayfair, IKEA
- * and the rest. Reading is deliberate rather than automatic because each look
- * costs about a dozen SerpAPI searches.
+ * "Steal this Look" reads the picture, counts the pieces actually in it, and
+ * offers two options for each — a bed section, a lamp section, and nothing for
+ * furniture the photo doesn't contain. One option per piece is chosen, so the
+ * room that gets built has the same number of things in it as the photograph
+ * rather than two dozen.
  *
- * "Arrange in my room" then hands the chosen pieces to the canvas against a
- * real room: a saved one if there is one, otherwise dimensions typed here. It
- * never invents a room silently.
+ * Reading is a deliberate click because each look costs a handful of SerpAPI
+ * searches.
  */
 export function LookLightbox({
   pin,
@@ -79,11 +83,12 @@ export function LookLightbox({
   const router = useRouter();
 
   const [vibe, setVibe] = useState<RichVibe | null>(null);
-  const [products, setProducts] = useState<Product[] | null>(null);
-  const [dropped, setDropped] = useState<Set<string>>(new Set());
+  const [groups, setGroups] = useState<LookGroup[] | null>(null);
+  /** category -> chosen product id. One per piece, first option by default. */
+  const [picked, setPicked] = useState<Record<string, string>>({});
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [live, setLive] = useState(true);
 
   const rooms = useMemo(() => (typeof window === "undefined" ? [] : listRooms()), []);
   const [askDims, setAskDims] = useState(false);
@@ -96,7 +101,14 @@ export function LookLightbox({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const chosen = (products || []).filter((p) => !dropped.has(p.id));
+  /** Exactly one product per piece the picture contains. */
+  const chosen = useMemo(() => {
+    if (!groups) return [];
+    return groups
+      .filter((g) => !skipped.has(key(g)))
+      .map((g) => g.options.find((o) => o.id === picked[key(g)]) || g.options[0])
+      .filter(Boolean) as Product[];
+  }, [groups, picked, skipped]);
 
   async function shopThisLook() {
     if (loading) return;
@@ -111,35 +123,57 @@ export function LookLightbox({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           room,
-          searchTerms: look.vibe.searchTerms,
-          styleTags: look.vibe.tags
+          items: look.vibe.items,
+          styleWords: [look.vibe.styleLabel, ...(look.vibe.tags || [])].filter(Boolean)
         })
       });
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data) {
         setNote("Could not reach the shops just now. Try again in a moment.");
-        setProducts([]);
+        setGroups([]);
         return;
       }
-      setProducts(data.products || []);
-      setLive(data.live !== false);
-      if (!data.products?.length) {
-        setNote(data.notes?.[0] || "Nothing came back for this look.");
-      } else if (data.live === false) {
-        setNote("Showing the seed catalog — SERPAPI_KEY isn't reaching the server.");
-      }
+
+      const gs: LookGroup[] = data.groups || [];
+      setGroups(gs);
+      setPicked(Object.fromEntries(gs.map((g) => [key(g), g.options[0]?.id]).filter(([, v]) => v)));
+
+      if (!gs.length) setNote(data.notes?.[0] || "Nothing came back for this look.");
+      else if (data.live === false) setNote("Showing the seed catalog — SERPAPI_KEY isn't reaching the server.");
+      else if (!look.vibe.items?.length) setNote("Couldn't read the picture in detail, so these are a best guess.");
     } catch {
       setNote("Could not read this image. Try another pin.");
-      setProducts([]);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
   }
 
-  /** Hand the look and its pieces to the canvas, against a real room. */
+  /** Hand the chosen pieces to the canvas, in a room shaped like the picture. */
   function arrange(widthFt: number, depthFt: number) {
     const categories = Array.from(new Set(chosen.map((p) => p.category))) as Category[];
+
+    // The picture's own openings only make sense at the picture's own scale.
+    // Once the reader supplies their real room we keep the proportions but
+    // drop the openings rather than inventing windows in their wall.
+    const sameShape =
+      vibe?.widthFt != null &&
+      vibe?.depthFt != null &&
+      Math.abs(widthFt / depthFt - vibe.widthFt / vibe.depthFt) < 0.08;
+
+    const detected: DetectedRoom = {
+      widthFt,
+      depthFt,
+      confidence: 0.6,
+      openings: sameShape ? (vibe?.openings ?? []) : [],
+      existing: [],
+      palette: vibe?.palette || [],
+      lightingNote: sameShape
+        ? "Room shell read from the inspiration image."
+        : "Proportions from the inspiration image. Map your own room from Capture for exact measurements."
+    };
+
     const brief = {
       roomType: ROOM_TYPE[room] || "living",
       goal: "refresh",
@@ -151,31 +185,21 @@ export function LookLightbox({
       vibeTags: vibe?.tags,
       vibePalette: vibe?.palette,
       searchTerms: vibe?.searchTerms,
-      detected: {
-        widthFt,
-        depthFt,
-        confidence: 0.6,
-        openings: [],
-        existing: [],
-        palette: vibe?.palette || [],
-        lightingNote: "From an inspiration image. Map your own room for exact measurements."
-      },
-      // The canvas prefers these over re-searching, so the pieces you picked
-      // here are the pieces it lays out.
+      detected,
       lookProducts: chosen
     };
+
     try {
       sessionStorage.setItem("sightline:brief", JSON.stringify(brief));
     } catch {
-      /* quota — the canvas will fall back to its own search */
+      /* quota — the canvas falls back to its own search */
     }
     router.push("/canvas");
   }
 
   /**
    * The original handoff: park the look and enter the capture flow at Brief,
-   * for anyone who wants to photograph the real room and set budget and
-   * must-haves before shopping rather than after.
+   * for anyone who wants to photograph the real room first.
    */
   function refineInCapture() {
     saveStolenLook({ pinImage: pin.srcLarge || pin.src, vibe });
@@ -184,9 +208,13 @@ export function LookLightbox({
 
   function onArrangeClick() {
     if (rooms.length) {
-      const r = rooms[0];
-      arrange(r.spec.widthFt, r.spec.depthFt);
+      arrange(rooms[0].spec.widthFt, rooms[0].spec.depthFt);
       return;
+    }
+    // Default the inputs to the picture's own proportions.
+    if (vibe?.widthFt && vibe?.depthFt) {
+      setW(String(Math.round(vibe.widthFt)));
+      setD(String(Math.round(vibe.depthFt)));
     }
     setAskDims(true);
   }
@@ -207,7 +235,7 @@ export function LookLightbox({
         exit={{ opacity: 0, y: 12 }}
         transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
         className={`relative flex max-h-[90vh] w-full flex-col overflow-hidden border border-rule bg-card md:flex-row ${
-          products ? "max-w-[1040px]" : "max-w-[520px]"
+          groups ? "max-w-[1080px]" : "max-w-[520px]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -220,37 +248,30 @@ export function LookLightbox({
         </button>
 
         {/* ---------------------------------------------------- the picture */}
-        <div className={`overflow-auto ${products ? "md:w-[46%] md:shrink-0" : ""}`}>
+        <div className={`shrink-0 overflow-hidden ${groups ? "md:w-[42%]" : ""}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pin.srcLarge || pin.src}
             alt={pin.alt}
             className="block w-full object-cover md:h-full"
-            style={products ? undefined : { aspectRatio: `1 / ${pin.aspect}` }}
+            style={groups ? undefined : { aspectRatio: `1 / ${pin.aspect}` }}
           />
         </div>
 
         {/* ------------------------------------------------------- the shop */}
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="border-b border-rule p-5">
-            <h2 className="display-lg text-[22px]">{pin.title}</h2>
+            <h2 className="display-lg text-[20px]">{pin.title}</h2>
             <p className="eyebrow mt-1.5">{pin.subtitle}</p>
 
             {vibe && (
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {vibe.palette?.slice(0, 5).map((c) => (
-                  <span
-                    key={c}
-                    className="h-5 w-5 border border-rule"
-                    style={{ background: c }}
-                    title={c}
-                  />
+                  <span key={c} className="h-5 w-5 border border-rule" style={{ background: c }} title={c} />
                 ))}
                 {(vibe.styleLabel ? [vibe.styleLabel, ...(vibe.tags || [])] : vibe.tags || [])
-                  .slice(0, 4)
-                  .map((t) => (
-                    <span key={t} className="chip">{t}</span>
-                  ))}
+                  .slice(0, 3)
+                  .map((t) => <span key={t} className="chip">{t}</span>)}
               </div>
             )}
 
@@ -264,76 +285,98 @@ export function LookLightbox({
                 {liked ? "Liked" : "Like"}
               </button>
 
-              {!products && (
+              {!groups && (
                 <button onClick={shopThisLook} disabled={loading} className="btn btn-light px-5 py-2.5 disabled:opacity-70">
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {loading ? "Reading the look…" : "Steal this Look"}
+                  {loading ? "Reading the picture…" : "Steal this Look"}
                 </button>
               )}
             </div>
           </div>
 
-          {/* results */}
-          {products && (
+          {/* one section per piece in the picture */}
+          {groups && (
             <div className="min-h-0 flex-1 overflow-auto">
               {note && <p className="eyebrow border-b border-rule px-5 py-3">{note}</p>}
 
-              {products.length > 0 && (
+              {groups.length > 0 && (
                 <p className="eyebrow border-b border-rule px-5 py-3">
-                  {chosen.length} of {products.length} pieces{live ? "" : " · seed catalog"}
+                  {groups.length} {groups.length === 1 ? "piece" : "pieces"} in this picture · {chosen.length} chosen
                 </p>
               )}
 
-              <ul>
-                {products.map((p) => {
-                  const off = dropped.has(p.id);
-                  const estimated = p.dimensionsVerified === false;
-                  return (
-                    <li key={p.id} className={`flex gap-3 border-b border-rule/60 p-4 transition-opacity ${off ? "opacity-40" : ""}`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.image} alt={p.title} className="h-20 w-20 shrink-0 border border-rule object-cover" loading="lazy" />
-                      <div className="min-w-0 flex-1">
-                        <p className="wordmark truncate text-[14px] text-ink">{p.title}</p>
-                        <p className="eyebrow mt-1">
-                          ${p.price} · {SOURCE_LABEL[p.source] || p.source}
-                        </p>
-                        <p className="eyebrow mt-1 text-[10px]">
-                          {inches(p.width)}″W × {inches(p.depth)}″D × {inches(p.height)}″H
-                          {estimated && " · est."}
-                        </p>
-                        <div className="mt-2 flex items-center gap-3">
-                          <a
-                            href={p.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="nav-link inline-flex items-center gap-1 text-[10px] text-ash hover:text-ink"
-                          >
-                            View <ExternalLink className="h-3 w-3" />
-                          </a>
+              {groups.map((g) => {
+                const off = skipped.has(key(g));
+                return (
+                  <section key={key(g)} className={`border-b border-rule/60 p-5 ${off ? "opacity-40" : ""}`}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="eyebrow text-ink">{g.category}</h3>
+                      <button
+                        onClick={() =>
+                          setSkipped((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key(g))) next.delete(key(g));
+                            else next.add(key(g));
+                            return next;
+                          })
+                        }
+                        className="nav-link text-[10px] text-ash hover:text-ink"
+                      >
+                        {off ? "Put back" : "Skip"}
+                      </button>
+                    </div>
+                    <p className="caption mt-1.5 text-[11px] normal-case tracking-[0.06em]">
+                      {g.label}
+                    </p>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      {g.options.map((p) => {
+                        const on = !off && (picked[key(g)] || g.options[0]?.id) === p.id;
+                        return (
                           <button
-                            onClick={() =>
-                              setDropped((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(p.id)) next.delete(p.id);
-                                else next.add(p.id);
-                                return next;
-                              })
-                            }
-                            className="nav-link text-[10px] text-ash hover:text-ink"
+                            key={p.id}
+                            onClick={() => setPicked((prev) => ({ ...prev, [key(g)]: p.id }))}
+                            aria-pressed={on}
+                            className={`relative flex flex-col border p-2 text-left transition-colors duration-300 ${
+                              on ? "border-ink" : "border-rule hover:border-ash"
+                            }`}
                           >
-                            {off ? "Add back" : "Remove"}
+                            {on && (
+                              <span className="absolute right-2 top-2 z-10 grid h-5 w-5 place-items-center bg-ink text-paper">
+                                <Check className="h-3 w-3" />
+                              </span>
+                            )}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.image} alt={p.title} className="mb-2 h-24 w-full border border-rule object-cover" loading="lazy" />
+                            <span className="wordmark line-clamp-2 text-[12px] leading-snug text-ink">{p.title}</span>
+                            <span className="eyebrow mt-1 text-[10px]">
+                              ${p.price} · {SOURCE_LABEL[p.source] || p.source}
+                            </span>
+                            <span className="eyebrow mt-0.5 text-[9px]">
+                              {inches(p.width)}″ × {inches(p.depth)}″ × {inches(p.height)}″
+                              {p.dimensionsVerified === false && " · est."}
+                            </span>
+                            <a
+                              href={p.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="nav-link mt-1.5 inline-flex items-center gap-1 text-[9px] text-ash hover:text-ink"
+                            >
+                              View <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
                           </button>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           )}
 
           {/* arrange */}
-          {products && products.length > 0 && (
+          {groups && groups.length > 0 && (
             <div className="border-t border-rule p-5">
               {askDims ? (
                 <div>
@@ -362,19 +405,17 @@ export function LookLightbox({
                       ft
                     </label>
                     <button
-                      onClick={() => {
-                        const wf = clamp(parseFloat(w), 4, 60);
-                        const df = clamp(parseFloat(d), 4, 60);
-                        arrange(wf, df);
-                      }}
+                      onClick={() => arrange(clamp(parseFloat(w), 4, 60), clamp(parseFloat(d), 4, 60))}
                       className="btn btn-primary px-5 py-2.5"
                     >
                       Arrange
                     </button>
                   </div>
-                  <p className="eyebrow mt-3 text-[10px]">
-                    Or map it properly from Capture for exact measurements.
-                  </p>
+                  {vibe?.widthFt && vibe?.depthFt && (
+                    <p className="eyebrow mt-3 text-[10px]">
+                      The picture looks about {Math.round(vibe.widthFt)}′ × {Math.round(vibe.depthFt)}′.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -384,7 +425,7 @@ export function LookLightbox({
                       disabled={!chosen.length}
                       className="btn btn-primary px-5 py-2.5 disabled:opacity-40"
                     >
-                      Arrange in my room
+                      Arrange {chosen.length} {chosen.length === 1 ? "piece" : "pieces"}
                     </button>
                     <button onClick={refineInCapture} className="nav-link text-[10px] text-ash hover:text-ink">
                       Refine in Capture
@@ -401,6 +442,11 @@ export function LookLightbox({
       </motion.div>
     </motion.div>
   );
+}
+
+/** Two nightstands are two groups, so the category alone can't be the key. */
+function key(g: LookGroup): string {
+  return `${g.category}|${g.query}`;
 }
 
 function clamp(n: number, min: number, max: number): number {
