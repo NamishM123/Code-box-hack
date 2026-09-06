@@ -72,6 +72,18 @@ const APPROACH_FT: Partial<Record<Category, number>> = {
   desk: 3.0,
   nightstand: 1.8
 };
+/**
+ * Pieces that share the floor rather than compete for it: a rug lies under the
+ * furniture, and a frame, a screen or a mirror hangs above it. None of them can
+ * collide with anything standing on the floor, so only the room's own walls
+ * constrain them.
+ */
+const UNDERFOOT_OR_MOUNTED: Category[] = ["rug", "art", "tv", "mirror"];
+
+function sharesFloor(category: Category) {
+  return UNDERFOOT_OR_MOUNTED.includes(category);
+}
+
 const TV_DIAGONAL_RATIO = 1.1478; // 16:9 panel: diagonal from width
 // 4K sets are watched closer than the old 1.5-2.5x rule of thumb: roughly 1 to
 // 1.5 times the diagonal, so a 65in sits about 5.5-8ft from the seat.
@@ -839,13 +851,26 @@ function solveFromReference(
   const sy = scene.D / Math.max(1, ref.refD);
 
   const byId = new Map(ref.items.map((i) => [i.productId, i]));
-  const ordered = [...products].sort((a, b) => b.width * b.depth - a.width * a.depth);
-
-  for (const product of ordered) {
+  const photographedAt = (product: Product): Vec => {
     const hint = byId.get(product.id);
-    const target: Vec = hint
+    return hint
       ? [clampTo(hint.x * sx, 0, scene.W), clampTo(hint.y * sy, 0, scene.D)]
       : [scene.W / 2, scene.D / 2];
+  };
+
+  // A rug is a surface, not an obstacle. Seating it as a solid piece was the
+  // single reason a copied plan stopped resembling its photograph: an 8x10 rug
+  // is the largest footprint in the room, so it went down first and then
+  // rejected every piece the picture stood ON it -- the bed shoved 5ft onto the
+  // wrong wall and reported a conflict, the chair thrown 10ft across the room.
+  const flat = products.filter((p) => sharesFloor(p.category));
+  const standing = products
+    .filter((p) => !sharesFloor(p.category))
+    .sort((a, b) => b.width * b.depth - a.width * a.depth);
+
+  for (const product of standing) {
+    const hint = byId.get(product.id);
+    const target: Vec = photographedAt(product);
 
     const wall = hint?.backsTo && hint.backsTo !== "none" ? (hint.backsTo as Wall) : null;
     const rot = wall ? FACE_INWARD[wall] : snapAngle(facesToward({ x: target[0], y: target[1], w: product.width, d: product.depth, rot: 0 }, [scene.W / 2, scene.D / 2]), 90);
@@ -894,8 +919,65 @@ function solveFromReference(
     );
   }
 
+  for (const product of flat) {
+    const hint = byId.get(product.id);
+    const wall = hint?.backsTo && hint.backsTo !== "none" ? (hint.backsTo as Wall) : null;
+    placeSharedFloor(scene, product, photographedAt(product), wall);
+  }
+
+  // Flat pieces are emitted first so the plan paints them underneath, the same
+  // order solve() ends on.
+  const underneath = new Set(flat.map((p) => p.id));
+  scene.items.sort((a, b) => Number(underneath.has(b.productId)) - Number(underneath.has(a.productId)));
+
   if (!ref.items.length) scene.notes.push("Nothing in the picture could be located, so this is the open-plan fallback.");
   return scene;
+}
+
+/**
+ * A rug, or something hung on a wall, put where the picture had it.
+ *
+ * No candidate search and no clearance test, because there is nothing for it to
+ * clash with. The only question is whether it is inside the room, and a piece
+ * that overhangs is slid back in rather than failed: a rug photographed dead
+ * centre of a larger room needs a nudge, not a conflict badge.
+ */
+function placeSharedFloor(scene: Scene, product: Product, at: Vec, wall: Wall | null) {
+  const mounted = wall && product.category !== "rug";
+  // A rug runs with the room, the same rule placeRug uses.
+  const rot = mounted
+    ? FACE_INWARD[wall]
+    : (product.depth >= product.width) === (scene.D >= scene.W)
+      ? 0
+      : 90;
+
+  const rect: Rect = mounted
+    ? againstWall(wall, clampTo(wall === "N" || wall === "S" ? at[0] : at[1], 0, wallLength(wall, scene.W, scene.D)), product, scene)
+    : (() => {
+        const b = bounds({ x: at[0], y: at[1], w: product.width, d: product.depth, rot });
+        const halfW = (b.maxX - b.minX) / 2;
+        const halfD = (b.maxY - b.minY) / 2;
+        return {
+          x: halfW * 2 <= scene.W ? clampTo(at[0], halfW, scene.W - halfW) : at[0],
+          y: halfD * 2 <= scene.D ? clampTo(at[1], halfD, scene.D - halfD) : at[1],
+          w: product.width,
+          d: product.depth,
+          rot
+        };
+      })();
+
+  scene.items.push({
+    productId: product.id,
+    x: round(rect.x),
+    y: round(rect.y),
+    rotation: ((rect.rot % 360) + 360) % 360,
+    fit: insideRoom(rect, scene.W, scene.D, 0) ? "fits" : "conflict",
+    rationale: [
+      product.category === "rug"
+        ? "Laid where it lies in the picture, under the pieces that stand on it."
+        : "Hung where it hangs in the picture."
+    ]
+  });
 }
 
 /**
@@ -983,8 +1065,7 @@ function seatInSlot(
   // A rug lies under the furniture and a screen or a frame hangs above it, so
   // neither collides with anything on the floor. Only the room's own walls
   // constrain them.
-  const underfootOrMounted = ["rug", "art", "tv", "mirror"].includes(incoming.category);
-  if (underfootOrMounted) {
+  if (sharesFloor(incoming.category)) {
     const rect: Rect = { x: current.x, y: current.y, w: incoming.width, d: incoming.depth, rot: current.rotation };
     return { rect, fit: insideRoom(rect, room.widthFt, room.depthFt, 0) ? "fits" : "conflict" };
   }
