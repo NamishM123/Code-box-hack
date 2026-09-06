@@ -1,24 +1,43 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { RotateCcw, Save, Wand2 } from "lucide-react";
+import { Check, RotateCcw, Save, Wand2 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { TopView } from "@/components/canvas/TopView";
 import { ProductRail } from "@/components/canvas/ProductRail";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
+import { SaveDialog } from "@/components/canvas/SaveBar";
 import { generateLayouts } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
-import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec, Category } from "@/lib/types";
+import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
+import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "@/lib/types";
 
 const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
+const RenderScene = dynamic(() => import("@/components/canvas/RenderScene").then((m) => m.RenderScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 
-type View = "top" | "3d";
+/** 10.0833 -> 10′1″ */
+function feet(v: number): string {
+  const whole = Math.floor(v);
+  const inches = Math.round((v - whole) * 12);
+  if (inches === 0) return `${whole}′`;
+  if (inches === 12) return `${whole + 1}′`;
+  return `${whole}′${inches}″`;
+}
 
-interface Brief extends RoomSpec { detected: DetectedRoom | null }
+type View = "top" | "3d" | "render";
+
+const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered" };
+
+interface Brief extends RoomSpec {
+  detected: DetectedRoom | null;
+  searchTerms?: string[];
+  capturePhotoUrls?: string[];
+}
 
 type LiveListing = {
   category: Product["category"];
@@ -76,24 +95,101 @@ export default function CanvasPage() {
   const [swapId, setSwapId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<{ title: string; body: string; tradition: string }[]>([]);
-  const [usingLiveCatalog, setUsingLiveCatalog] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const [feed, setFeed] = useState<{ live: boolean; poolSize?: number; sources: string[]; notes?: string[] } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // 1. A shared link carries the entire plan in the URL.
+    const share = params.get("s");
+    if (share) {
+      const decoded = decodeRoom(share);
+      if (decoded) {
+        const b: Brief = { ...decoded.spec, detected: decoded.detected };
+        const prods = decoded.placed
+          .map((p) => SAMPLE_CATALOG.find((c) => c.id === p.productId))
+          .filter(Boolean) as Product[];
+        setBrief(b);
+        setProducts(prods);
+        setPlaced(decoded.placed);
+        setTotal(decoded.total);
+        setLayouts(generateLayouts(b, prods, b.detected || undefined));
+        setLoading(false);
+        return;
+      }
+    }
+
+    // 2. A room saved in this browser.
+    const roomId = params.get("room");
+    if (roomId) {
+      const saved = getRoom(roomId);
+      if (saved) {
+        const b: Brief = { ...saved.spec, detected: saved.detected };
+        const prods = saved.productIds
+          .map((id) => SAMPLE_CATALOG.find((c) => c.id === id))
+          .filter(Boolean) as Product[];
+        setBrief(b);
+        setProducts(prods);
+        setPlaced(saved.placed);
+        setTotal(saved.total);
+        setLayouts(generateLayouts(b, prods, b.detected || undefined));
+        setSavedId(saved.id);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // 3. A fresh brief from the capture flow, or the demo room.
     const stored = sessionStorage.getItem("sightline:brief");
     const b: Brief = params.get("demo") ? DEMO_BRIEF : stored ? JSON.parse(stored) : DEMO_BRIEF;
     setBrief(b);
     (async () => {
+      // Two feeds, run together. The Python catalog returns a small set of
+      // publicly-listed items with confirmed dimensions; /api/search fans out
+      // across SerpAPI and Apify. Verified dimensions win, so the catalog's
+      // picks take precedence per category and the rest fills in around them.
       const wallSpan = Math.max(24, Math.min(48, Math.round(b.widthFt * 12 - 84)));
-      const live = await fetch(`/api/catalog?budget=${b.budget}&free_wall_span=${wallSpan}&max_depth=18`);
-      const liveJson = live.ok ? await live.json() : null;
-      const liveProducts = (liveJson?.results ?? []).map(liveProduct).filter(Boolean) as Product[];
-      const productsForRoom = liveProducts.length
-        ? liveProducts
-        : (await (await fetch("/api/search", { method: "POST", body: JSON.stringify(b) })).json()).products as Product[];
+      const [catalogRes, searchRes] = await Promise.allSettled([
+        fetch(`/api/catalog?budget=${b.budget}&free_wall_span=${wallSpan}&max_depth=18`),
+        fetch("/api/search", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(b)
+        })
+      ]);
+
+      let confirmed: Product[] = [];
+      if (catalogRes.status === "fulfilled" && catalogRes.value.ok) {
+        const json = await catalogRes.value.json().catch(() => null);
+        confirmed = ((json?.results ?? []) as LiveListing[]).map(liveProduct).filter(Boolean) as Product[];
+      }
+
+      let searched: Product[] = [];
+      let searchMeta: { live?: boolean; poolSize?: number; notes?: string[] } = {};
+      if (searchRes.status === "fulfilled" && searchRes.value.ok) {
+        const json = await searchRes.value.json().catch(() => null);
+        searched = (json?.products ?? []) as Product[];
+        searchMeta = { live: json?.live, poolSize: json?.poolSize, notes: json?.notes };
+      }
+
+      const confirmedCats = new Set(confirmed.map((p) => p.category));
+      const productsForRoom = [...confirmed, ...searched.filter((p) => !confirmedCats.has(p.category))];
+
+      const sources: string[] = [];
+      if (confirmed.length) sources.push(`${confirmed.length} confirmed`);
+      if (searchMeta.live) sources.push(`${searchMeta.poolSize} listings`);
+
       setProducts(productsForRoom);
       setTotal(productsForRoom.reduce((sum, product) => sum + product.price, 0));
-      setUsingLiveCatalog(liveProducts.length > 0);
+      setFeed({
+        live: confirmed.length > 0 || Boolean(searchMeta.live),
+        poolSize: searchMeta.poolSize,
+        sources,
+        notes: searchMeta.notes
+      });
       const ls = generateLayouts(b, productsForRoom, b.detected || undefined);
       setLayouts(ls);
       setPlaced(ls[0].placed);
@@ -129,11 +225,44 @@ export default function CanvasPage() {
     setSwapId(null);
   }
 
+  const roomName = brief ? `${(brief.style || "warm-minimal").replace("-", " ")} ${brief.roomType || "room"}` : "Room";
+
+  const shareUrl = useMemo(() => {
+    if (!brief || typeof window === "undefined") return "";
+    const token = encodeRoom({
+      name: roomName,
+      spec: brief,
+      detected: brief.detected,
+      placed,
+      total,
+      layoutName: layouts[activeLayout]?.name || "Custom"
+    });
+    return `${window.location.origin}/canvas?s=${token}`;
+  }, [brief, placed, total, layouts, activeLayout, roomName]);
+
+  function persist(name: string) {
+    if (!brief) return;
+    const entry = saveRoom({
+      id: savedId || undefined,
+      name,
+      spec: brief,
+      detected: brief.detected,
+      productIds: products.map((p) => p.id),
+      placed,
+      total,
+      layoutName: layouts[activeLayout]?.name || "Custom"
+    });
+    setSavedId(entry.id);
+    setSaveOpen(false);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2500);
+  }
+
   if (loading || !brief) return (
     <main><Nav /><div className="mx-auto max-w-3xl px-6 pb-24 pt-40 text-center">
       <div className="mx-auto h-14 w-14 rounded-full border-2 border-brass border-t-transparent animate-spin" />
-      <div className="mt-6 font-display text-3xl">Reading the room…</div>
-      <div className="mt-1 text-sm text-ash">Checking the live catalog against confirmed dimensions.</div>
+      <div className="mt-6 font-display text-3xl">Preparing the room…</div>
+      <div className="mt-1 text-sm text-ash">Loading the editable plan and reference pieces.</div>
     </div></main>
   );
 
@@ -145,13 +274,28 @@ export default function CanvasPage() {
           <div>
             <div className="pill">Canvas · Fig. 01</div>
             <h1 className="font-display mt-3 text-4xl md:text-5xl">A {brief.style.replace("-", " ")} {brief.roomType || "room"}</h1>
-            <div className="mt-1 text-[13px] text-ash">{brief.widthFt}′ × {brief.depthFt}′ · Confidence {((brief.detected?.confidence ?? 0.8) * 100).toFixed(0)}% · <span className="text-brass">{layouts[activeLayout]?.method}</span></div>
-            <div className="mt-1 text-[11px] text-ash">Public sample floor plan · {usingLiveCatalog ? "live catalog data; verify before purchase" : "seed catalog fallback"}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ash">
+              <span>{feet(brief.widthFt)} × {feet(brief.depthFt)}</span>
+              <span className="text-rule">/</span>
+              <span>Confidence {Math.round((brief.detected?.confidence ?? 0.8) * 100)}%</span>
+              <span className="text-rule">/</span>
+              <span className="text-brass">{layouts[activeLayout]?.method}</span>
+              {feed && (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] ${feed.live ? "border-brass/40 text-brass" : "border-rule/50 text-ash"}`}>
+                  {feed.live ? "Reference catalog" : "Seed catalog"}
+                </span>
+              )}
+            </div>
+            <div className="mt-1 text-[11px] text-ash">
+              {feed?.live
+                ? "Reference listings. Confirm retailer details and dimensions before purchasing."
+                : "Seed catalog. Dimensions are illustrative."}
+            </div>
           </div>
           <div className="flex rounded-full border border-rule p-1 text-xs">
-            {(["top", "3d"] as const).map((v) => (
+            {(["top", "3d", "render"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
-                {v === "top" ? "2D top" : "3D"}
+                {VIEW_LABELS[v]}
               </button>
             ))}
           </div>
@@ -184,10 +328,32 @@ export default function CanvasPage() {
             {view === "3d" && (
               <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
             )}
+            {view === "render" && (
+              <RenderScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
+            {brief.capturePhotoUrls?.length ? (
+              <section className="card p-4" aria-label="Captured room reference views">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Captured room views</div>
+                    <p className="mt-1 text-[12px] text-ash">{brief.capturePhotoUrls.length} reference photos inform this {feet(brief.widthFt)} × {feet(brief.depthFt)} layout.</p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-[0.15em] text-ash">Reference only</span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  {brief.capturePhotoUrls.map((url, index) => (
+                    <img key={`${url}-${index}`} src={url} alt={`Captured room view ${index + 1}`} className="aspect-square w-full rounded-md border border-rule object-cover" />
+                  ))}
+                </div>
+              </section>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-ghost" onClick={() => applyLayout(activeLayout)}><Wand2 className="h-3.5 w-3.5" /> Re-run principles</button>
               <button className="btn btn-ghost" onClick={() => window.location.href = "/capture"}><RotateCcw className="h-3.5 w-3.5" /> Start over</button>
-              <button className="btn btn-primary ml-auto" onClick={() => alert("Saved.")}><Save className="h-3.5 w-3.5" /> Save room</button>
+              <Link href="/saved" className="btn btn-ghost">Saved rooms</Link>
+              <button className="btn btn-primary ml-auto" onClick={() => setSaveOpen(true)}>
+                {justSaved ? <><Check className="h-3.5 w-3.5" /> Saved</> : <><Save className="h-3.5 w-3.5" /> Save &amp; share</>}
+              </button>
             </div>
 
             {selected && (
@@ -223,6 +389,7 @@ export default function CanvasPage() {
       </div>
 
       {swap && <SwapDrawer current={swap} alternatives={swapAlts} onClose={() => setSwapId(null)} onPick={pickAlternative} />}
+      {saveOpen && <SaveDialog defaultName={roomName} shareUrl={shareUrl} onSave={persist} onClose={() => setSaveOpen(false)} />}
 
       <Footer />
     </main>
