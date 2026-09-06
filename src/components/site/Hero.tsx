@@ -62,7 +62,9 @@ export function Hero() {
             Sightline
           </h1>
 
-          <p className="wordmark mt-5 max-w-md text-[14px] uppercase leading-[1.8] tracking-[0.14em] text-white md:mt-6 md:text-[15px]">
+          {/* grey over moving footage needs the shadow to stay legible when a
+              bright frame passes behind it */}
+          <p className="wordmark mt-5 max-w-md text-[15px] leading-[1.65] tracking-[0.01em] text-white/60 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)] md:mt-6 md:text-[17px]">
             Photograph a room. Place furniture measured to fit it. Buy each piece
             from whichever marketplace lists it lowest.
           </p>
