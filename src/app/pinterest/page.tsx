@@ -364,7 +364,7 @@ export default function PinterestPage() {
   const roomLabel = ROOMS.find((r) => r.key === room)?.label ?? "Any room";
 
   return (
-    <main className="min-h-screen bg-paper">
+    <main className="min-h-screen">
       <Nav />
 
       {/* hero */}

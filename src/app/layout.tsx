@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { InkGardenBackdrop } from "@/components/site/InkGarden";
 
 /**
  * HK Venetian — the face the hero wordmark, the page links and every button on
@@ -29,7 +30,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={hkVenetian.variable}>
-      <body className="grain min-h-screen antialiased">{children}</body>
+      <body className="grain min-h-screen antialiased">
+        <InkGardenBackdrop />
+        <div className="relative z-10">{children}</div>
+      </body>
     </html>
   );
 }
