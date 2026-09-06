@@ -3,8 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Check, ImagePlus, Loader2, Ruler, Sun, X, ArrowRight, Sparkles, Upload, Heart, Search } from "lucide-react";
-import { Nav } from "@/components/Nav";
-import { Footer } from "@/components/Footer";
 import { detectFromFiles, scoreQuality } from "@/lib/detectRoom";
 import { extractVibeFromImage, type RichVibe } from "@/lib/vibe";
 import { takeStolenLook, listLikedPins, type LikedPin } from "@/lib/storage";
@@ -204,8 +202,7 @@ export default function CapturePage() {
 
   return (
     <main className="min-h-screen">
-      <Nav />
-      <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
+      <div className="mx-auto max-w-5xl px-6 pb-20 pt-12">
         <Stepper step={step} />
         <AnimatePresence mode="wait">
           {step === "frame" && (
@@ -271,7 +268,7 @@ export default function CapturePage() {
               <NextBar
                 onBack={() => setStep("frame")}
                 onNext={analyze}
-                nextLabel={analyzing ? "Analyzing…" : isDemoCapture ? "Analyze demo room" : "Analyze the room"}
+                nextLabel={analyzing ? "Analyzing…" : "Demo"}
                 disabled={!canAnalyze || analyzing}
                 icon={analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
               />
@@ -455,7 +452,6 @@ export default function CapturePage() {
           )}
         </AnimatePresence>
       </div>
-      <Footer />
     </main>
   );
 }
