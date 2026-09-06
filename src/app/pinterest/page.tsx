@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { toggleLikedPin, listLikedPins } from "@/lib/storage";
+import { toggleLikedPin, listLikedPins, saveStolenLook } from "@/lib/storage";
+import { stealLook } from "@/lib/vibe";
 
 /* ------------------------------------------------------------------ data -- */
 
@@ -184,8 +186,10 @@ export default function PinterestPage() {
   const [usingApi, setUsingApi] = useState(true);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [likedPins, setLikedPins] = useState<Set<string>>(new Set());
+  const [stealing, setStealing] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
+  const router = useRouter();
 
   useEffect(() => {
     const ids = new Set(listLikedPins().map((p) => p.id));
@@ -207,6 +211,21 @@ export default function PinterestPage() {
       return next;
     });
   }, []);
+
+  /** Hands the pin's image to the same vibe pipeline Brief's Inspiration box
+   * uses, then jumps straight to Brief (stage four) with it pre-filled --
+   * so the live scraper's very first search is shaped by this look. */
+  const stealTheLook = useCallback(async (pin: Pin) => {
+    if (stealing) return;
+    setStealing(true);
+    try {
+      const look = await stealLook(pin.srcLarge || pin.src);
+      saveStolenLook(look);
+      router.push("/capture");
+    } finally {
+      setStealing(false);
+    }
+  }, [stealing, router]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
@@ -377,6 +396,8 @@ export default function PinterestPage() {
             liked={likedPins.has(selectedPin.id)}
             onToggleLike={() => toggleLike(selectedPin)}
             onClose={() => setSelectedPin(null)}
+            onSteal={() => stealTheLook(selectedPin)}
+            stealing={stealing}
           />
         )}
       </AnimatePresence>
@@ -394,12 +415,16 @@ function Lightbox({
   liked,
   onToggleLike,
   onClose,
+  onSteal,
+  stealing,
 }: {
   pin: Pin;
   palette: { accent: string; muted: string };
   liked: boolean;
   onToggleLike: () => void;
   onClose: () => void;
+  onSteal: () => void;
+  stealing: boolean;
 }) {
   return (
     <motion.div
@@ -465,13 +490,16 @@ function Lightbox({
             </button>
 
             <button
-              className="rounded-full px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-200 active:scale-95"
+              onClick={onSteal}
+              disabled={stealing}
+              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-semibold text-white transition-all duration-200 active:scale-95 disabled:opacity-70"
               style={{
                 background: palette.accent,
                 boxShadow: `0 4px 16px -4px ${palette.accent}88`,
               }}
             >
-              Steal this Look
+              {stealing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {stealing ? "Reading the look…" : "Steal this Look"}
             </button>
           </div>
         </div>

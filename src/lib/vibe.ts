@@ -30,6 +30,57 @@ export async function extractVibeFromUrl(url: string): Promise<Vibe> {
   return extractVibeFromImage(blob);
 }
 
+export interface RichVibe extends Vibe {
+  styleLabel?: string;
+  searchTerms?: string[];
+  note?: string;
+}
+
+export interface StolenLook {
+  pinImage: string;
+  vibe: RichVibe;
+}
+
+/**
+ * "Steal this look": pulls a Pinterest/inspiration image into the same
+ * pipeline the Brief step's Inspiration box already uses (POST /api/pinterest
+ * -> Gemini for palette + style tags + search terms, with search terms being
+ * what actually shapes the live scraper query in /api/search). Falls back to
+ * local pixel-sampling if the image can't be fetched or Gemini isn't
+ * configured, so a stolen look always produces something usable.
+ */
+export async function stealLook(imageUrl: string): Promise<StolenLook> {
+  let blob: Blob | null = null;
+  try {
+    const res = await fetch(imageUrl, { mode: "cors" });
+    if (res.ok) blob = await res.blob();
+  } catch {
+    /* CORS or network failure -- fall through to the local extractor below */
+  }
+
+  if (blob) {
+    try {
+      const form = new FormData();
+      form.append("images", new File([blob], "look.jpg", { type: blob.type || "image/jpeg" }));
+      const res = await fetch("/api/pinterest", { method: "POST", body: form });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.vibe) return { pinImage: imageUrl, vibe: json.vibe };
+    } catch {
+      /* API unreachable -- fall through to the local extractor below */
+    }
+  }
+
+  try {
+    const vibe = blob ? await extractVibeFromImage(blob) : await extractVibeFromUrl(imageUrl);
+    return { pinImage: imageUrl, vibe };
+  } catch {
+    // Placeholder/mock images (no real image bytes) can't be decoded into a
+    // bitmap. A stolen look should never throw -- worst case, a sensible
+    // default vibe still lets Brief's search proceed.
+    return { pinImage: imageUrl, vibe: fallbackVibe() };
+  }
+}
+
 function summarize(data: Uint8ClampedArray): Vibe {
   const buckets = new Map<string, { r: number; g: number; b: number; n: number }>();
   let R = 0, G = 0, B = 0, N = 0, sat = 0, val = 0;

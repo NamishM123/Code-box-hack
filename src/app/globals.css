@@ -29,25 +29,7 @@
   --clay: 176 104 74;
 }
 
-/* Explicit choice wins; otherwise the system setting decides. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: 18 16 14;
-    --card: 27 24 21;
-    --ink: 242 239 232;
-    --surface: 36 32 25;
-    --ash: 158 150 138;
-    --rule: 51 46 39;
-  }
-}
-:root[data-theme="dark"] {
-  --paper: 18 16 14;
-  --card: 27 24 21;
-  --ink: 242 239 232;
-  --surface: 36 32 25;
-  --ash: 158 150 138;
-  --rule: 51 46 39;
-}
+/* Locked to this one palette -- no dark-mode variant, no toggle. */
 
 html {
   scroll-behavior: smooth;
