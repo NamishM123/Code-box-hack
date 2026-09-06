@@ -6,8 +6,9 @@ import { Camera, Check, ImagePlus, Loader2, Ruler, Sun, X, ArrowRight, Sparkles,
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { detectFromFiles, scoreQuality } from "@/lib/detectRoom";
-import { extractVibeFromImage } from "@/lib/vibe";
+import { extractVibeFromImage, type RichVibe } from "@/lib/vibe";
 import { STYLE_PRESETS } from "@/lib/principles";
+import { takeStolenLook } from "@/lib/storage";
 import type { DetectedRoom, RoomType, Goal, Category } from "@/lib/types";
 
 type Step = "frame" | "capture" | "confirm" | "brief";
@@ -35,7 +36,7 @@ export default function CapturePage() {
   const [mustHave, setMustHave] = useState<Category[]>([]);
   const [pinUrl, setPinUrl] = useState("");
   const [pinImage, setPinImage] = useState<string | null>(null);
-  const [vibe, setVibe] = useState<{ palette: string[]; tags: string[]; styleLabel?: string; searchTerms?: string[]; note?: string } | null>(null);
+  const [vibe, setVibe] = useState<RichVibe | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [engine, setEngine] = useState<"gemini" | "local" | null>(null);
@@ -54,6 +55,24 @@ export default function CapturePage() {
   useEffect(() => {
     if (step === "capture" && demoCaptureEnabled && shots.length === 0) setShots(EMPTY_ROOM_DEMO);
   }, [step, demoCaptureEnabled, shots.length]);
+
+  // A look stolen (or hearted, then reopened) from the Pinterest tab hands
+  // off here: its palette/style/search-terms pre-fill Inspiration and the
+  // flow jumps straight to Brief, stage four, ready to shape the first live
+  // scraper search -- rather than making the user re-capture a room for it.
+  useEffect(() => {
+    const look = takeStolenLook<{ pinImage: string; vibe: RichVibe }>();
+    if (!look) return;
+    setPinImage(look.pinImage);
+    setVibe(look.vibe);
+    setDetected({
+      widthFt: 14, depthFt: 12, confidence: 0.7,
+      openings: [], existing: [],
+      palette: look.vibe.palette,
+      lightingNote: "Estimated. Map your own room from Capture for exact measurements."
+    });
+    setStep("brief");
+  }, []);
 
   async function addFiles(fileList: FileList | null) {
     if (!fileList) return;

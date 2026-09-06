@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AuthButton } from "@/components/AuthButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LINKS = [
   { label: "Product", href: "/product" },
@@ -55,7 +54,6 @@ export function Nav() {
           <Link href="/canvas?demo=1" className="nav-link hidden text-ash hover:text-ink xl:block">
             Demo room
           </Link>
-          <ThemeToggle />
           <Link href="/capture" className="btn btn-primary hidden px-5 py-2.5 sm:inline-flex">
             Map your room
           </Link>

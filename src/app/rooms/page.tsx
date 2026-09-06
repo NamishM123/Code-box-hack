@@ -1,18 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Heart, X } from "lucide-react";
+import { Plus, Trash2, Heart, Sparkles, X } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { deleteRoom, listRooms, type SavedRoom } from "@/lib/storage";
-import { listLikedPins, removeLikedPin, type LikedPin } from "@/lib/storage";
+import { listLikedPins, removeLikedPin, saveStolenLook, type LikedPin } from "@/lib/storage";
+import { stealLook } from "@/lib/vibe";
 import { money } from "@/lib/utils";
 
 export default function RoomsPage() {
+  const router = useRouter();
   const [rooms, setRooms] = useState<SavedRoom[]>([]);
   const [liked, setLiked] = useState<LikedPin[]>([]);
   const [ready, setReady] = useState(false);
+  const [usingLookId, setUsingLookId] = useState<string | null>(null);
 
   useEffect(() => {
     setRooms(listRooms());
@@ -28,6 +32,21 @@ export default function RoomsPage() {
   function unlikePin(id: string) {
     removeLikedPin(id);
     setLiked(listLikedPins());
+  }
+
+  /** Same handoff as "Steal this Look" on the Pinterest tab: run the pin's
+   * image through the vibe pipeline, then land on Brief with it pre-filled
+   * so the live scraper's first search is shaped by this look. */
+  async function useThisLook(pin: LikedPin) {
+    if (usingLookId) return;
+    setUsingLookId(pin.id);
+    try {
+      const look = await stealLook(pin.src);
+      saveStolenLook(look);
+      router.push("/capture");
+    } finally {
+      setUsingLookId(null);
+    }
   }
 
   return (
@@ -171,6 +190,14 @@ export default function RoomsPage() {
                         <p className="mt-1.5 text-[10px] text-ash/60">
                           {new Date(pin.likedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                         </p>
+                        <button
+                          onClick={() => useThisLook(pin)}
+                          disabled={usingLookId === pin.id}
+                          className="btn btn-brass mt-3 w-full text-xs disabled:opacity-70"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          {usingLookId === pin.id ? "Reading the look…" : "Use this look"}
+                        </button>
                       </div>
                     </motion.div>
                   ))}

@@ -2,7 +2,6 @@
 import Link from "next/link";
 
 import { AuthButton } from "@/components/AuthButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { MarketplaceCarousel } from "./MarketplaceCarousel";
 
 /**
@@ -64,16 +63,13 @@ export function Hero() {
             ))}
           </nav>
 
-          <div className="hidden w-32 shrink-0 items-start justify-end lg:flex">
-            <ThemeToggle light />
-          </div>
+          <div className="hidden w-32 shrink-0 lg:block" />
         </div>
 
-        {/* Below lg the two controls drop under the links rather than squeezing
-            them onto three lines. */}
-        <div className="mt-5 flex items-center justify-center gap-5 lg:hidden">
+        {/* Below lg, sign-in drops under the links rather than squeezing
+            onto three lines. */}
+        <div className="mt-5 flex items-center justify-center lg:hidden">
           <AuthButton light />
-          <ThemeToggle light />
         </div>
       </header>
 

@@ -188,3 +188,33 @@ export function removeLikedPin(id: string): void {
     /* nothing useful to do */
   }
 }
+
+/**
+ * A "stolen" or hearted Pinterest look, handed off to the capture flow so its
+ * palette/style/search-terms pre-fill Brief's Inspiration box and shape the
+ * very first live scraper search -- same mechanism as pasting a Pinterest
+ * link there, just entered from the Pinterest tab or Your Rooms instead.
+ * Session-scoped: it's a one-time handoff, not something to persist.
+ */
+const STOLEN_LOOK_KEY = "sightline:stolenLook";
+
+export function saveStolenLook(look: unknown): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(STOLEN_LOOK_KEY, JSON.stringify(look));
+  } catch {
+    /* quota exceeded */
+  }
+}
+
+export function takeStolenLook<T = { pinImage: string; vibe: unknown }>(): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(STOLEN_LOOK_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(STOLEN_LOOK_KEY);
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
