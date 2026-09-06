@@ -31,19 +31,33 @@ const CATEGORY_FALLBACK: Record<string, [number, number, number]> = {
 export function parseDimensions(text: string, category: string): Dims {
   const t = text.toLowerCase();
 
-  // three numbers separated by x, with an optional unit at the end
-  const triple = t.match(/(\d+(?:\.\d+)?)\s*(?:"|''|in\b|inch(?:es)?\b|cm\b)?\s*[a-z]?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:"|''|in\b|inch(?:es)?\b|cm\b)?\s*[a-z]?\s*[x×]\s*(\d+(?:\.\d+)?)\s*("|''|in\b|inch(?:es)?\b|cm\b|ft\b|feet\b)?/);
+  // three numbers separated by x, each optionally tagged with its own
+  // w/d/h(/l) label, with an optional unit at the end
+  const tagGroup = "(w|width|l|length|d|depth|h|height)?";
+  const unitGroup = "(?:\"|''|in\\b|inch(?:es)?\\b|cm\\b)?";
+  const triple = t.match(new RegExp(
+    `(\\d+(?:\\.\\d+)?)\\s*${unitGroup}\\s*${tagGroup}\\s*[x×]\\s*` +
+    `(\\d+(?:\\.\\d+)?)\\s*${unitGroup}\\s*${tagGroup}\\s*[x×]\\s*` +
+    `(\\d+(?:\\.\\d+)?)\\s*${unitGroup}\\s*${tagGroup}\\s*("|''|in\\b|inch(?:es)?\\b|cm\\b|ft\\b|feet\\b)?`
+  ));
   if (triple) {
-    const nums = [parseFloat(triple[1]), parseFloat(triple[2]), parseFloat(triple[3])];
-    const unit = triple[4] || inferUnit(t);
-    const feet = nums.map((n) => toFeet(n, unit)) as [number, number, number];
+    const nums = [parseFloat(triple[1]), parseFloat(triple[3]), parseFloat(triple[5])];
+    const tags = [triple[2], triple[4], triple[6]].map((tag) => normalizeTag(tag));
+    const unit = triple[7] || inferUnit(t);
+    const feet = nums.map((n) => toFeet(n, unit));
     if (feet.every((f) => f > 0.1 && f < 20)) {
-      const [a, b, c] = feet;
-      // labelled order (D x W x H) vs plain order (W x D x H)
-      const labelled = /\d\s*"?\s*d\s*[x×]/.test(t);
-      return labelled
-        ? { width: b, depth: a, height: c, verified: true }
-        : { width: a, depth: b, height: c, verified: true };
+      // Use each number's own w/d/h label where the listing provides one;
+      // numbers left unlabelled fall back to the conventional W, D, H order.
+      const dims: Partial<Record<"w" | "d" | "h", number>> = {};
+      const usedIdx = new Set<number>();
+      tags.forEach((tag, i) => {
+        if (tag && dims[tag] === undefined) { dims[tag] = feet[i]; usedIdx.add(i); }
+      });
+      const leftoverIdx = [0, 1, 2].filter((i) => !usedIdx.has(i));
+      (["w", "d", "h"] as const).filter((k) => dims[k] === undefined).forEach((k, j) => {
+        if (leftoverIdx[j] !== undefined) dims[k] = feet[leftoverIdx[j]];
+      });
+      return { width: dims.w!, depth: dims.d!, height: dims.h!, verified: true };
     }
   }
 
@@ -58,6 +72,14 @@ export function parseDimensions(text: string, category: string): Dims {
 
   const [w, d, h] = CATEGORY_FALLBACK[category] || [3, 2, 3];
   return { width: w, depth: d, height: h, verified: false };
+}
+
+function normalizeTag(tag: string | undefined): "w" | "d" | "h" | undefined {
+  if (!tag) return undefined;
+  if (tag === "w" || tag === "width" || tag === "l" || tag === "length") return "w";
+  if (tag === "d" || tag === "depth") return "d";
+  if (tag === "h" || tag === "height") return "h";
+  return undefined;
 }
 
 function inferUnit(t: string): string {

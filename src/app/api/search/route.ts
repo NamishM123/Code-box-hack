@@ -98,15 +98,14 @@ async function fetchCategory(category: Category, styleWords: string, maxPrice: n
 }
 
 /**
- * Only listings with parsed dimensions can be placed. The rest are dropped
- * here rather than being placed on a false premise.
+ * Prefers listings with parsed dimensions, but per category: a category
+ * whose listings rarely state dimensions in the title (sofas, commonly)
+ * would otherwise be starved entirely just because other categories had
+ * enough verified listings.
  */
 function pickWithinBudget(pool: Product[], categories: Category[], spec: RoomSpec): Product[] {
-  const placeable = pool.filter((p) => p.dimensionsVerified !== false);
-  const usable = placeable.length >= categories.length ? placeable : pool;
-
   const byCat = new Map<Category, Product[]>();
-  for (const p of usable) {
+  for (const p of pool) {
     if (!byCat.has(p.category)) byCat.set(p.category, []);
     byCat.get(p.category)!.push(p);
   }
@@ -120,7 +119,11 @@ function pickWithinBudget(pool: Product[], categories: Category[], spec: RoomSpe
     const slotsLeft = categories.length - chosen.length;
     const target = (spec.budget - spent) / Math.max(1, slotsLeft);
 
-    const options = (byCat.get(cat) || [])
+    const catPool = byCat.get(cat) || [];
+    const verified = catPool.filter((p) => p.dimensionsVerified !== false);
+    const candidates = verified.length ? verified : catPool;
+
+    const options = candidates
       .filter((p) => !seen.has(p.id))
       .filter((p) => spent + p.price <= spec.budget)
       // reject anything that cannot physically fit the room
