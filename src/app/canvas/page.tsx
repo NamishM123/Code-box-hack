@@ -334,6 +334,16 @@ export default function CanvasPage() {
 
   function persist(name: string) {
     if (!brief) return;
+    try {
+      doPersist(name);
+    } catch {
+      /* storage refused it; still show Your Rooms rather than nothing at all */
+    }
+    router.push("/rooms");
+  }
+
+  function doPersist(name: string) {
+    if (!brief) return;
     const entry = saveRoom({
       id: savedId || undefined,
       name,
@@ -347,8 +357,6 @@ export default function CanvasPage() {
     });
     setSavedId(entry.id);
     setSaveOpen(false);
-    // A saved room belongs in Your Rooms, so that is where saving lands you.
-    router.push("/rooms");
     setJustSaved(true);
     setTimeout(() => setJustSaved(false), 2500);
   }

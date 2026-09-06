@@ -36,9 +36,20 @@ export function listRooms(): SavedRoom[] {
   }
 }
 
+/** crypto.randomUUID() is unavailable outside a secure context and on older
+ * Safari, where it throws and takes the whole save down with it. */
+function newId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `room-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function saveRoom(room: Omit<SavedRoom, "id" | "savedAt"> & { id?: string }): SavedRoom {
   const rooms = listRooms();
-  const id = room.id || crypto.randomUUID();
+  const id = room.id || newId();
   const entry: SavedRoom = { ...room, id, savedAt: Date.now() };
   const next = [entry, ...rooms.filter((r) => r.id !== id)].slice(0, 50);
   try {
