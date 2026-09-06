@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Camera, Download, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
+import { Camera, Download, Gauge, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
 import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
 import { WALL_HEIGHT_FT, isWallHung, mountCenterY, wallToneFrom, yawFor } from "@/lib/furniture";
 import { FurnitureModel, SceneMode } from "./furniture/pieces";
@@ -130,15 +130,39 @@ function Piece({
   );
 }
 
-/** Hands a PNG grab back out of the canvas. */
-function Snapshot({ bind }: { bind: (fn: () => string) => void }) {
+/** Longest edge of the frame sent to the image model. */
+const REFERENCE_EDGE = 1280;
+
+/**
+ * Hands two grabs back out of the canvas: a lossless PNG for the shopper's own
+ * export, and a smaller JPEG for the image model.
+ *
+ * The model needs the frame for its geometry, not its pixels, so sending a
+ * full-resolution PNG at 2x device scale means megabytes uploaded twice, from
+ * the browser to us and from us to the provider, for structure a fraction of
+ * the size carries just as well.
+ */
+function Snapshot({ bind, bindReference }: { bind: (fn: () => string) => void; bindReference: (fn: () => string) => void }) {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
-    bind(() => {
+    const draw = () => {
       gl.render(scene, camera);
-      return gl.domElement.toDataURL("image/png");
+      return gl.domElement;
+    };
+    bind(() => draw().toDataURL("image/png"));
+    bindReference(() => {
+      const source = draw();
+      const scale = Math.min(1, REFERENCE_EDGE / Math.max(source.width, source.height));
+      if (scale >= 1) return source.toDataURL("image/jpeg", 0.85);
+      const small = document.createElement("canvas");
+      small.width = Math.round(source.width * scale);
+      small.height = Math.round(source.height * scale);
+      const ctx = small.getContext("2d");
+      if (!ctx) return source.toDataURL("image/jpeg", 0.85);
+      ctx.drawImage(source, 0, 0, small.width, small.height);
+      return small.toDataURL("image/jpeg", 0.85);
     });
-  }, [gl, scene, camera, bind]);
+  }, [gl, scene, camera, bind, bindReference]);
   return null;
 }
 
@@ -178,14 +202,20 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
     provider?: string;
     model?: string;
     ms?: number;
+    providerMs?: number;
   }>({ status: "idle" });
   const grab = useRef<(() => string) | null>(null);
+  const grabReference = useRef<(() => string) | null>(null);
+  const [speed, setSpeed] = useState<"fast" | "best">("fast");
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
   const mode = useMemo(() => ({ lightsOn }), [lightsOn]);
 
   const reach = Math.max(room.widthFt, room.depthFt);
   const bind = useCallback((fn: () => string) => {
     grab.current = fn;
+  }, []);
+  const bindReference = useCallback((fn: () => string) => {
+    grabReference.current = fn;
   }, []);
 
   function download(href: string, name: string) {
@@ -227,7 +257,8 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           // the frame on screen right now is the layout to match
-          layoutImage: grab.current?.(),
+          layoutImage: grabReference.current?.(),
+          speed,
           widthFt: room.widthFt,
           depthFt: room.depthFt,
           style: room.style,
@@ -241,7 +272,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
       if (!res.ok) {
         return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).`, provider: json?.provider, model: json?.model, ms: json?.ms });
       }
-      setPhotoreal({ status: "done", image: json.image, provider: json.provider, model: json.model, ms: json.ms });
+      setPhotoreal({ status: "done", image: json.image, provider: json.provider, model: json.model, ms: json.ms, providerMs: json.providerMs });
     } catch (err) {
       setPhotoreal({ status: "error", error: err instanceof Error ? err.message : "Render failed." });
     }
@@ -281,7 +312,15 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             {lightsOn ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
             {lightsOn ? "Evening" : "Daylight"}
           </button>
-          <button onClick={renderPhotoreal} disabled={photoreal.status === "working"} className={TOOL_BUTTON} title="Render this exact room with Gemini">
+          <button
+            onClick={() => setSpeed((v) => (v === "fast" ? "best" : "fast"))}
+            className={TOOL_BUTTON}
+            title="Fast trades some rendering quality for a much shorter wait"
+          >
+            <Gauge className="h-3 w-3" />
+            {speed === "fast" ? "Fast" : "Best"}
+          </button>
+          <button onClick={renderPhotoreal} disabled={photoreal.status === "working"} className={TOOL_BUTTON} title="Render this room from the pieces you chose">
             {photoreal.status === "working" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             Photoreal
           </button>
@@ -349,7 +388,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             maxPolarAngle={Math.PI / 2 - 0.04}
             target={[0, 2.2, 0]}
           />
-          <Snapshot bind={bind} />
+          <Snapshot bind={bind} bindReference={bindReference} />
         </Canvas>
 
         {photoreal.status !== "idle" && (
@@ -378,6 +417,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
                   {photoreal.provider && (
                     <span className="text-[11px] text-paper/60">
                       {photoreal.provider} · {photoreal.model} · {((photoreal.ms || 0) / 1000).toFixed(1)}s
+                      {photoreal.providerMs ? ` (${((photoreal.providerMs || 0) / 1000).toFixed(1)}s in the model)` : ""}
                     </span>
                   )}
                   <button onClick={renderPhotoreal} className="btn btn-light text-xs">

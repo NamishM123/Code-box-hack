@@ -73,8 +73,10 @@ interface Body {
   palette?: string[];
   lightingNote?: string;
   pieces: Piece[];
-  /** A PNG data URL of the current 3D view, used as the layout to match. */
+  /** A data URL of the current 3D view, used as the layout to match. */
   layoutImage?: string;
+  /** Fast trades rendering quality for a much shorter wait. */
+  speed?: "fast" | "best";
 }
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -162,10 +164,12 @@ export async function POST(req: Request) {
 
   const prompt = buildPrompt(body, references, Boolean(layout));
 
+  const gathered = Date.now();
   try {
+    const callStarted = Date.now();
     const image =
       provider === "openai"
-        ? await renderWithOpenAI(prompt, layout, references)
+        ? await renderWithOpenAI(prompt, layout, references, body.speed !== "best")
         : await renderWithGemini(prompt, layout, references);
     return NextResponse.json({
       image,
@@ -173,6 +177,10 @@ export async function POST(req: Request) {
       model: provider === "openai" ? OPENAI_MODEL : GEMINI_MODEL,
       referenced: references.length,
       usedLayoutFrame: Boolean(layout),
+      speed: body.speed === "best" ? "best" : "fast",
+      // split out, so a slow render can be blamed on the right half
+      referenceMs: gathered - started,
+      providerMs: Date.now() - callStarted,
       ms: Date.now() - started
     });
   } catch (err) {
@@ -256,15 +264,18 @@ async function renderWithGemini(prompt: string, layout: Reference | null, refere
  * OpenAI: the image edit endpoint takes the references as uploaded files, the
  * layout frame first so it is the one being edited into a photograph.
  */
-async function renderWithOpenAI(prompt: string, layout: Reference | null, references: Reference[]) {
+async function renderWithOpenAI(prompt: string, layout: Reference | null, references: Reference[], fast: boolean) {
   const key = process.env.OPENAI_API_KEY as string;
   const form = new FormData();
   form.append("model", OPENAI_MODEL);
   form.append("prompt", prompt);
   // A room is a landscape subject, and this is the deliverable rather than a
   // thumbnail, so ask for the wide frame at the top quality tier.
-  form.append("size", process.env.OPENAI_IMAGE_SIZE || "1536x1024");
-  form.append("quality", process.env.OPENAI_IMAGE_QUALITY || "high");
+  // Quality and pixel count are what a GPT image call spends its time on, so
+  // this is the dial that actually moves the wait. Env vars still win, for
+  // pinning a deployment to one setting.
+  form.append("size", process.env.OPENAI_IMAGE_SIZE || (fast ? "1024x1024" : "1536x1024"));
+  form.append("quality", process.env.OPENAI_IMAGE_QUALITY || (fast ? "medium" : "high"));
 
   const files = [layout, ...references].filter(Boolean) as Reference[];
   if (!files.length) throw new Error("Nothing to render from: no layout frame and no product photos.");
