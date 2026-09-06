@@ -30,7 +30,11 @@ function feet(v: number): string {
 
 type View = "top" | "3d";
 
-interface Brief extends RoomSpec { detected: DetectedRoom | null; searchTerms?: string[] }
+interface Brief extends RoomSpec {
+  detected: DetectedRoom | null;
+  searchTerms?: string[];
+  capturePhotoUrls?: string[];
+}
 
 type LiveListing = {
   category: Product["category"];
@@ -321,6 +325,22 @@ export default function CanvasPage() {
             {view === "3d" && (
               <RoomScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} />
             )}
+            {brief.capturePhotoUrls?.length ? (
+              <section className="card p-4" aria-label="Captured room reference views">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Captured room views</div>
+                    <p className="mt-1 text-[12px] text-ash">{brief.capturePhotoUrls.length} reference photos inform this {feet(brief.widthFt)} × {feet(brief.depthFt)} layout.</p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-[0.15em] text-ash">Reference only</span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  {brief.capturePhotoUrls.map((url, index) => (
+                    <img key={`${url}-${index}`} src={url} alt={`Captured room view ${index + 1}`} className="aspect-square w-full rounded-md border border-rule/40 object-cover" />
+                  ))}
+                </div>
+              </section>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-ghost" onClick={() => applyLayout(activeLayout)}><Wand2 className="h-3.5 w-3.5" /> Re-run principles</button>
               <button className="btn btn-ghost" onClick={() => window.location.href = "/capture"}><RotateCcw className="h-3.5 w-3.5" /> Start over</button>
