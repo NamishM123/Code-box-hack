@@ -287,8 +287,10 @@ export default function CapturePage() {
 
           {step === "brief" && (
             <Section key="brief" title="Brief" subtitle="Budget, style, must-haves, and inspiration. We'll build three principled layouts from here.">
-              <div className="grid gap-6 md:grid-cols-[1.15fr_1fr]">
-                <div className="space-y-5">
+              {/* the Pinterest collection leads on the left; the numeric
+                  controls follow it */}
+              <div className="grid gap-6 md:grid-cols-[1fr_1.15fr]">
+                <div className="space-y-5 md:order-2">
                   <div className="card p-5">
                     <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Budget</div>
                     <div className="mt-3 flex items-baseline gap-2">
@@ -324,13 +326,18 @@ export default function CapturePage() {
                   </div>
                 </div>
 
-                <div className="space-y-5">
+                <div className="space-y-5 md:order-1">
                   <div className="card p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="wordmark text-[20px] uppercase tracking-[0.14em] text-white md:text-[24px]">
-                        Curated collection
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.22em] text-white/50">
+                          Pinterest
+                        </div>
+                        <div className="wordmark mt-1.5 text-[20px] uppercase tracking-[0.14em] text-white md:text-[24px]">
+                          Curated collection
+                        </div>
                       </div>
-                      <Sparkles className="h-4 w-4 text-white/70" />
+                      <Sparkles className="mt-1 h-4 w-4 shrink-0 text-white/70" />
                     </div>
                     <p className="mt-2 text-[12px] text-ash">Paste a Pinterest link or upload a screenshot. We read the palette and vibe.</p>
                     <div className="mt-4 flex gap-2">
