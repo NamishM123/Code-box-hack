@@ -601,7 +601,7 @@ function PinCard({
       onClick={onSelect}
     >
       <div
-        className="overflow-hidden border transition-colors duration-500"
+        className="relative overflow-hidden border transition-colors duration-500"
         style={{ borderColor: hovered ? "rgb(var(--ink))" : "rgb(var(--rule))" }}
       >
         <SafeImage
