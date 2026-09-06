@@ -260,8 +260,11 @@ export function LookLightbox({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 12 }}
         transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
-        className={`relative flex max-h-[90vh] w-full flex-col overflow-hidden border border-rule bg-card md:flex-row ${
-          groups ? "max-w-[1080px]" : "max-w-[520px]"
+        /* Two panes only once there is a shop to put in the second one. Before
+           that it is one column, picture over actions — a row would give the
+           picture the whole width and leave the actions nothing. */
+        className={`relative flex max-h-[90vh] w-full flex-col overflow-hidden border border-rule bg-card ${
+          groups ? "max-w-[1080px] md:flex-row" : "max-w-[520px]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -274,18 +277,25 @@ export function LookLightbox({
         </button>
 
         {/* ---------------------------------------------------- the picture */}
-        <div className={`shrink-0 overflow-hidden ${groups ? "md:w-[42%]" : ""}`}>
+        {/* Capped before the shop exists, so a tall portrait pin can't push the
+            actions below the fold and read as "the image just opened". */}
+        <div
+          className={
+            groups
+              ? "overflow-hidden md:w-[42%] md:shrink-0"
+              : "max-h-[52vh] shrink overflow-hidden"
+          }
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pin.srcLarge || pin.src}
             alt={pin.alt}
-            className="block w-full object-cover md:h-full"
-            style={groups ? undefined : { aspectRatio: `1 / ${pin.aspect}` }}
+            className="block h-full w-full object-cover"
           />
         </div>
 
         {/* ------------------------------------------------------- the shop */}
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 shrink-0 flex-col">
           <div className="border-b border-rule p-5">
             <h2 className="display-lg text-[20px]">{pin.title}</h2>
             <p className="eyebrow mt-1.5">{pin.subtitle}</p>
@@ -305,19 +315,27 @@ export function LookLightbox({
               <button
                 onClick={onToggleLike}
                 aria-pressed={liked}
-                className={`btn px-5 py-2.5 ${liked ? "btn-primary" : "btn-light"}`}
+                className="btn btn-light px-5 py-2.5"
               >
                 <Heart className="h-4 w-4" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.6} />
                 {liked ? "Liked" : "Like"}
               </button>
 
               {!groups && (
-                <button onClick={shopThisLook} disabled={loading} className="btn btn-light px-5 py-2.5 disabled:opacity-70">
+                <button onClick={shopThisLook} disabled={loading} className="btn btn-primary px-6 py-2.5 disabled:opacity-70">
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   {loading ? "Reading the picture…" : "Steal this Look"}
                 </button>
               )}
             </div>
+
+            {!groups && (
+              <p className="eyebrow mt-3 text-[10px]">
+                {loading
+                  ? "Finding two options for every piece in this picture."
+                  : "Shows two options for each piece of furniture in this picture."}
+              </p>
+            )}
           </div>
 
           {/* one section per piece in the picture */}
