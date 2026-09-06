@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check, RotateCcw, Save, Wand2 } from "lucide-react";
@@ -96,6 +97,7 @@ export default function CanvasPage() {
   const [placed, setPlaced] = useState<PlacedItem[]>([]);
   const [total, setTotal] = useState(0);
   const [view, setView] = useState<View>("top");
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [swapId, setSwapId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -345,6 +347,8 @@ export default function CanvasPage() {
     });
     setSavedId(entry.id);
     setSaveOpen(false);
+    // A saved room belongs in Your Rooms, so that is where saving lands you.
+    router.push("/rooms");
     setJustSaved(true);
     setTimeout(() => setJustSaved(false), 2500);
   }
