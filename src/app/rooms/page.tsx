@@ -118,7 +118,7 @@ export default function RoomsPage() {
           ))}
         </div>}
 
-        {/* liked Pinterest inspiration */}
+        {/* liked ideas inspiration */}
         {ready && (
           <section className="mt-16">
             <div className="mb-6 flex items-center justify-between">
@@ -127,10 +127,10 @@ export default function RoomsPage() {
                   <Heart className="h-4 w-4 text-red-400" fill="#f87171" stroke="#f87171" />
                   <span className="text-[10px] uppercase tracking-[0.2em] text-brass">Liked Inspiration</span>
                 </div>
-                <h2 className="font-display mt-2 text-3xl">Pinterest saves</h2>
+                <h2 className="font-display mt-2 text-3xl">Saved ideas</h2>
                 <p className="mt-1 text-[13px] text-ash">
                   Images you&apos;ve liked from the{" "}
-                  <Link href="/pinterest" className="link-underline font-medium text-ink">Pinterest</Link>{" "}
+                  <Link href="/pinterest" className="link-underline font-medium text-ink">Ideas</Link>{" "}
                   feed.
                 </p>
               </div>
@@ -148,7 +148,7 @@ export default function RoomsPage() {
                   <p className="mt-3 font-display text-lg">No liked images yet</p>
                   <p className="mt-1 text-[12px] text-ash">
                     Head to the{" "}
-                    <Link href="/pinterest" className="link-underline font-medium text-ink">Pinterest</Link>{" "}
+                    <Link href="/pinterest" className="link-underline font-medium text-ink">Ideas</Link>{" "}
                     tab and hit the heart on images you love.
                   </p>
                 </div>
