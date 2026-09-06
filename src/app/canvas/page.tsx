@@ -15,7 +15,7 @@ import { generateLayouts } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
-import type { DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "@/lib/types";
+import type { Category, DetectedRoom, LayoutOption, PlacedItem, Product, RoomSpec } from "@/lib/types";
 
 const RoomScene = dynamic(() => import("@/components/canvas/RoomScene").then((m) => m.RoomScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
 const RenderScene = dynamic(() => import("@/components/canvas/RenderScene").then((m) => m.RenderScene), { ssr: false, loading: () => <div className="card h-[560px] animate-pulse" /> });
@@ -99,6 +99,7 @@ export default function CanvasPage() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [feed, setFeed] = useState<{ live: boolean; poolSize?: number; sources: string[]; notes?: string[] } | null>(null);
+  const [liveAlternates, setLiveAlternates] = useState<Partial<Record<Category, Product[]>>>({});
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -173,6 +174,7 @@ export default function CanvasPage() {
         const json = await searchRes.value.json().catch(() => null);
         searched = (json?.products ?? []) as Product[];
         searchMeta = { live: json?.live, poolSize: json?.poolSize, notes: json?.notes };
+        if (json?.alternatesByCategory) setLiveAlternates(json.alternatesByCategory);
       }
 
       const confirmedCats = new Set(confirmed.map((p) => p.category));
@@ -206,7 +208,26 @@ export default function CanvasPage() {
 
   const selected = useMemo(() => products.find((p) => p.id === selectedId) || null, [selectedId, products]);
   const swap = useMemo(() => products.find((p) => p.id === swapId) || null, [swapId, products]);
-  const swapAlts = useMemo(() => (swap && brief ? alternatives(swap, brief) : []), [swap, brief]);
+  const swapAlts = useMemo(() => {
+    if (!swap || !brief) return [];
+    const live = (liveAlternates[swap.category] || []).filter((p) => p.id !== swap.id);
+    if (live.length) return live;
+    return alternatives(swap, brief);
+  }, [swap, brief, liveAlternates]);
+
+  /** Re-searches live listings for the swapped category using free text from the describe box. */
+  async function describeSwap(text: string) {
+    if (!swap || !brief) return;
+    const res = await fetch("/api/search", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...brief, mustHave: [swap.category], onlyCategory: swap.category, describe: text })
+    });
+    if (!res.ok) throw new Error(`search ${res.status}`);
+    const json = await res.json();
+    const alts = (json?.alternates ?? []) as Product[];
+    setLiveAlternates((prev) => ({ ...prev, [swap.category]: alts }));
+  }
 
   function applyLayout(i: number) {
     setActiveLayout(i);
@@ -388,7 +409,7 @@ export default function CanvasPage() {
         </div>
       </div>
 
-      {swap && <SwapDrawer current={swap} alternatives={swapAlts} onClose={() => setSwapId(null)} onPick={pickAlternative} />}
+      {swap && <SwapDrawer current={swap} alternatives={swapAlts} onClose={() => setSwapId(null)} onPick={pickAlternative} onDescribe={describeSwap} />}
       {saveOpen && <SaveDialog defaultName={roomName} shareUrl={shareUrl} onSave={persist} onClose={() => setSaveOpen(false)} />}
 
       <Footer />

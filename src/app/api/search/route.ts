@@ -14,8 +14,21 @@ const DEFAULT_MIX: Record<string, Category[]> = {
   studio: ["sofa", "bed", "table", "rug", "lamp", "shelf", "plant"]
 };
 
+interface SearchBody extends Partial<RoomSpec> {
+  searchTerms?: string[];
+  live?: boolean;
+  /** Scope the search to one category (used by the Swap "describe" box). */
+  onlyCategory?: Category;
+  /** Free text from the describe box, e.g. "warmer, under $1,500". */
+  describe?: string;
+  /** How many ranked candidates to return for onlyCategory. */
+  topN?: number;
+}
+
+const ALT_LIMIT = 6;
+
 export async function POST(req: Request) {
-  const body = (await req.json()) as Partial<RoomSpec> & { searchTerms?: string[]; live?: boolean };
+  const body = (await req.json()) as SearchBody;
 
   const spec: RoomSpec = {
     widthFt: body.widthFt ?? 14,
@@ -30,6 +43,34 @@ export async function POST(req: Request) {
   };
 
   const wantLive = body.live !== false && (hasSerpApi() || hasApify());
+
+  // Scoped re-search for one category, driven by the Swap drawer's describe
+  // box. Runs a fresh live query for just this category and returns several
+  // ranked candidates rather than a single pick.
+  if (body.onlyCategory) {
+    if (!wantLive) {
+      return NextResponse.json({ category: body.onlyCategory, alternates: [], live: false, notes: ["Add SERPAPI_KEY or APIFY_TOKEN for live alternates."] });
+    }
+    const target = Math.round(spec.budget / Math.max(1, spec.mustHave.length || 1));
+    const styleWords = [body.describe, ...(body.searchTerms || []), body.describe ? "" : spec.style.replace("-", " ")]
+      .filter(Boolean).join(" ");
+    let found: Product[] = [];
+    const notes: string[] = [];
+    try {
+      found = await fetchCategory(body.onlyCategory, styleWords, target);
+    } catch (e) {
+      notes.push(String((e as Error)?.message || e).slice(0, 160));
+    }
+    const ranked = rankCandidates(found, target, spec);
+    return NextResponse.json({
+      category: body.onlyCategory,
+      alternates: ranked.slice(0, body.topN ?? ALT_LIMIT),
+      live: true,
+      poolSize: found.length,
+      notes
+    });
+  }
+
   const notes: string[] = [];
 
   if (!wantLive) {
@@ -68,10 +109,11 @@ export async function POST(req: Request) {
     });
   }
 
-  const products = pickWithinBudget(pool, categories, spec);
+  const { chosen: products, alternatesByCategory } = pickWithinBudget(pool, categories, spec);
   return NextResponse.json({
     spec,
     products,
+    alternatesByCategory,
     total: products.reduce((s, p) => s + p.price, 0),
     live: true,
     poolSize: pool.length,
@@ -98,44 +140,54 @@ async function fetchCategory(category: Category, styleWords: string, maxPrice: n
 }
 
 /**
- * Prefers listings with parsed dimensions, but per category: a category
+ * Ranks a category's pool for a target price: prefers listings with parsed
+ * dimensions (falling back to the whole pool only if none are verified),
+ * rejects anything that cannot physically fit the room, and sorts by fit.
+ */
+function rankCandidates(catPool: Product[], target: number, spec: RoomSpec): Product[] {
+  const roomArea = spec.widthFt * spec.depthFt;
+  const verified = catPool.filter((p) => p.dimensionsVerified !== false);
+  const candidates = verified.length ? verified : catPool;
+
+  return candidates
+    .filter((p) => p.width < spec.widthFt - 1 && p.depth < spec.depthFt - 1)
+    .filter((p) => p.width * p.depth < roomArea * 0.45)
+    .sort((a, b) => score(b, target, spec) - score(a, target, spec));
+}
+
+/**
+ * Picks one product per category within budget, per category: a category
  * whose listings rarely state dimensions in the title (sofas, commonly)
  * would otherwise be starved entirely just because other categories had
- * enough verified listings.
+ * enough verified listings. Also returns several ranked runners-up per
+ * category, live listings the Swap drawer can offer instead of just the
+ * static seed catalog.
  */
-function pickWithinBudget(pool: Product[], categories: Category[], spec: RoomSpec): Product[] {
+function pickWithinBudget(pool: Product[], categories: Category[], spec: RoomSpec): { chosen: Product[]; alternatesByCategory: Partial<Record<Category, Product[]>> } {
   const byCat = new Map<Category, Product[]>();
   for (const p of pool) {
     if (!byCat.has(p.category)) byCat.set(p.category, []);
     byCat.get(p.category)!.push(p);
   }
 
-  const roomArea = spec.widthFt * spec.depthFt;
   const chosen: Product[] = [];
   const seen = new Set<string>();
+  const alternatesByCategory: Partial<Record<Category, Product[]>> = {};
   let spent = 0;
 
   for (const cat of categories) {
     const slotsLeft = categories.length - chosen.length;
     const target = (spec.budget - spent) / Math.max(1, slotsLeft);
 
-    const catPool = byCat.get(cat) || [];
-    const verified = catPool.filter((p) => p.dimensionsVerified !== false);
-    const candidates = verified.length ? verified : catPool;
+    const ranked = rankCandidates(byCat.get(cat) || [], target, spec);
+    alternatesByCategory[cat] = ranked.slice(0, ALT_LIMIT);
 
-    const options = candidates
-      .filter((p) => !seen.has(p.id))
-      .filter((p) => spent + p.price <= spec.budget)
-      // reject anything that cannot physically fit the room
-      .filter((p) => p.width < spec.widthFt - 1 && p.depth < spec.depthFt - 1)
-      .filter((p) => p.width * p.depth < roomArea * 0.45)
-      .sort((a, b) => score(b, target, spec) - score(a, target, spec));
-
-    const pick = options[0];
+    const affordable = ranked.filter((p) => !seen.has(p.id) && spent + p.price <= spec.budget);
+    const pick = affordable[0];
     if (pick) { chosen.push(pick); seen.add(pick.id); spent += pick.price; }
   }
 
-  return chosen;
+  return { chosen, alternatesByCategory };
 }
 
 function score(p: Product, targetPrice: number, spec: RoomSpec): number {
