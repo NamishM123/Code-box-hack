@@ -47,7 +47,7 @@ export function Hero() {
             <Link
               key={p.label}
               href={p.href}
-              className="text-[11px] uppercase tracking-[0.2em] text-white/90 transition-colors duration-300 hover:text-white"
+              className="wordmark text-[13px] uppercase tracking-[0.2em] text-white transition-opacity duration-300 hover:opacity-70"
             >
               {p.label}
             </Link>
@@ -62,7 +62,7 @@ export function Hero() {
             Sightline
           </h1>
 
-          <p className="mono mt-5 max-w-sm text-[11px] uppercase leading-[1.9] tracking-[0.16em] text-white/90 md:mt-6">
+          <p className="wordmark mt-5 max-w-md text-[14px] uppercase leading-[1.8] tracking-[0.14em] text-white md:mt-6 md:text-[15px]">
             Photograph a room. Place furniture measured to fit it. Buy each piece
             from whichever marketplace lists it lowest.
           </p>
