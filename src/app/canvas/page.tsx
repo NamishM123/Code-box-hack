@@ -38,6 +38,8 @@ interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
   searchTerms?: string[];
   capturePhotoUrls?: string[];
+  /** Pieces already chosen from a Pinterest look, laid out as-is. */
+  lookProducts?: Product[];
 }
 
 type LiveListing = {
@@ -151,6 +153,22 @@ export default function CanvasPage() {
     const stored = sessionStorage.getItem("sightline:brief");
     const b: Brief = params.get("demo") ? DEMO_BRIEF : stored ? JSON.parse(stored) : DEMO_BRIEF;
     setBrief(b);
+
+    // 3b. Pieces picked from a Pinterest look arrive with the brief. They were
+    // already searched, ranked and pruned by hand in the lightbox, so lay them
+    // out as they are rather than spending another dozen searches re-finding
+    // them and possibly landing on different listings.
+    if (b.lookProducts?.length) {
+      const chosen = b.lookProducts;
+      setProducts(chosen);
+      setTotal(chosen.reduce((sum, product) => sum + product.price, 0));
+      setFeed({ live: true, poolSize: chosen.length, sources: [`${chosen.length} from your look`] });
+      const looked = generateLayouts(b, chosen, b.detected || undefined);
+      setLayouts(looked);
+      setPlaced(looked[0].placed);
+      setLoading(false);
+      return;
+    }
     (async () => {
       // Two feeds, run together. The Python catalog returns a small set of
       // publicly-listed items with confirmed dimensions; /api/search fans out

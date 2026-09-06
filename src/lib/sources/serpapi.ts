@@ -127,6 +127,11 @@ function mapSource(name?: string): Source {
   if (n.includes("cb2")) return "cb2";
   if (n.includes("article")) return "article";
   if (n.includes("facebook")) return "facebook";
+  // Google Shopping returns these by name; without a mapping they all
+  // collapsed into "other" and lost their retailer in the UI.
+  if (n.includes("home depot") || n.includes("homedepot")) return "homedepot";
+  if (n.includes("lowe")) return "lowes";
+  if (n.includes("overstock")) return "overstock";
   return "other";
 }
 
