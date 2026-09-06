@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, RotateCcw, Save, Wand2 } from "lucide-react";
+import { Camera, Check, Loader2, RotateCcw, Save, Wand2 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { TopView } from "@/components/canvas/TopView";
@@ -37,6 +37,22 @@ interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
   searchTerms?: string[];
   capturePhotoUrls?: string[];
+  roomPhoto?: string | null;
+}
+
+interface RenderRequestItem {
+  productId: string;
+  imageUrl: string;
+  category: string;
+  title: string;
+  color: string;
+  material?: string;
+  widthFt: number;
+  depthFt: number;
+  heightFt: number;
+  x: number;
+  y: number;
+  rotation: number;
 }
 
 type LiveListing = {
@@ -99,6 +115,9 @@ export default function CanvasPage() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [feed, setFeed] = useState<{ live: boolean; poolSize?: number; sources: string[]; notes?: string[] } | null>(null);
+  const [renderedImages, setRenderedImages] = useState<string[]>([]);
+  const [generatingRenders, setGeneratingRenders] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -212,6 +231,45 @@ export default function CanvasPage() {
     setActiveLayout(i);
     setPlaced(layouts[i].placed);
     setSelectedId(null);
+  }
+
+  function buildRenderPayload() {
+    if (!brief?.roomPhoto) return null;
+    const items = placed
+      .map((p) => {
+        const product = products.find((x) => x.id === p.productId);
+        if (!product) return null;
+        return {
+          productId: product.id, imageUrl: product.image, category: product.category,
+          title: product.title, color: product.color, material: product.material,
+          widthFt: product.width, depthFt: product.depth, heightFt: product.height,
+          x: p.x, y: p.y, rotation: p.rotation
+        } as RenderRequestItem;
+      })
+      .filter(Boolean) as RenderRequestItem[];
+    if (!items.length) return null;
+    return {
+      roomPhoto: brief.roomPhoto, roomWidthFt: brief.widthFt, roomDepthFt: brief.depthFt,
+      style: brief.style, vibeTags: brief.vibeTags, lightingNote: brief.detected?.lightingNote,
+      items, n: 3
+    };
+  }
+
+  async function generateRenders() {
+    const payload = buildRenderPayload();
+    if (!payload) { setRenderError("No room photo available for this session."); return; }
+    setGeneratingRenders(true);
+    setRenderError(null);
+    try {
+      const res = await fetch("/api/render-openai", { method: "POST", body: JSON.stringify(payload) });
+      const json = await res.json();
+      if (!res.ok) { setRenderError(json.error || "Render failed."); return; }
+      setRenderedImages(json.images || []);
+    } catch {
+      setRenderError("Render failed — check your connection and try again.");
+    } finally {
+      setGeneratingRenders(false);
+    }
   }
 
   function pickAlternative(a: Product) {
@@ -351,10 +409,33 @@ export default function CanvasPage() {
               <button className="btn btn-ghost" onClick={() => applyLayout(activeLayout)}><Wand2 className="h-3.5 w-3.5" /> Re-run principles</button>
               <button className="btn btn-ghost" onClick={() => window.location.href = "/capture"}><RotateCcw className="h-3.5 w-3.5" /> Start over</button>
               <Link href="/saved" className="btn btn-ghost">Saved rooms</Link>
+              <button
+                className="btn btn-brass"
+                onClick={generateRenders}
+                disabled={!brief.roomPhoto || generatingRenders || !placed.length}
+                title={!brief.roomPhoto ? "No captured room photo in this session" : undefined}
+              >
+                {generatingRenders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />} Generate photos (OpenAI)
+              </button>
               <button className="btn btn-primary ml-auto" onClick={() => setSaveOpen(true)}>
                 {justSaved ? <><Check className="h-3.5 w-3.5" /> Saved</> : <><Save className="h-3.5 w-3.5" /> Save &amp; share</>}
               </button>
             </div>
+
+            {(generatingRenders || renderedImages.length > 0 || renderError) && (
+              <div className="card p-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Photorealistic renders (OpenAI)</div>
+                {generatingRenders && <div className="mt-3 text-[13px] text-ash">Rendering 3 photos of this exact layout…</div>}
+                {renderError && <div className="mt-3 text-[13px] text-red-500">{renderError}</div>}
+                {renderedImages.length > 0 && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {renderedImages.map((src, i) => (
+                      <img key={i} src={src} alt={`Render ${i + 1}`} className="w-full rounded-md border border-rule object-cover" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {selected && (
               <div className="card p-4">

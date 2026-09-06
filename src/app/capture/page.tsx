@@ -12,7 +12,7 @@ import type { DetectedRoom, RoomType, Goal, Category } from "@/lib/types";
 
 type Step = "frame" | "capture" | "confirm" | "brief";
 
-interface Shot { id: string; file?: File; url: string; ok: boolean; reason?: string; demo?: boolean }
+interface Shot { id: string; file?: File; url: string; ok: boolean; reason?: string; demo?: boolean; sharpness?: number; brightness?: number }
 
 const EMPTY_ROOM_DEMO: Shot[] = Array.from({ length: 6 }, (_, index) => ({
   id: `empty-room-demo-${index + 1}`,
@@ -52,7 +52,7 @@ export default function CapturePage() {
     const scored: Shot[] = [];
     for (const file of items) {
       const q = await scoreQuality(file);
-      scored.push({ id: crypto.randomUUID(), file, url: URL.createObjectURL(file), ok: q.ok, reason: q.reason });
+      scored.push({ id: crypto.randomUUID(), file, url: URL.createObjectURL(file), ok: q.ok, reason: q.reason, sharpness: q.sharpness, brightness: q.brightness });
     }
     setShots((prev) => [...prev, ...scored]);
   }
@@ -147,7 +147,27 @@ export default function CapturePage() {
     } finally { setPinLoading(false); }
   }
 
-  function toGo() {
+  function pickRoomPhotoShot(list: Shot[]): Shot | null {
+    const withFile = list.filter((s) => s.file);
+    if (!withFile.length) return null;
+    const pool = withFile.filter((s) => s.ok);
+    const candidates = pool.length ? pool : withFile;
+    return candidates.reduce((best, s) => ((s.sharpness ?? 0) > (best.sharpness ?? 0) ? s : best), candidates[0]);
+  }
+
+  async function fileToDataUrl(file: File, maxDim = 1600, quality = 0.82): Promise<string> {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    c.getContext("2d")!.drawImage(bmp, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", quality);
+  }
+
+  async function toGo() {
+    const roomShot = pickRoomPhotoShot(shots);
+    const roomPhoto = roomShot?.file ? await fileToDataUrl(roomShot.file) : null;
     const brief = {
       roomType, goal, budget, style, mustHave,
       widthFt: detected?.widthFt ?? 14, depthFt: detected?.depthFt ?? 12,
@@ -156,6 +176,9 @@ export default function CapturePage() {
       // Keep the reference views with the spatial brief. Demo shots are public
       // assets, and user shots remain available for the immediate canvas view.
       capturePhotoUrls: shots.filter((s) => s.ok).map((s) => s.url),
+      // A stable, self-contained base image (not a blob: URL, which is revoked
+      // when this page unmounts) for server-side render calls on /canvas.
+      roomPhoto,
       detected
     };
     sessionStorage.setItem("sightline:brief", JSON.stringify(brief));
