@@ -17,22 +17,41 @@ const LINKS = [
 /**
  * `overDark` marks pages whose header sits on a dark full-bleed image — the bar
  * then renders in white until the first scroll lifts the paper backdrop in.
+ *
+ * `revealOnScroll` keeps the bar out of the way entirely until the reader has
+ * left the header behind, for pages whose hero carries its own page buttons.
  */
-export function Nav({ overDark = false }: { overDark?: boolean }) {
+export function Nav({
+  overDark = false,
+  revealOnScroll = false
+}: {
+  overDark?: boolean;
+  revealOnScroll?: boolean;
+}) {
   const [scrolled, setScrolled] = useState(false);
+  const [past, setPast] = useState(false);
   const [open, setOpen] = useState(false);
 
   const light = overDark && !scrolled;
+  const hidden = revealOnScroll && !past;
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12);
+      setPast(window.scrollY > window.innerHeight * 0.75);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 md:px-5 md:pt-4">
+    <header
+      className={`fixed inset-x-0 top-0 z-50 px-3 pt-3 transition-opacity duration-500 md:px-5 md:pt-4 ${
+        hidden ? "pointer-events-none opacity-0" : "opacity-100"
+      }`}
+      aria-hidden={hidden}
+    >
       <motion.div
         animate={{ opacity: scrolled ? 1 : 0 }}
         transition={{ duration: 0.35 }}

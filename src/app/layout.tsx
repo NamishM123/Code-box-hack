@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Inter_Tight, JetBrains_Mono, Cormorant_Garamond, Parisienne } from "next/font/google";
+import { Inter_Tight, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 /**
@@ -22,18 +23,12 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap"
 });
 
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  style: ["italic"],
-  weight: ["300", "400", "500"],
-  variable: "--font-serif",
-  display: "swap"
-});
-
-const parisienne = Parisienne({
-  subsets: ["latin"],
-  weight: ["400"],
-  variable: "--font-script",
+/** Latin Modern Roman 5 Bold — the hero wordmark. */
+const lmRoman = localFont({
+  src: "./fonts/lmroman5-bold.otf",
+  weight: "700",
+  style: "normal",
+  variable: "--font-wordmark",
   display: "swap"
 });
 
@@ -51,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${interTight.variable} ${jetBrainsMono.variable} ${cormorant.variable} ${parisienne.variable}`}
+      className={`${interTight.variable} ${jetBrainsMono.variable} ${lmRoman.variable}`}
     >
       <body className="grain min-h-screen antialiased">{children}</body>
     </html>

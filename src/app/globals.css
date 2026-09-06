@@ -1,5 +1,5 @@
 /* Typefaces are self-hosted via next/font in src/app/layout.tsx, which exposes
-   them as --font-sans / --font-mono / --font-serif / --font-script. */
+   them as --font-sans / --font-mono / --font-wordmark. */
 
 @tailwind base;
 @tailwind components;
@@ -71,18 +71,13 @@ html, body {
     font-family: var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
-  /* the handwritten signature wordmark laid over the hero photograph */
-  .script {
-    font-family: var(--font-script), "Snell Roundhand", "Brush Script MT", cursive;
-    font-weight: 400;
-    line-height: 1;
-  }
-
-  /* the light italic serif used for the hero's one-line story caption */
-  .caption-serif {
-    font-family: var(--font-serif), Georgia, serif;
-    font-style: italic;
-    font-weight: 400;
+  /* Latin Modern Roman, the wordmark set over the hero footage */
+  .wordmark {
+    font-family: var(--font-wordmark), "Latin Modern Roman", Georgia, serif;
+    font-weight: 700;
+    /* room for the descender on the g — anything tighter and the strapline
+       below it collides with the tail */
+    line-height: 1.02;
   }
 
   /* Tiny uppercase mono set flush to both margins — every line, last one
