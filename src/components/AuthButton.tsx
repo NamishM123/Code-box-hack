@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
-export function AuthButton() {
+/** `light` styles the link for a dark backdrop — the hero footage. */
+export function AuthButton({ light = false }: { light?: boolean }) {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
@@ -16,5 +17,12 @@ export function AuthButton() {
   }, []);
 
   if (!isSupabaseConfigured) return null;
-  return <Link href={signedIn ? "/capture" : "/login"} className="hidden text-xs uppercase tracking-[0.18em] text-ash hover:text-ink sm:inline">{signedIn ? "My rooms" : "Sign in"}</Link>;
+  return (
+    <Link
+      href={signedIn ? "/capture" : "/login"}
+      className={`nav-link whitespace-nowrap ${light ? "text-white" : "text-ash hover:text-ink"}`}
+    >
+      {signedIn ? "My rooms" : "Sign in"}
+    </Link>
+  );
 }
