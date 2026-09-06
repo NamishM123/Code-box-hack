@@ -9,17 +9,17 @@
 
 :root {
   /* space-separated so Tailwind can apply opacity modifiers, e.g. bg-paper/40.
-     Every value is warmed toward the hero footage: the blacks carry a little
-     brown, the paper a little clay, so nothing on the site reads blue next to
-     the film. */
-  --paper: 242 239 232;
-  --card: 251 249 245;
-  --ink: 10 9 8;
+     Locked to one dark palette, matching the hero footage, so every page --
+     capture, canvas, rooms, pinterest -- reads as the same warm-black screen
+     the homepage opens on. No toggle, no light variant. */
+  --paper: 18 16 14;
+  --card: 27 24 21;
+  --ink: 242 239 232;
   --panel: 20 18 15;
-  --overlay: 29 26 22;
-  --surface: 232 227 217;
-  --ash: 107 100 89;
-  --rule: 216 209 196;
+  --overlay: 36 32 25;
+  --surface: 36 32 25;
+  --ash: 158 150 138;
+  --rule: 51 46 39;
   --brass: 168 87 26;
   --butter: 224 174 85;
   --flame: 217 84 31;
@@ -28,8 +28,6 @@
   --sage: 90 107 84;
   --clay: 176 104 74;
 }
-
-/* Locked to this one palette -- no dark-mode variant, no toggle. */
 
 html {
   scroll-behavior: smooth;
