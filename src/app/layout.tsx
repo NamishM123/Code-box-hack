@@ -31,12 +31,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={hkVenetian.variable}>
       <body className="grain min-h-screen antialiased">
-        {/* Save the flower photo to public/ink-garden.webp and it is sampled
-            instead of the painted garden; until then this 404s once and falls
-            back silently. If the only file to hand is a screenshot of a dither
-            rather than the photo behind it, add sourceBlur={6} to average the
-            dots back into tone — two dot grids on top of each other moire. */}
-        <InkGardenBackdrop sourceUrl="/ink-garden.webp" />
+        {/* public/ink-rose.png is a screenshot of a dither rather than the
+            photograph behind it, so it is blurred by about a dot pitch before
+            being sampled — laying our own grid straight over the one baked into
+            those pixels moires. Swap in the original photo and drop sourceBlur
+            to 0; a missing file falls back to the painted garden. */}
+        <InkGardenBackdrop sourceUrl="/ink-rose.png" sourceBlur={9} />
         <div className="relative z-10">{children}</div>
       </body>
     </html>

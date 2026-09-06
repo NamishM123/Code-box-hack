@@ -338,17 +338,35 @@ function paintLeaves(
  *
  * Leave it at 0 for a real photograph. Blurring one only throws detail away.
  */
-export function descreen(img: HTMLImageElement, radius: number): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  const ctx = c.getContext("2d");
-  if (ctx) {
-    ctx.filter = `blur(${radius}px)`;
-    ctx.drawImage(img, 0, 0);
-    ctx.filter = "none";
-  }
-  return c;
+export function descreen(img: HTMLImageElement, radius: number, gain = 1.85): HTMLCanvasElement {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+
+  // Blur the whole frame first. Blurring straight into the cropped canvas would
+  // sample transparency past its edges and leave a dark rim all the way round.
+  const full = document.createElement("canvas");
+  full.width = w;
+  full.height = h;
+  const fctx = full.getContext("2d");
+  if (!fctx) return full;
+  // Gain, not lift. A screen is roughly half black pixels, so averaging it back
+  // into tone halves everything with it — and an additive correction would drag
+  // the black ground up along with the petals, which is the one thing the
+  // original got right. Multiplying leaves zero at zero.
+  fctx.filter = `blur(${radius}px) brightness(${gain})`;
+  fctx.drawImage(img, 0, 0);
+  fctx.filter = "none";
+
+  // Then trim a little off every side. A screenshot carries its own edges —
+  // a sliver of window chrome, a crop line — and at this scale one bright row
+  // of pixels becomes a lit stripe across the finished backdrop.
+  const inset = Math.round(Math.min(w, h) * 0.015);
+  const out = document.createElement("canvas");
+  out.width = w - inset * 2;
+  out.height = h - inset * 2;
+  const octx = out.getContext("2d");
+  if (octx) octx.drawImage(full, inset, inset, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
 }
 
 /** Loads a photo to sample instead of the painted garden. Resolves null on failure. */
