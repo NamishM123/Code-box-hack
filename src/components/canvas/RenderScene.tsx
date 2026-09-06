@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Camera, Download, Gauge, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
 import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { WALL_HEIGHT_FT, isWallHung, mountCenterY, wallToneFrom, yawFor } from "@/lib/furniture";
+import { WALL_HEIGHT_FT, isWallHung, mountCenterY, roomTones, yawFor } from "@/lib/furniture";
 import { FurnitureModel, SceneMode } from "./furniture/pieces";
 import { PhotoPiece, useCutout } from "./furniture/PhotoPiece";
 import { RoomShell } from "./furniture/RoomShell";
@@ -212,6 +212,9 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
   const [speed, setSpeed] = useState<"fast" | "best">("fast");
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
   const mode = useMemo(() => ({ lightsOn }), [lightsOn]);
+  // The same surfaces the block view draws, so the photograph generated from
+  // this frame is of the room the shopper was just looking at.
+  const tones = useMemo(() => roomTones(detected), [detected]);
 
   const reach = Math.max(room.widthFt, room.depthFt);
   const bind = useCallback((fn: () => string) => {
@@ -493,7 +496,8 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
               widthFt={room.widthFt}
               depthFt={room.depthFt}
               openings={detected?.openings || []}
-              wallColor={wallToneFrom(detected?.palette)}
+              wallColor={tones.wallColor}
+              floorColor={tones.floorColor}
               lightsOn={lightsOn}
             />
 

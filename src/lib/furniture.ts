@@ -187,6 +187,36 @@ export function wallToneFrom(palette?: string[]) {
   return luminance(tinted) < 0.72 ? mix(tinted, "#F4F0E7", 0.55) : tinted;
 }
 
+/**
+ * The colours of the room's own surfaces.
+ *
+ * One rule, because there were two. The block view preferred what the picture
+ * actually said its walls and floor were; the rendered view tinted the palette
+ * for walls and never set a floor at all, so it drew a generic brown one. The
+ * realistic render is generated from the rendered view, which meant the
+ * photograph a shopper got back was of a different room than the plan showed.
+ */
+export function roomTones(detected?: { palette?: string[]; wallColor?: string; floorColor?: string } | null) {
+  const hex = (c?: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : null);
+
+  // What the picture said, when it said anything. Guessing from the palette
+  // gets a green feature wall wrong -- the brightest swatch is the trim, not
+  // the wall -- so a read value always wins.
+  const read = { wall: hex(detected?.wallColor), floor: hex(detected?.floorColor) };
+  if (read.wall && read.floor) return { wallColor: read.wall, floorColor: read.floor };
+
+  const palette = (detected?.palette || []).filter((c) => hex(c));
+  if (!palette.length) return { wallColor: read.wall || "#E8E2D6", floorColor: read.floor || "#B58F62" };
+
+  // Failing that: the most dominant colour is the largest surface, which is the
+  // wall; the floor is whatever contrasts with it most.
+  const wall = read.wall || palette[0];
+  const floor =
+    read.floor ||
+    [...palette].sort((a, b) => Math.abs(luminance(b) - luminance(wall)) - Math.abs(luminance(a) - luminance(wall)))[0];
+  return { wallColor: wall, floorColor: floor === wall ? "#B58F62" : floor };
+}
+
 /** Center height for a framed piece hung on a wall, gallery convention. */
 export function hangCenterY(heightFt: number, wallHeight = WALL_HEIGHT_FT) {
   const ideal = 4.75;
