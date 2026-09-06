@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Check, ImagePlus, Loader2, Ruler, Sun, X, ArrowRight, Sparkles, Upload, Heart, Search } from "lucide-react";
+import { Nav } from "@/components/Nav";
 import { detectFromFiles, scoreQuality } from "@/lib/detectRoom";
 import { extractVibeFromImage, type RichVibe } from "@/lib/vibe";
 import { takeStolenLook, listLikedPins, type LikedPin } from "@/lib/storage";
@@ -202,7 +203,8 @@ export default function CapturePage() {
 
   return (
     <main className="min-h-screen">
-      <div className="mx-auto max-w-5xl px-6 pb-20 pt-12">
+      <Nav />
+      <div className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <Stepper step={step} />
         <AnimatePresence mode="wait">
           {step === "frame" && (
