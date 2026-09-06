@@ -234,6 +234,10 @@ async function renderWithOpenAI(prompt: string, layout: Reference | null, refere
   const form = new FormData();
   form.append("model", OPENAI_MODEL);
   form.append("prompt", prompt);
+  // A room is a landscape subject, and this is the deliverable rather than a
+  // thumbnail, so ask for the wide frame at the top quality tier.
+  form.append("size", process.env.OPENAI_IMAGE_SIZE || "1536x1024");
+  form.append("quality", process.env.OPENAI_IMAGE_QUALITY || "high");
 
   const files = [layout, ...references].filter(Boolean) as Reference[];
   if (!files.length) throw new Error("Nothing to render from: no layout frame and no product photos.");
