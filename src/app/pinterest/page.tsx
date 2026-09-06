@@ -7,6 +7,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { toggleLikedPin, listLikedPins } from "@/lib/storage";
 import { LookLightbox } from "@/components/pinterest/LookLightbox";
+import { SafeImage } from "@/components/SafeImage";
 
 /* ------------------------------------------------------------------ data -- */
 
@@ -603,13 +604,12 @@ function PinCard({
         className="overflow-hidden border transition-colors duration-500"
         style={{ borderColor: hovered ? "rgb(var(--ink))" : "rgb(var(--rule))" }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <SafeImage
           src={pin.src}
           alt={pin.alt}
+          label={pin.title}
           className="block w-full object-cover"
           style={{ aspectRatio: `1 / ${pin.aspect}` }}
-          loading="lazy"
         />
 
         <AnimatePresence>

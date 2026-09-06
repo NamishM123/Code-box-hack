@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Check, Heart, Loader2, X, ExternalLink } from "lucide-react";
 
+import { SafeImage } from "@/components/SafeImage";
 import { stealLook } from "@/lib/vibe";
 import { listRooms, saveStolenLook } from "@/lib/storage";
 import type { RichVibe } from "@/lib/vibe";
@@ -286,10 +287,11 @@ export function LookLightbox({
               : "max-h-[52vh] shrink overflow-hidden"
           }
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SafeImage
             src={pin.srcLarge || pin.src}
             alt={pin.alt}
+            label={pin.title}
+            loading="eager"
             className="block h-full w-full object-cover"
           />
         </div>
@@ -390,8 +392,12 @@ export function LookLightbox({
                                 <Check className="h-3 w-3" />
                               </span>
                             )}
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={p.image} alt={p.title} className="mb-2 h-24 w-full border border-rule object-cover" loading="lazy" />
+                            <SafeImage
+                              src={p.image}
+                              alt={p.title}
+                              label={g.category}
+                              className="mb-2 h-24 w-full border border-rule object-cover"
+                            />
                             <span className="wordmark line-clamp-2 text-[12px] leading-snug text-ink">{p.title}</span>
                             <span className="eyebrow mt-1 text-[10px]">
                               ${p.price} · {SOURCE_LABEL[p.source] || p.source}

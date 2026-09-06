@@ -10,6 +10,7 @@ import { deleteRoom, listRooms, type SavedRoom } from "@/lib/storage";
 import { listLikedPins, removeLikedPin, saveStolenLook, type LikedPin } from "@/lib/storage";
 import { stealLook } from "@/lib/vibe";
 import { money } from "@/lib/utils";
+import { SafeImage } from "@/components/SafeImage";
 
 export default function RoomsPage() {
   const router = useRouter();
@@ -166,12 +167,12 @@ export default function RoomsPage() {
                       className="card card-lift group relative overflow-hidden"
                     >
                       <div className="overflow-hidden">
-                        <img
+                        <SafeImage
                           src={pin.src}
                           alt={pin.title}
+                          label={pin.title}
                           className="block w-full"
                           style={{ aspectRatio: `1 / ${pin.aspect}` }}
-                          loading="lazy"
                         />
                       </div>
 
