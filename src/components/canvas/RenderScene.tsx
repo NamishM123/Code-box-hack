@@ -537,7 +537,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         {photoreal.status !== "idle" && (
           <div className="absolute inset-0 flex items-center justify-center bg-panel/95 p-4">
             {photoreal.status === "working" && (
-              <div className="flex h-full w-full flex-col items-center justify-center text-center text-paper">
+              <div className="flex h-full w-full flex-col items-center justify-center text-center text-ink">
                 {photoreal.image ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -556,7 +556,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
               </div>
             )}
             {photoreal.status === "error" && (
-              <div className="max-w-md text-center text-paper">
+              <div className="max-w-md text-center text-ink">
                 <div className="font-display text-2xl">Could not render</div>
                 <div className="mt-2 text-[12px] leading-relaxed opacity-80">{photoreal.error}</div>
                 <button onClick={() => setPhotoreal({ status: "idle" })} className="btn btn-light mt-5 text-xs">
@@ -570,7 +570,7 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
                 <img src={photoreal.image} alt="Photoreal render of the room" className="min-h-0 flex-1 rounded-xl object-contain" />
                 <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
                   {photoreal.provider && (
-                    <span className="text-[11px] text-paper/60">
+                    <span className="text-[11px] text-ink/60">
                       {photoreal.provider} · {photoreal.model} · {((photoreal.ms || 0) / 1000).toFixed(1)}s
                       {photoreal.providerMs ? ` (${((photoreal.providerMs || 0) / 1000).toFixed(1)}s in the model)` : ""}
                     </span>

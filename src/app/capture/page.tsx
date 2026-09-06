@@ -253,7 +253,7 @@ export default function CapturePage() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ash">
                     <span>{shots.length}/12 photos · {okCount} usable</span>
-                    {isDemoCapture && <><span className="text-brass">Empty-room demo set</span><button className="text-paper underline underline-offset-4" onClick={() => { setDemoCaptureEnabled(false); setShots([]); }}>Use my own photos</button></>}
+                    {isDemoCapture && <><span className="text-brass">Empty-room demo set</span><button className="text-ink underline underline-offset-4" onClick={() => { setDemoCaptureEnabled(false); setShots([]); }}>Use my own photos</button></>}
                   </div>
                 </div>
                 <div className="card p-4">
