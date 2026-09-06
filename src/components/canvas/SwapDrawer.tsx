@@ -1,13 +1,21 @@
 "use client";
 import { useState } from "react";
 import { Loader2, Sparkles, X } from "lucide-react";
-import type { Product } from "@/lib/types";
+import type { FitVerdict, Product } from "@/lib/types";
 import { money } from "@/lib/utils";
 
-export function SwapDrawer({ current, alternatives, onClose, onPick, onDescribe }: {
+const FIT_BADGE: Record<FitVerdict, { label: string; className: string }> = {
+  fits: { label: "Fits", className: "text-sage border-sage/50" },
+  tight: { label: "Tight", className: "text-amber-600 border-amber-500/50" },
+  conflict: { label: "Too big", className: "text-red-600 border-red-500/50" },
+  unverified: { label: "Unchecked", className: "text-ash border-rule" }
+};
+
+export function SwapDrawer({ current, alternatives, onClose, onPick, onDescribe, fitOf }: {
   current: Product; alternatives: Product[]; onClose: () => void; onPick: (p: Product) => void;
   /** Re-searches live listings for this category using free text, e.g. "warmer, under $1,500". */
   onDescribe?: (text: string) => Promise<void>;
+  fitOf?: (p: Product) => FitVerdict;
 }) {
   const [describeText, setDescribeText] = useState("");
   const [describing, setDescribing] = useState(false);
@@ -32,8 +40,8 @@ export function SwapDrawer({ current, alternatives, onClose, onPick, onDescribe 
       <div className="relative h-full w-full max-w-md overflow-auto border-l border-rule bg-paper p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Swap {current.category}</div>
-            <div className="font-display text-2xl">Alternatives</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-brass">Choose a {current.category}</div>
+            <div className="font-display text-2xl">Every option that fits this spot</div>
           </div>
           <button onClick={onClose} className="rounded-full border border-rule/40 p-2 hover:border-brass"><X className="h-4 w-4" /></button>
         </div>
@@ -85,6 +93,10 @@ export function SwapDrawer({ current, alternatives, onClose, onPick, onDescribe 
                   {a.vibe && <div className="mt-1 flex flex-wrap gap-1">{a.vibe.slice(0, 3).map((v) => <span key={v} className="chip text-[10px]">{v}</span>)}</div>}
                 </div>
                 <div className="text-right">
+                  {fitOf && (() => {
+                    const badge = FIT_BADGE[fitOf(a)];
+                    return <div className={`mb-1 inline-block rounded-full border px-2 py-0.5 text-[10px] ${badge.className}`}>{badge.label}</div>;
+                  })()}
                   <div className="font-semibold">{money(a.price)}</div>
                   <div className={`text-[10px] ${a.price > current.price ? "text-amber-300" : "text-brass"}`}>{a.price > current.price ? `+${money(a.price - current.price)}` : `${money(a.price - current.price)}`}</div>
                 </div>

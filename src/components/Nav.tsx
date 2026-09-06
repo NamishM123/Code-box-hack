@@ -11,7 +11,8 @@ const LINKS = [
   { label: "Pieces", href: "/#pieces" },
   { label: "Shops", href: "/shops" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Rooms", href: "/rooms" }
+  { label: "Your Rooms", href: "/rooms" },
+  { label: "Rooms", href: "/#rooms" }
 ];
 
 export function Nav() {

@@ -12,7 +12,7 @@ import { ShoppingChat } from "@/components/canvas/ShoppingChat";
 import { SwapDrawer } from "@/components/canvas/SwapDrawer";
 import { SuggestionsPanel } from "@/components/canvas/SuggestionsPanel";
 import { SaveDialog } from "@/components/canvas/SaveBar";
-import { generateLayouts } from "@/lib/layout";
+import { generateLayouts, previewFit, reseat } from "@/lib/layout";
 import { alternatives } from "@/lib/recommend";
 import { SAMPLE_CATALOG } from "@/lib/catalog";
 import { decodeRoom, encodeRoom, getRoom, saveRoom } from "@/lib/storage";
@@ -30,9 +30,9 @@ function feet(v: number): string {
   return `${whole}′${inches}″`;
 }
 
-type View = "top" | "3d" | "render";
+type View = "top" | "3d" | "render" | "realistic";
 
-const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered" };
+const VIEW_LABELS: Record<View, string> = { top: "2D plan", "3d": "3D blocks", render: "3D rendered", realistic: "Realistic" };
 
 interface Brief extends RoomSpec {
   detected: DetectedRoom | null;
@@ -66,6 +66,7 @@ function liveProduct(item: LiveListing): Product | null {
     width: width / 12,
     depth: depth / 12,
     height: height / 12,
+    photoVerified: true,
     material: "Live public listing",
     vibe: ["warm", "editorial"]
   };
@@ -130,9 +131,11 @@ export default function CanvasPage() {
       const saved = getRoom(roomId);
       if (saved) {
         const b: Brief = { ...saved.spec, detected: saved.detected };
-        const prods = saved.productIds
-          .map((id) => SAMPLE_CATALOG.find((c) => c.id === id))
-          .filter(Boolean) as Product[];
+        const prods = saved.products?.length
+          ? saved.products
+          : saved.productIds
+              .map((id) => SAMPLE_CATALOG.find((c) => c.id === id))
+              .filter(Boolean) as Product[];
         setBrief(b);
         setProducts(prods);
         setPlaced(saved.placed);
@@ -236,14 +239,22 @@ export default function CanvasPage() {
     setSelectedId(null);
   }
 
+  /**
+   * The layout already decided where this piece belongs. Swapping the product
+   * keeps that slot and only re-seats the new one to its own depth, then
+   * re-runs the fit check so the verdict on screen is about the piece actually
+   * standing there.
+   */
   function pickAlternative(a: Product) {
-    if (!swap) return;
-    setProducts((prev) => {
-      const next = prev.map((p) => (p.id === swap.id ? a : p));
-      return next.some((p) => p.id === a.id && p !== a) ? prev.filter((p) => p.id !== swap.id).concat(a) : next;
-    });
-    setPlaced((prev) => prev.map((p) => (p.productId === swap.id ? { ...p, productId: a.id, rationale: ["Swapped in. Matches your palette closer."] } : p)));
+    if (!swap || !brief) return;
+    const replaced = products.map((p) => (p.id === swap.id ? a : p));
+    const nextProducts = replaced.filter((p, i) => replaced.findIndex((q) => q.id === p.id) === i);
+    const nextPlaced = placed.map((p) => (p.productId === swap.id ? { ...p, productId: a.id } : p));
+
+    setProducts(nextProducts);
+    setPlaced(reseat(nextPlaced, nextProducts, brief, brief.detected || undefined, a.id));
     setTotal((t) => t - swap.price + a.price);
+    setSelectedId(a.id);
     setSwapId(null);
   }
 
@@ -308,6 +319,7 @@ export default function CanvasPage() {
       spec: brief,
       detected: brief.detected,
       productIds: products.map((p) => p.id),
+      products,
       placed,
       total,
       layoutName: layouts[activeLayout]?.name || "Custom"
@@ -353,7 +365,7 @@ export default function CanvasPage() {
             </div>
           </div>
           <div className="flex rounded-full border border-rule p-1 text-xs">
-            {(["top", "3d", "render"] as const).map((v) => (
+            {(["top", "3d", "render", "realistic"] as const).map((v) => (
               <button key={v} onClick={() => setView(v)} className={`rounded-full px-4 py-1.5 transition ${view === v ? "bg-ink text-paper" : "text-ash hover:text-ink"}`}>
                 {VIEW_LABELS[v]}
               </button>
@@ -390,6 +402,9 @@ export default function CanvasPage() {
             )}
             {view === "render" && (
               <RenderScene room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} />
+            )}
+            {view === "realistic" && (
+              <RenderScene key="realistic" room={brief} detected={brief.detected} products={products} placed={placed} selectedId={selectedId} onSelect={setSelectedId} auto />
             )}
             {brief.capturePhotoUrls?.length ? (
               <section className="card p-4" aria-label="Captured room reference views">
@@ -451,7 +466,16 @@ export default function CanvasPage() {
         </div>
       </div>
 
-      {swap && <SwapDrawer current={swap} alternatives={swapAlts} onClose={() => setSwapId(null)} onPick={pickAlternative} onDescribe={describeSwap} />}
+      {swap && (
+        <SwapDrawer
+          current={swap}
+          alternatives={swapAlts}
+          onClose={() => setSwapId(null)}
+          onPick={pickAlternative}
+          onDescribe={describeSwap}
+          fitOf={(candidate) => (brief ? previewFit(placed, products, brief, brief.detected || undefined, swap.id, candidate) : "unverified")}
+        />
+      )}
       {saveOpen && <SaveDialog defaultName={roomName} shareUrl={shareUrl} onSave={persist} onClose={() => setSaveOpen(false)} />}
 
       <Footer />

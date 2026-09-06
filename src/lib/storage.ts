@@ -1,4 +1,4 @@
-import type { DetectedRoom, PlacedItem, RoomSpec } from "./types";
+import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "./types";
 
 /**
  * Local persistence for saved rooms. No database required.
@@ -17,6 +17,8 @@ export interface SavedRoom {
   spec: RoomSpec;
   detected: DetectedRoom | null;
   productIds: string[];
+  /** Full product data keeps live listings available when a room is reopened. */
+  products?: Product[];
   placed: PlacedItem[];
   total: number;
   layoutName: string;

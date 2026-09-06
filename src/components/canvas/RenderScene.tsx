@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Camera, Download, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
+import { Camera, Download, Gauge, Image as ImageIcon, Loader2, Moon, Sparkles, Sun, X } from "lucide-react";
 import type { DetectedRoom, PlacedItem, Product, RoomSpec } from "@/lib/types";
-import { WALL_HEIGHT_FT, hangCenterY, isWallHung, wallToneFrom, yawFor } from "@/lib/furniture";
+import { WALL_HEIGHT_FT, isWallHung, mountCenterY, wallToneFrom, yawFor } from "@/lib/furniture";
 import { FurnitureModel, SceneMode } from "./furniture/pieces";
 import { PhotoPiece, useCutout } from "./furniture/PhotoPiece";
 import { RoomShell } from "./furniture/RoomShell";
@@ -30,6 +30,8 @@ interface Props {
   placed: PlacedItem[];
   selectedId: string | null;
   onSelect?: (id: string | null) => void;
+  /** Render the photograph straight away: this is the realistic view, not the 3D one. */
+  auto?: boolean;
 }
 
 const FIT_RING: Record<string, string> = {
@@ -55,12 +57,15 @@ function Piece({
   onSelect?: (id: string | null) => void;
 }) {
   const holder = useRef<THREE.Group>(null);
-  const cutout = useCutout(look === "photo" ? product.image : "");
+  // An unverified stock image is decoration, not evidence of what the product
+  // looks like, so it never gets stood up in the room.
+  const trusted = product.photoVerified || product.image?.startsWith("/");
+  const cutout = useCutout(look === "photo" && trusted ? product.image : "");
   const x = item.x - room.widthFt / 2;
   const z = item.y - room.depthFt / 2;
   const yaw = yawFor(item, product, room);
   const hung = isWallHung(product);
-  const y = hung ? hangCenterY(product.height) : 0;
+  const y = hung ? mountCenterY(product) : 0;
   const ring = Math.max(product.width, product.depth) / 2;
   const showRing = selected || item.fit === "conflict" || item.fit === "tight";
   const asPhoto = look === "photo" && cutout.status === "ready";
@@ -125,15 +130,39 @@ function Piece({
   );
 }
 
-/** Hands a PNG grab back out of the canvas. */
-function Snapshot({ bind }: { bind: (fn: () => string) => void }) {
+/** Longest edge of the frame sent to the image model. */
+const REFERENCE_EDGE = 1280;
+
+/**
+ * Hands two grabs back out of the canvas: a lossless PNG for the shopper's own
+ * export, and a smaller JPEG for the image model.
+ *
+ * The model needs the frame for its geometry, not its pixels, so sending a
+ * full-resolution PNG at 2x device scale means megabytes uploaded twice, from
+ * the browser to us and from us to the provider, for structure a fraction of
+ * the size carries just as well.
+ */
+function Snapshot({ bind, bindReference }: { bind: (fn: () => string) => void; bindReference: (fn: () => string) => void }) {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
-    bind(() => {
+    const draw = () => {
       gl.render(scene, camera);
-      return gl.domElement.toDataURL("image/png");
+      return gl.domElement;
+    };
+    bind(() => draw().toDataURL("image/png"));
+    bindReference(() => {
+      const source = draw();
+      const scale = Math.min(1, REFERENCE_EDGE / Math.max(source.width, source.height));
+      if (scale >= 1) return source.toDataURL("image/jpeg", 0.85);
+      const small = document.createElement("canvas");
+      small.width = Math.round(source.width * scale);
+      small.height = Math.round(source.height * scale);
+      const ctx = small.getContext("2d");
+      if (!ctx) return source.toDataURL("image/jpeg", 0.85);
+      ctx.drawImage(source, 0, 0, small.width, small.height);
+      return small.toDataURL("image/jpeg", 0.85);
     });
-  }, [gl, scene, camera, bind]);
+  }, [gl, scene, camera, bind, bindReference]);
   return null;
 }
 
@@ -163,17 +192,30 @@ function Rig({ room, lightsOn }: { room: RoomSpec; lightsOn: boolean }) {
 const TOOL_BUTTON =
   "inline-flex items-center gap-1.5 rounded-full border border-rule px-3 py-1 uppercase tracking-[0.16em] transition hover:border-ink hover:text-ink disabled:opacity-50";
 
-export function RenderScene({ room, detected, products, placed, selectedId, onSelect }: Props) {
+export function RenderScene({ room, detected, products, placed, selectedId, onSelect, auto = false }: Props) {
   const [lightsOn, setLightsOn] = useState(false);
   const [look, setLook] = useState<Look>("photo");
-  const [photoreal, setPhotoreal] = useState<{ status: "idle" | "working" | "done" | "error"; image?: string; error?: string }>({ status: "idle" });
+  const [photoreal, setPhotoreal] = useState<{
+    status: "idle" | "working" | "done" | "error";
+    image?: string;
+    error?: string;
+    provider?: string;
+    model?: string;
+    ms?: number;
+    providerMs?: number;
+  }>({ status: "idle" });
   const grab = useRef<(() => string) | null>(null);
+  const grabReference = useRef<(() => string) | null>(null);
+  const [speed, setSpeed] = useState<"fast" | "best">("fast");
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
   const mode = useMemo(() => ({ lightsOn }), [lightsOn]);
 
   const reach = Math.max(room.widthFt, room.depthFt);
   const bind = useCallback((fn: () => string) => {
     grab.current = fn;
+  }, []);
+  const bindReference = useCallback((fn: () => string) => {
+    grabReference.current = fn;
   }, []);
 
   function download(href: string, name: string) {
@@ -188,9 +230,26 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
     download(grab.current(), `sightline-room-${room.widthFt.toFixed(0)}x${room.depthFt.toFixed(0)}.png`);
   }
 
-  async function renderPhotoreal() {
-    setPhotoreal({ status: "working" });
-    const pieces = placed
+  /**
+   * A render is worth keeping: the same room, the same pieces and the same
+   * speed produce the same picture, so coming back to this tab should not cost
+   * another half minute and another call.
+   */
+  function signature(pieces: unknown, mode: string) {
+    return `sightline:render:${mode}:${JSON.stringify(pieces)}`;
+  }
+
+  function cached(key: string) {
+    try {
+      return sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  /** What the render is of, independent of the frame that illustrates it. */
+  function piecesForRender() {
+    return placed
       .map((item) => {
         const product = byId[item.productId];
         if (!product) return null;
@@ -208,24 +267,91 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
         };
       })
       .filter(Boolean);
+  }
+
+  async function renderPhotoreal(force = false) {
+    const pieces = piecesForRender();
+    const key = signature(pieces, speed);
+    if (!force) {
+      const hit = cached(key);
+      if (hit) return setPhotoreal({ status: "done", image: hit, ms: 0 });
+    }
+
+    setPhotoreal({ status: "working" });
+
+    const payload = JSON.stringify({
+      layoutImage: grabReference.current?.(),
+      speed,
+      stream: true,
+      widthFt: room.widthFt,
+      depthFt: room.depthFt,
+      style: room.style,
+      roomType: room.roomType,
+      palette: detected?.palette,
+      lightingNote: detected?.lightingNote,
+      pieces
+    });
 
     try {
-      const res = await fetch("/api/render", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          widthFt: room.widthFt,
-          depthFt: room.depthFt,
-          style: room.style,
-          roomType: room.roomType,
-          palette: detected?.palette,
-          lightingNote: detected?.lightingNote,
-          pieces
-        })
-      });
+      const res = await fetch("/api/render", { method: "POST", headers: { "content-type": "application/json" }, body: payload });
+
+      // Streaming replies arrive as events; everything else is one JSON body.
+      if (res.ok && res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let last: any = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
+          for (const block of blocks) {
+            const line = block.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            let event: any;
+            try {
+              event = JSON.parse(line.slice(5).trim());
+            } catch {
+              continue;
+            }
+            if (event.type === "error") {
+              return setPhotoreal({ status: "error", error: event.error });
+            }
+            last = event;
+            // show each partial the moment it lands
+            setPhotoreal({
+              status: event.type === "done" ? "done" : "working",
+              image: event.image,
+              provider: event.provider,
+              model: event.model,
+              ms: event.ms,
+              providerMs: event.providerMs
+            });
+          }
+        }
+        if (last?.image) {
+          setPhotoreal((prev) => ({ ...prev, status: "done" }));
+          try {
+            sessionStorage.setItem(key, last.image);
+          } catch {
+            /* a full or blocked store just means no cache */
+          }
+        }
+        return;
+      }
+
       const json = await res.json();
-      if (!res.ok) return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).` });
-      setPhotoreal({ status: "done", image: json.image });
+      if (!res.ok) {
+        return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).`, provider: json?.provider, model: json?.model, ms: json?.ms });
+      }
+      setPhotoreal({ status: "done", image: json.image, provider: json.provider, model: json.model, ms: json.ms, providerMs: json.providerMs });
+      try {
+        sessionStorage.setItem(key, json.image);
+      } catch {
+        /* no cache is not a failure */
+      }
     } catch (err) {
       setPhotoreal({ status: "error", error: err instanceof Error ? err.message : "Render failed." });
     }
@@ -235,11 +361,36 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
     document.body.style.cursor = "auto";
   }, []);
 
+  // In the realistic view the photograph is the view, so it renders on arrival
+  // rather than waiting to be asked. It still needs a drawn frame to send, so
+  // this waits for the canvas to have painted one.
+  const kicked = useRef(false);
+  useEffect(() => {
+    if (!auto || kicked.current) return;
+
+    // A room already rendered needs nothing from the canvas, so it shows at
+    // once rather than waiting on a frame it is not going to send.
+    const hit = cached(signature(piecesForRender(), speed));
+    if (hit) {
+      kicked.current = true;
+      setPhotoreal({ status: "done", image: hit, ms: 0 });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (!grab.current) return;
+      kicked.current = true;
+      renderPhotoreal();
+    }, 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, placed, speed]);
+
   return (
     <div className="card h-[560px]">
       <div className="flex items-center justify-between gap-3 border-b border-rule px-4 py-3 text-[10px] uppercase tracking-[0.16em] text-ash">
         <span className="flex items-center gap-2">
-          <Camera className="h-3 w-3" /> Rendered · drag to orbit · click a piece
+          <Camera className="h-3 w-3" /> {auto ? "Realistic · generated from your chosen products" : "Rendered · drag to orbit · click a piece"}
         </span>
         <div className="flex items-center gap-2">
           <button onClick={() => setLook((v) => (v === "photo" ? "model" : "photo"))} className={TOOL_BUTTON} title="Real listing photos, or the built furniture models">
@@ -250,7 +401,15 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             {lightsOn ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
             {lightsOn ? "Evening" : "Daylight"}
           </button>
-          <button onClick={renderPhotoreal} disabled={photoreal.status === "working"} className={TOOL_BUTTON} title="Render this exact room with Gemini">
+          <button
+            onClick={() => setSpeed((v) => (v === "fast" ? "best" : "fast"))}
+            className={TOOL_BUTTON}
+            title="Fast trades some rendering quality for a much shorter wait"
+          >
+            <Gauge className="h-3 w-3" />
+            {speed === "fast" ? "Fast" : "Best"}
+          </button>
+          <button onClick={() => renderPhotoreal()} disabled={photoreal.status === "working"} className={TOOL_BUTTON} title="Render this room from the pieces you chose">
             {photoreal.status === "working" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             Photoreal
           </button>
@@ -318,16 +477,28 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
             maxPolarAngle={Math.PI / 2 - 0.04}
             target={[0, 2.2, 0]}
           />
-          <Snapshot bind={bind} />
+          <Snapshot bind={bind} bindReference={bindReference} />
         </Canvas>
 
         {photoreal.status !== "idle" && (
           <div className="absolute inset-0 flex items-center justify-center bg-panel/95 p-4">
             {photoreal.status === "working" && (
-              <div className="text-center text-paper">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                <div className="mt-4 font-display text-2xl">Rendering the room</div>
-                <div className="mt-1 text-[12px] opacity-70">Sending your dimensions and the real listing photos to Gemini.</div>
+              <div className="flex h-full w-full flex-col items-center justify-center text-center text-paper">
+                {photoreal.image ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoreal.image} alt="Render in progress" className="min-h-0 flex-1 rounded-xl object-contain" />
+                    <div className="mt-3 flex items-center gap-2 text-[12px] opacity-70">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sharpening…
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <div className="mt-4 font-display text-2xl">Rendering the room</div>
+                    <div className="mt-1 text-[12px] opacity-70">Sending the layout and the photos of the pieces you chose.</div>
+                  </>
+                )}
               </div>
             )}
             {photoreal.status === "error" && (
@@ -343,10 +514,21 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
               <div className="flex h-full w-full flex-col">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photoreal.image} alt="Photoreal render of the room" className="min-h-0 flex-1 rounded-xl object-contain" />
-                <div className="mt-3 flex shrink-0 items-center justify-center gap-2">
-                  <button onClick={() => setPhotoreal({ status: "idle" })} className="btn btn-light text-xs">
-                    <X className="h-3.5 w-3.5" /> Back to 3D
+                <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
+                  {photoreal.provider && (
+                    <span className="text-[11px] text-paper/60">
+                      {photoreal.provider} · {photoreal.model} · {((photoreal.ms || 0) / 1000).toFixed(1)}s
+                      {photoreal.providerMs ? ` (${((photoreal.providerMs || 0) / 1000).toFixed(1)}s in the model)` : ""}
+                    </span>
+                  )}
+                  <button onClick={() => renderPhotoreal(true)} className="btn btn-light text-xs">
+                    <Sparkles className="h-3.5 w-3.5" /> Render again
                   </button>
+                  {!auto && (
+                    <button onClick={() => setPhotoreal({ status: "idle" })} className="btn btn-light text-xs">
+                      <X className="h-3.5 w-3.5" /> Back to 3D
+                    </button>
+                  )}
                   <button onClick={() => download(photoreal.image as string, "sightline-photoreal.png")} className="btn btn-brass text-xs">
                     <Download className="h-3.5 w-3.5" /> Save
                   </button>

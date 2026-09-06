@@ -101,6 +101,8 @@ function normalize(r: Raw): Product | null {
   return {
     id: r.id,
     title: r.title,
+    // a listing's own thumbnail is a photo of that listing's product
+    photoVerified: true,
     price: Math.round(r.price),
     source: mapSource(r.sourceName),
     url: r.url,

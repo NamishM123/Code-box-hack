@@ -55,6 +55,7 @@ export async function searchFacebookMarketplace(args: MarketplaceArgs): Promise<
       const category = (args.category === "auto" ? inferCategory(title) : args.category) as Product["category"];
       const dims = parseDimensions([title, r.description].filter(Boolean).join(" "), category);
       return {
+        photoVerified: true,
         id: `fb-${r.id || url}`,
         title,
         price: Math.round(price),
