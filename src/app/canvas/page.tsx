@@ -128,9 +128,11 @@ export default function CanvasPage() {
       const saved = getRoom(roomId);
       if (saved) {
         const b: Brief = { ...saved.spec, detected: saved.detected };
-        const prods = saved.productIds
-          .map((id) => SAMPLE_CATALOG.find((c) => c.id === id))
-          .filter(Boolean) as Product[];
+        const prods = saved.products?.length
+          ? saved.products
+          : saved.productIds
+              .map((id) => SAMPLE_CATALOG.find((c) => c.id === id))
+              .filter(Boolean) as Product[];
         setBrief(b);
         setProducts(prods);
         setPlaced(saved.placed);
@@ -248,6 +250,7 @@ export default function CanvasPage() {
       spec: brief,
       detected: brief.detected,
       productIds: products.map((p) => p.id),
+      products,
       placed,
       total,
       layoutName: layouts[activeLayout]?.name || "Custom"
