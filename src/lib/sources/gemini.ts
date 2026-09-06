@@ -196,6 +196,8 @@ const LOOK_SCHEMA = {
           category: { type: "string" },
           label: { type: "string" },
           searchTerm: { type: "string" },
+          color: { type: "string" },
+          material: { type: "string" },
           widthFt: { type: "number" },
           depthFt: { type: "number" },
           x: { type: "number" },
@@ -215,6 +217,9 @@ export interface LookItem {
   label: string;
   /** The query that would surface this exact piece at a retailer. */
   searchTerm: string;
+  /** The piece's own colour and material, folded into its query. */
+  color?: string;
+  material?: string;
   widthFt?: number;
   depthFt?: number;
   /** Where it stands in the picture's own floor plan, in feet. */
@@ -244,7 +249,9 @@ Return the look AND an inventory of what is actually in the picture.
 - Count duplicates separately only when they are clearly a pair, e.g. two matching nightstands.
 - "category" must be one of: sofa, chair, table, bed, rug, lamp, shelf, plant, art, desk, dresser, nightstand, mirror, tv.
 - "label" describes the piece as seen, e.g. "black metal frame queen bed with white linen".
-- "searchTerm" is how a person would search a retailer for THAT piece, e.g. "black metal platform bed queen". No brand names.
+- "searchTerm" is how a person would search a retailer for THAT piece. Lead with its colour and material, because that is what makes a result look like the picture: "black metal articulated task lamp", not "table lamp". No brand names.
+- "color" is the piece's dominant colour in one or two plain words, e.g. "black", "warm oak", "olive green".
+- "material" is what it is made of, e.g. "powder-coated metal", "oak", "boucle".
 - "widthFt"/"depthFt" are its rough footprint in feet.
 - "x"/"y" are where the piece's CENTRE sits on the floor plan, in feet, in the same plan as widthFt/depthFt below: origin (0,0) is the top-left corner seen from above, x runs along the width, y along the depth. Read the perspective of the photograph and place each piece where it actually stands in the room.
 - "backsTo" is the wall the piece has its back against — N is y=0, S is y=depth, W is x=0, E is x=width — or "none" if it stands free of the walls.
@@ -295,6 +302,8 @@ export async function readLook(images: InlineImage[]): Promise<GeminiLook> {
       category: normalizeCategory(i.category),
       label: String(i.label || i.category).slice(0, 120),
       searchTerm: String(i.searchTerm).slice(0, 80),
+      color: i.color ? String(i.color).slice(0, 40) : undefined,
+      material: i.material ? String(i.material).slice(0, 40) : undefined,
       widthFt: i.widthFt ? clamp(num(i.widthFt), 0.2, 20) : undefined,
       depthFt: i.depthFt ? clamp(num(i.depthFt), 0.2, 20) : undefined,
       x: i.x != null ? clamp(num(i.x), 0, widthFt) : undefined,

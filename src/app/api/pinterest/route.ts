@@ -29,8 +29,15 @@ export async function POST(req: Request) {
     }
 
     if (!hasGemini()) {
-      // The client can still extract a palette locally; hand back the images it should read.
-      return NextResponse.json({ images: images.map(toDataUrl), vibe: null, source: "images_only" });
+      // The client can still extract a palette locally, but it cannot read an
+      // inventory, so the shop will fall back to generic per-room queries. Say
+      // that plainly instead of returning a bare null.
+      return NextResponse.json({
+        images: images.map(toDataUrl),
+        vibe: null,
+        source: "images_only",
+        reason: "GOOGLE_AI_API_KEY isn't reaching the server, so the picture can't be read."
+      });
     }
 
     // readLook, not readVibe: the caller needs the inventory of what is
@@ -40,7 +47,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ vibe, images: images.slice(0, 3).map(toDataUrl), source: "gemini" });
   } catch (e) {
     return NextResponse.json(
-      { error: "vibe_failed", message: e instanceof Error ? e.message : String(e) },
+      {
+        error: "vibe_failed",
+        reason: `The picture could not be read: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200),
+        message: e instanceof Error ? e.message : String(e)
+      },
       { status: 502 }
     );
   }

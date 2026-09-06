@@ -148,9 +148,19 @@ export function LookLightbox({
       setGroups(gs);
       setPicked(Object.fromEntries(gs.map((g) => [key(g), g.options[0]?.id]).filter(([, v]) => v)));
 
-      if (!gs.length) setNote(data.notes?.[0] || "Nothing came back for this look.");
-      else if (data.live === false) setNote("Showing the seed catalog — SERPAPI_KEY isn't reaching the server.");
-      else if (!look.vibe.items?.length) setNote("Couldn't read the picture in detail, so these are a best guess.");
+      // The picture not being read is the single biggest reason matches look
+      // nothing like it — the shop falls back to generic per-room queries like
+      // "table lamp". Say so at the top, with the reason, instead of quietly
+      // presenting a guess as a match.
+      if (look.source === "local") {
+        setNote(
+          `These are generic matches, not this picture. ${look.reason || "The picture could not be read."}`
+        );
+      } else if (!gs.length) {
+        setNote(data.notes?.[0] || "Nothing came back for this look.");
+      } else if (data.live === false) {
+        setNote("Showing the seed catalog — SERPAPI_KEY isn't reaching the server.");
+      }
     } catch {
       setNote("Could not read this image. Try another pin.");
       setGroups([]);
@@ -343,7 +353,9 @@ export function LookLightbox({
           {/* one section per piece in the picture */}
           {groups && (
             <div className="min-h-0 flex-1 overflow-auto">
-              {note && <p className="eyebrow border-b border-rule px-5 py-3">{note}</p>}
+              {note && (
+                <p className="eyebrow border-b border-rule px-5 py-3 text-brass">{note}</p>
+              )}
 
               {groups.length > 0 && (
                 <p className="eyebrow border-b border-rule px-5 py-3">

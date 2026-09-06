@@ -31,31 +31,31 @@ const MAX_ITEMS = 8;
  * fetch that failed. Small on purpose: a wrong guess of three pieces is far
  * less wrong than a right guess of twenty.
  */
-const FALLBACK_ITEMS: Record<string, { category: Category; label: string; searchTerm: string }[]> = {
+const FALLBACK_ITEMS: Record<string, { category: Category; label: string; searchTerm: string; want: string[] }[]> = {
   bedroom: [
-    { category: "bed", label: "The bed", searchTerm: "platform bed queen" },
-    { category: "nightstand", label: "The nightstand", searchTerm: "wood nightstand" },
-    { category: "lamp", label: "The lamp", searchTerm: "table lamp" }
+    { category: "bed", label: "The bed", searchTerm: "platform bed queen", want: [] },
+    { category: "nightstand", label: "The nightstand", searchTerm: "wood nightstand", want: [] },
+    { category: "lamp", label: "The lamp", searchTerm: "table lamp", want: [] }
   ],
   bathroom: [
-    { category: "mirror", label: "The mirror", searchTerm: "arched bathroom mirror" },
-    { category: "shelf", label: "The shelving", searchTerm: "bathroom shelf unit" },
-    { category: "plant", label: "The plant", searchTerm: "potted plant indoor" }
+    { category: "mirror", label: "The mirror", searchTerm: "arched bathroom mirror", want: [] },
+    { category: "shelf", label: "The shelving", searchTerm: "bathroom shelf unit", want: [] },
+    { category: "plant", label: "The plant", searchTerm: "potted plant indoor", want: [] }
   ],
   office: [
-    { category: "desk", label: "The desk", searchTerm: "wood writing desk" },
-    { category: "chair", label: "The chair", searchTerm: "office chair" },
-    { category: "shelf", label: "The shelving", searchTerm: "bookshelf" }
+    { category: "desk", label: "The desk", searchTerm: "wood writing desk", want: [] },
+    { category: "chair", label: "The chair", searchTerm: "office chair", want: [] },
+    { category: "shelf", label: "The shelving", searchTerm: "bookshelf", want: [] }
   ],
   "living-room": [
-    { category: "sofa", label: "The sofa", searchTerm: "fabric 3 seater sofa" },
-    { category: "table", label: "The coffee table", searchTerm: "wood coffee table" },
-    { category: "rug", label: "The rug", searchTerm: "area rug 8x10" }
+    { category: "sofa", label: "The sofa", searchTerm: "fabric 3 seater sofa", want: [] },
+    { category: "table", label: "The coffee table", searchTerm: "wood coffee table", want: [] },
+    { category: "rug", label: "The rug", searchTerm: "area rug 8x10", want: [] }
   ],
   any: [
-    { category: "sofa", label: "The seating", searchTerm: "fabric sofa" },
-    { category: "table", label: "The table", searchTerm: "wood coffee table" },
-    { category: "lamp", label: "The lamp", searchTerm: "floor lamp" }
+    { category: "sofa", label: "The seating", searchTerm: "fabric sofa", want: [] },
+    { category: "table", label: "The table", searchTerm: "wood coffee table", want: [] },
+    { category: "lamp", label: "The lamp", searchTerm: "floor lamp", want: [] }
   ]
 };
 
@@ -63,6 +63,8 @@ interface LookItemIn {
   category?: string;
   label?: string;
   searchTerm?: string;
+  color?: string;
+  material?: string;
   widthFt?: number;
   depthFt?: number;
   x?: number;
@@ -150,7 +152,7 @@ export async function POST(req: Request) {
     const options = s.value
       .filter((p) => p.url && p.image && !seenUrl.has(p.url))
       .filter((p) => fitsRoom(p, body.widthFt, body.depthFt))
-      .sort((a, b) => score(b, perItem) - score(a, perItem))
+      .sort((a, b) => score(b, perItem, it.want) - score(a, perItem, it.want))
       .slice(0, PER_ITEM);
 
     for (const p of options) seenUrl.add(p.url);
@@ -175,7 +177,7 @@ export async function POST(req: Request) {
   });
 }
 
-function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string; searchTerm: string; x?: number; y?: number; backsTo?: string }[] {
+function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string; searchTerm: string; want: string[]; x?: number; y?: number; backsTo?: string }[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((i) => i?.category && i?.searchTerm)
@@ -183,10 +185,21 @@ function normalizeItems(raw?: LookItemIn[]): { category: Category; label: string
     .map((i) => {
       const c = String(i.category).toLowerCase().trim();
       const category = (KNOWN.find((k) => k === c) || KNOWN.find((k) => c.includes(k)) || "table") as Category;
+      // The colour and material of the piece in the photograph. These go into
+      // the query AND into the ranking: a search for a black metal task lamp
+      // still returns terracotta ceramic ones, and without checking, the first
+      // one wins.
+      const want = [i.color, i.material]
+        .filter(Boolean)
+        .flatMap((v) => String(v).toLowerCase().split(/[^a-z]+/))
+        .filter((w) => w.length > 2)
+        .slice(0, 6);
+
       return {
         category,
         label: String(i.label || category).slice(0, 120),
         searchTerm: String(i.searchTerm).replace(/[^\p{L}\p{N}\s&'-]/gu, " ").trim().slice(0, 80),
+        want,
         x: typeof i.x === "number" ? i.x : undefined,
         y: typeof i.y === "number" ? i.y : undefined,
         backsTo: ["N", "E", "S", "W", "none"].includes(String(i.backsTo)) ? String(i.backsTo) : undefined
@@ -201,12 +214,26 @@ function fitsRoom(p: Product, widthFt?: number, depthFt?: number): boolean {
   return p.width < widthFt - 1 && p.depth < depthFt - 1;
 }
 
-function score(p: Product, target: number): number {
+/**
+ * Looking like the piece in the photograph outweighs everything else.
+ *
+ * A query for "black metal articulated task lamp" still comes back with
+ * terracotta ceramic ones, and price alone happily ranks those first — which
+ * is how a picture with a slim black task lamp produced two $899 clay lamps.
+ * Every colour or material word the photo gave us that also appears in the
+ * listing's title is worth more than a good price.
+ */
+function score(p: Product, target: number, want: string[] = []): number {
   const priceFit = 1 - Math.min(1, Math.abs(p.price - target) / Math.max(target, 1));
   const rating = (p.rating || 4) / 5;
   const measured = p.dimensionsVerified === false ? 0 : 1;
   const pictured = p.photoVerified ? 1 : 0;
-  return priceFit * 2 + rating + measured * 1.5 + pictured * 0.5;
+
+  const title = p.title.toLowerCase();
+  const hits = want.filter((w) => title.includes(w)).length;
+  const looksRight = want.length ? (hits / want.length) * 6 : 0;
+
+  return looksRight + priceFit * 2 + rating + measured * 1.5 + pictured * 0.5;
 }
 
 function clampNum(v: unknown, fallback: number, min: number, max: number): number {
