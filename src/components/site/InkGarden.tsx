@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { AsciiRenderer } from "@/lib/ascii/render";
-import { loadImageSource, paintInkGarden } from "@/lib/ascii/source";
+import { descreen, loadImageSource, paintInkGarden } from "@/lib/ascii/source";
 import { INK_GARDEN, withParams, type AsciiParams } from "@/lib/ascii/types";
 
 /** Where the painted garden lives before it's sampled. 3:2 covers most screens. */
@@ -13,8 +13,10 @@ const SOURCE_H = 1200;
 export interface InkGardenProps {
   /** Defaults to the Ink Garden preset. */
   params?: Partial<AsciiParams>;
-  /** A photo to sample instead of the painted garden. */
+  /** A photo to sample instead of the painted garden. Missing files fall back to it. */
   sourceUrl?: string;
+  /** Blur radius applied to `sourceUrl` before sampling. See descreen(); 0 for a photo. */
+  sourceBlur?: number;
   /** 0-1, applied to the canvas element rather than the effect. */
   opacity?: number;
   /** Frames per second. Kept below 60 on purpose — this runs behind everything. */
@@ -35,6 +37,7 @@ export interface InkGardenProps {
 export function InkGarden({
   params,
   sourceUrl,
+  sourceBlur = 0,
   opacity = 1,
   fps = 30,
   maxDpr = 1.5,
@@ -67,8 +70,11 @@ export function InkGarden({
     let alive = true;
 
     if (sourceUrl) {
+      // A 404 resolves null and simply leaves the painted garden in place, so
+      // dropping the real photo in is the whole of the change.
       loadImageSource(sourceUrl).then((img) => {
-        if (alive && img) renderer.setSource(img);
+        if (!alive || !img) return;
+        renderer.setSource(sourceBlur > 0 ? descreen(img, sourceBlur) : img);
       });
     }
 
@@ -128,7 +134,7 @@ export function InkGarden({
     };
     // The loop reads params through a ref, so it only needs rebuilding when the
     // source or the rendering budget changes.
-  }, [sourceUrl, fps, maxDpr]);
+  }, [sourceUrl, sourceBlur, fps, maxDpr]);
 
   return (
     <canvas
@@ -146,10 +152,10 @@ export function InkGarden({
  * Sits at z-0 with the page's own content lifted to z-10 in the root layout, so
  * it reads through the gaps between cards without ever catching a click.
  */
-export function InkGardenBackdrop({ opacity = 0.38, params, sourceUrl }: InkGardenProps) {
+export function InkGardenBackdrop({ opacity = 0.38, params, sourceUrl, sourceBlur }: InkGardenProps) {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-      <InkGarden opacity={opacity} params={params} sourceUrl={sourceUrl} />
+      <InkGarden opacity={opacity} params={params} sourceUrl={sourceUrl} sourceBlur={sourceBlur} />
     </div>
   );
 }

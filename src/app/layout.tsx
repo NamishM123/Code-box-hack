@@ -31,7 +31,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={hkVenetian.variable}>
       <body className="grain min-h-screen antialiased">
-        <InkGardenBackdrop />
+        {/* Save the flower photo to public/ink-garden.webp and it is sampled
+            instead of the painted garden; until then this 404s once and falls
+            back silently. If the only file to hand is a screenshot of a dither
+            rather than the photo behind it, add sourceBlur={6} to average the
+            dots back into tone — two dot grids on top of each other moire. */}
+        <InkGardenBackdrop sourceUrl="/ink-garden.webp" />
         <div className="relative z-10">{children}</div>
       </body>
     </html>
