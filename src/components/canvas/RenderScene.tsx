@@ -189,6 +189,9 @@ function Rig({ room, lightsOn }: { room: RoomSpec; lightsOn: boolean }) {
   );
 }
 
+/** How long the layout must hold still before a render is worth starting. */
+const PREFETCH_SETTLE_MS = 2500;
+
 const TOOL_BUTTON =
   "inline-flex items-center gap-1.5 rounded-full border border-rule px-3 py-1 uppercase tracking-[0.16em] transition hover:border-ink hover:text-ink disabled:opacity-50";
 
@@ -269,16 +272,15 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
       .filter(Boolean);
   }
 
-  async function renderPhotoreal(force = false) {
-    const pieces = piecesForRender();
-    const key = signature(pieces, speed);
-    if (!force) {
-      const hit = cached(key);
-      if (hit) return setPhotoreal({ status: "done", image: hit, ms: 0 });
-    }
-
-    setPhotoreal({ status: "working" });
-
+  /**
+   * One render. `onFrame` is called for every partial and for the final image,
+   * so the visible render can show progress while a prefetch stays quiet.
+   */
+  async function requestRender(
+    pieces: unknown[],
+    onFrame?: (frame: { image: string; provider?: string; model?: string; ms?: number; providerMs?: number; final: boolean }) => void,
+    signal?: AbortSignal
+  ): Promise<string> {
     const payload = JSON.stringify({
       layoutImage: grabReference.current?.(),
       speed,
@@ -292,66 +294,75 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
       pieces
     });
 
-    try {
-      const res = await fetch("/api/render", { method: "POST", headers: { "content-type": "application/json" }, body: payload });
+    const res = await fetch("/api/render", { method: "POST", headers: { "content-type": "application/json" }, body: payload, signal });
 
-      // Streaming replies arrive as events; everything else is one JSON body.
-      if (res.ok && res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let last: any = null;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const blocks = buffer.split("\n\n");
-          buffer = blocks.pop() || "";
-          for (const block of blocks) {
-            const line = block.split("\n").find((l) => l.startsWith("data:"));
-            if (!line) continue;
-            let event: any;
-            try {
-              event = JSON.parse(line.slice(5).trim());
-            } catch {
-              continue;
-            }
-            if (event.type === "error") {
-              return setPhotoreal({ status: "error", error: event.error });
-            }
-            last = event;
-            // show each partial the moment it lands
-            setPhotoreal({
-              status: event.type === "done" ? "done" : "working",
-              image: event.image,
-              provider: event.provider,
-              model: event.model,
-              ms: event.ms,
-              providerMs: event.providerMs
-            });
-          }
-        }
-        if (last?.image) {
-          setPhotoreal((prev) => ({ ...prev, status: "done" }));
+    // Streaming replies arrive as events; everything else is one JSON body.
+    if (res.ok && res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let latest = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() || "";
+        for (const block of blocks) {
+          const line = block.split("\n").find((l) => l.startsWith("data:"));
+          if (!line) continue;
+          let event: any;
           try {
-            sessionStorage.setItem(key, last.image);
+            event = JSON.parse(line.slice(5).trim());
           } catch {
-            /* a full or blocked store just means no cache */
+            continue;
           }
+          if (event.type === "error") throw new Error(event.error);
+          if (!event.image) continue;
+          latest = event.image;
+          onFrame?.({ image: event.image, provider: event.provider, model: event.model, ms: event.ms, providerMs: event.providerMs, final: event.type === "done" });
         }
-        return;
       }
+      if (!latest) throw new Error("The render finished without producing an image.");
+      return latest;
+    }
 
-      const json = await res.json();
-      if (!res.ok) {
-        return setPhotoreal({ status: "error", error: json?.error || `Render failed (${res.status}).`, provider: json?.provider, model: json?.model, ms: json?.ms });
-      }
-      setPhotoreal({ status: "done", image: json.image, provider: json.provider, model: json.model, ms: json.ms, providerMs: json.providerMs });
-      try {
-        sessionStorage.setItem(key, json.image);
-      } catch {
-        /* no cache is not a failure */
-      }
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || `Render failed (${res.status}).`);
+    onFrame?.({ image: json.image, provider: json.provider, model: json.model, ms: json.ms, providerMs: json.providerMs, final: true });
+    return json.image;
+  }
+
+  function remember(key: string, image: string) {
+    try {
+      sessionStorage.setItem(key, image);
+    } catch {
+      /* a full or blocked store just means no cache */
+    }
+  }
+
+  async function renderPhotoreal(force = false) {
+    const pieces = piecesForRender();
+    const key = signature(pieces, speed);
+    if (!force) {
+      const hit = cached(key);
+      if (hit) return setPhotoreal({ status: "done", image: hit, ms: 0 });
+    }
+
+    setPhotoreal({ status: "working" });
+    try {
+      const image = await requestRender(pieces, (frame) =>
+        setPhotoreal({
+          status: frame.final ? "done" : "working",
+          image: frame.image,
+          provider: frame.provider,
+          model: frame.model,
+          ms: frame.ms,
+          providerMs: frame.providerMs
+        })
+      );
+      setPhotoreal((prev) => ({ ...prev, status: "done", image }));
+      remember(key, image);
     } catch (err) {
       setPhotoreal({ status: "error", error: err instanceof Error ? err.message : "Render failed." });
     }
@@ -364,6 +375,49 @@ export function RenderScene({ room, detected, products, placed, selectedId, onSe
   // In the realistic view the photograph is the view, so it renders on arrival
   // rather than waiting to be asked. It still needs a drawn frame to send, so
   // this waits for the canvas to have painted one.
+  /**
+   * Start the render while the shopper is still looking at the 3D view, so the
+   * realistic one is already waiting when they reach it.
+   *
+   * The cost is real and worth stating: a room nobody opens in the realistic
+   * view is a render nobody looks at, and on a paid provider that is money. So
+   * it waits for the layout to stop changing, never runs twice for the same
+   * room, keeps one request in flight, and abandons a request the moment the
+   * layout moves under it. Set NEXT_PUBLIC_RENDER_PREFETCH=off to turn it off.
+   */
+  const inFlight = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (auto || process.env.NEXT_PUBLIC_RENDER_PREFETCH === "off") return;
+
+    const pieces = piecesForRender();
+    if (!pieces.length) return;
+    const key = signature(pieces, speed);
+    if (cached(key)) return;
+
+    const timer = setTimeout(async () => {
+      if (!grabReference.current) return;
+      inFlight.current?.abort();
+      const controller = new AbortController();
+      inFlight.current = controller;
+      try {
+        const image = await requestRender(pieces, undefined, controller.signal);
+        if (!controller.signal.aborted) remember(key, image);
+      } catch {
+        // A prefetch failing is not the shopper's problem: they have not asked
+        // for the picture yet, and asking will surface any real error.
+      } finally {
+        if (inFlight.current === controller) inFlight.current = null;
+      }
+    }, PREFETCH_SETTLE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      inFlight.current?.abort();
+      inFlight.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, placed, products, speed]);
+
   const kicked = useRef(false);
   useEffect(() => {
     if (!auto || kicked.current) return;
